@@ -1,16 +1,39 @@
+import Big from "big.js";
 import { Block } from "./Block";
-import { DataRequest } from "./DataRequest";
+import { DataRequest, DataRequestResolved } from "./DataRequest";
+import { Network } from "./Network";
 
 export interface DataRequestBatch {
     internalId: string;
+    targetNetwork: Network;
     requests: DataRequest[];
 }
 
+export interface DataRequestBatchResolved extends DataRequestBatch {
+    requests: DataRequestResolved[];
+}
+
+let nonce = 0;
+
 export function createDataRequestBatch(requests: DataRequest[]): DataRequestBatch {
+    // Making sure no two requests will match each other
+    nonce++;
+
+    // We assume that batches are all on the same network.
+    // Otherwise that would defeat the purpose of batches..
+    const network = requests[0].targetNetwork;
+
     return {
         requests,
-        internalId: requests.map(r => r.internalId).join(','),
+        targetNetwork: network,
+        internalId: nonce + '-' + requests.map(r => r.internalId).join(','),
     }
+}
+
+export interface EnoughConfirmationsDetails {
+    confirmed: boolean;
+    confirmationsNeeded: Big;
+    currentConfirmations: Big;
 }
 
 /**
@@ -22,8 +45,10 @@ export function createDataRequestBatch(requests: DataRequest[]): DataRequestBatc
  * @param {Block} currentBlock
  * @return {boolean}
  */
-export function hasBatchEnoughConfirmations(batch: DataRequestBatch, currentBlock: Block): boolean {
+export function hasBatchEnoughConfirmations(batch: DataRequestBatch, currentBlock: Block): EnoughConfirmationsDetails {
     let confirmed = true;
+    let mostConfirmationsNeeded = new Big(0);
+    let mostCurrentConfirmations = new Big(0);
 
     batch.requests.forEach((request) => {
         const currentConfirmations = currentBlock.number.minus(request.createdInfo.block.number);
@@ -31,7 +56,16 @@ export function hasBatchEnoughConfirmations(batch: DataRequestBatch, currentBloc
         if (!currentConfirmations.gte(request.confirmationsRequired)) {
             confirmed = false;
         }
+
+        if (mostConfirmationsNeeded.lt(request.confirmationsRequired)) {
+            mostConfirmationsNeeded = request.confirmationsRequired;
+            mostCurrentConfirmations = currentConfirmations;
+        }
     });
 
-    return confirmed;
+    return {
+        confirmed,
+        confirmationsNeeded: mostConfirmationsNeeded,
+        currentConfirmations: mostCurrentConfirmations,
+    };
 }

@@ -43,5 +43,7 @@ export async function parseAppConfig(): Promise<AppConfig> {
         return new listener(parsedModuleConfig, appConfig);
     });
 
+
+
     return appConfig;
 }

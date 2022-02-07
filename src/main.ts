@@ -7,6 +7,7 @@ async function main() {
 
     const appConfig = await parseAppConfig();
 
+    await Promise.all(appConfig.networks.map(network => network.init()));
     appConfig.modules.forEach(module => module.start());
 }
 

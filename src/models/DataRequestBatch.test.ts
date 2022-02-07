@@ -1,6 +1,7 @@
 import Big from "big.js";
 import { createBlockMock } from "../mocks/BlockMock";
 import { createDataRequestMock } from "../mocks/DataRequestMock";
+import { createNetworkMock } from "../mocks/NetworkMock";
 import { hasBatchEnoughConfirmations } from "./DataRequestBatch";
 
 describe('DataRequestBatch', () => {
@@ -8,6 +9,7 @@ describe('DataRequestBatch', () => {
         it('should return false when one needs more confirmations required', () => {
             const isConfirmed = hasBatchEnoughConfirmations({
                 internalId: '1',
+                targetNetwork: createNetworkMock(),
                 requests: [
                     createDataRequestMock({
                         confirmationsRequired: new Big(100),
@@ -24,6 +26,7 @@ describe('DataRequestBatch', () => {
         it('should return true when all requests are confirmed', () => {
             const isConfirmed = hasBatchEnoughConfirmations({
                 internalId: '1',
+                targetNetwork: createNetworkMock(),
                 requests: [
                     createDataRequestMock({
                         confirmationsRequired: new Big(100),
@@ -46,6 +49,7 @@ describe('DataRequestBatch', () => {
         it('should return false when one request is not confirmed yet', () => {
             const isConfirmed = hasBatchEnoughConfirmations({
                 internalId: '1',
+                targetNetwork: createNetworkMock(),
                 requests: [
                     createDataRequestMock({
                         confirmationsRequired: new Big(100),

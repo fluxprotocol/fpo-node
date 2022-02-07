@@ -15,6 +15,7 @@
     "dependencies": {
         "big.js": "^6.1.1",
         "dotenv": "^15.0.0",
+        "ethers": "^5.5.4",
         "web3": "^1.7.0",
         "winston-daily-rotate-file": "^4.6.0",
         "winston-transport-sentry-node": "^2.3.0"

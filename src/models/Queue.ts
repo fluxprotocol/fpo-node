@@ -1,12 +1,8 @@
-import EventEmitter from "events";
 import logger from "../services/LoggerService";
-import { Block } from "./Block";
-import { DataRequestBatch, hasBatchEnoughConfirmations } from "./DataRequestBatch";
-
-type RequestBlockHandler = (id: string) => Promise<Block>;
+import { DataRequestBatchResolved } from "./DataRequestBatch";
 
 export class Queue {
-    items: DataRequestBatch[] = [];
+    items: DataRequestBatchResolved[] = [];
     processingId?: string;
     private intervalId?: NodeJS.Timer;
     id: string;
@@ -16,7 +12,7 @@ export class Queue {
         this.id = `${id}-queue`;
     }
 
-    has(batch: DataRequestBatch): boolean {
+    has(batch: DataRequestBatchResolved): boolean {
         if (this.processingId === batch.internalId) {
             return true;
         }
@@ -24,13 +20,13 @@ export class Queue {
         return this.items.some(item => item.internalId === batch.internalId);
     }
 
-    add(batch: DataRequestBatch) {
+    add(batch: DataRequestBatchResolved) {
         if (this.has(batch)) return;
         this.items.push(batch);
         logger.debug(`[${this.id}] Added "${batch.internalId}" to queue`);
     }
 
-    start(onBatchReady: (batch: DataRequestBatch) => Promise<void>) {
+    start(onBatchReady: (batch: DataRequestBatchResolved) => Promise<void>) {
         this.intervalId = setInterval(async () => {
             if (this.processingId) return;
 
@@ -39,11 +35,11 @@ export class Queue {
 
             this.processingId = batch.internalId;
 
-            logger.debug(`[${this.id}] Processing ${batch.internalId}`);
+            logger.debug(`[${this.id}] Submitting batch to blockchain ${batch.internalId}`);
 
             await onBatchReady(batch);
 
-            logger.debug(`[${this.id}] Completed Processing ${batch.internalId}`);
+            logger.debug(`[${this.id}] Submitting batch to blockchain completed ${batch.internalId}`);
 
             this.processingId = undefined;
         }, 100);

@@ -19,12 +19,13 @@ export function parseUnparsedModuleConfig(config: Partial<ModuleConfig> = {}): M
 
 export class Module {
     static type: string = 'listener';
+    type: string = 'listener';
     network: Network;
     appConfig: AppConfig;
     moduleConfig: ModuleConfig;
     id: string;
 
-    constructor(moduleConfig: ModuleConfig, appConfig: AppConfig) {
+    constructor(type: string, moduleConfig: ModuleConfig, appConfig: AppConfig) {
         const network = appConfig.networks.find(network => network.networkId === moduleConfig.networkId);
 
         if (!network) {
@@ -35,6 +36,7 @@ export class Module {
         this.appConfig = appConfig;
         this.moduleConfig = moduleConfig;
         this.id = `${moduleConfig.type}-${moduleConfig.networkId}`;
+        this.type = type;
     }
 
     start() {

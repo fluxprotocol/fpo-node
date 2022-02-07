@@ -6,6 +6,7 @@ export function createNetworkMock(config: Partial<NetworkConfig> = {}): Network 
         rpc: '',
         type: 'evm',
         wssRpc: '',
+        blockFetchingInterval: 5000,
         ...config
     })
 }
