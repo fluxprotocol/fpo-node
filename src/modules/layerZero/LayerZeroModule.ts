@@ -83,7 +83,7 @@ export class LayerZeroModule extends Module {
         });
     }
 
-    start(): void {
+    async start(): Promise<boolean> {
         const websocketProvider = new Web3.providers.WebsocketProvider(this.network.networkConfig.wssRpc!);
         const w3Instance = new Web3(websocketProvider);
         // ABI is valid but types of web3.js is a lil outdated..
@@ -137,5 +137,6 @@ export class LayerZeroModule extends Module {
         });
 
         logger.info(`[${this.id}] Started listening`);
+        return true;
     }
 }

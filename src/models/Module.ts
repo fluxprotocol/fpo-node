@@ -39,7 +39,9 @@ export class Module {
         this.type = type;
     }
 
-    start() {
+    start(): Promise<boolean> {
         throw new Error('Not implemented');
     }
+
+    stop(): any {}
 }

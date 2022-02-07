@@ -9,7 +9,7 @@ export interface InternalLayerZeroModuleConfig extends ModuleConfig {
 }
 
 export function parseLayerZeroModuleConfig(config: LayerZeroModuleConfig): InternalLayerZeroModuleConfig {
-    if (typeof config.oracleContractAddress === 'undefined' || typeof config.oracleContractAddress !== 'string') throw new Error(`"oracleContractAddress" is required and must be a string`);
+    if (typeof config.oracleContractAddress === 'undefined' || typeof config.oracleContractAddress !== 'string') throw new Error(`[LayerZeroModule] "oracleContractAddress" is required and must be a string`);
 
     return {
         ...config,

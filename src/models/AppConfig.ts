@@ -1,11 +1,13 @@
 import { readFile } from 'fs/promises';
-import { APP_CONFIG_LOCATION, AVAILABLE_LISTENERS, AVAILABLE_NETWORKS } from "../config";
+import { APP_CONFIG_LOCATION, AVAILABLE_JOBS, AVAILABLE_MODULES, AVAILABLE_NETWORKS } from "../config";
+import { Job } from './Job';
 import { Module, ModuleConfig, parseUnparsedModuleConfig } from './Module';
 import { Network, NetworkConfig, parseUnparsedNetworkConfig } from "./Network";
 
 export interface AppConfig {
     networks: Network[];
     modules: Module[];
+    jobs: Job[];
 }
 
 export interface UnparsedAppConfig {
@@ -17,6 +19,7 @@ export async function parseAppConfig(): Promise<AppConfig> {
     const appConfig: AppConfig = {
         networks: [],
         modules: [],
+        jobs: [],
     };
 
     const config: UnparsedAppConfig = JSON.parse((await readFile(APP_CONFIG_LOCATION)).toString('utf-8'));
@@ -36,14 +39,14 @@ export async function parseAppConfig(): Promise<AppConfig> {
 
     appConfig.modules = config.modules.map((moduleConfig) => {
         const parsedModuleConfig = parseUnparsedModuleConfig(moduleConfig);
-        const listener = AVAILABLE_LISTENERS.find(listener => listener.type === parsedModuleConfig.type);
+        const module = AVAILABLE_MODULES.find(mod => mod.type === parsedModuleConfig.type);
 
-        if (!listener) throw new Error(`Listener type "${parsedModuleConfig.type}" does not exist`);
+        if (!module) throw new Error(`Module type "${parsedModuleConfig.type}" does not exist`);
 
-        return new listener(parsedModuleConfig, appConfig);
+        return new module(parsedModuleConfig, appConfig);
     });
 
-
+    appConfig.jobs = AVAILABLE_JOBS.map(job => new job());
 
     return appConfig;
 }

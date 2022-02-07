@@ -3,9 +3,15 @@ import { Outcome } from "./Outcome";
 
 export class Job {
     static type = "job";
+    id: string = 'job';
+    type: string = Job.type;
 
-    constructor(public id: string) {
+    constructor() {
 
+    }
+
+    async init(): Promise<boolean> {
+        return false;
     }
 
     async executeRequest(request: DataRequest): Promise<Outcome> {
