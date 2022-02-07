@@ -2,7 +2,7 @@ import Web3 from "web3";
 import { AppConfig } from "../../models/AppConfig";
 import { Module, ModuleConfig } from "../../models/Module";
 import { InternalLayerZeroModuleConfig, LayerZeroModuleConfig, parseLayerZeroModuleConfig } from "./models/LayerZeroModuleConfig";
-import layerZeroOracleAbi from './LayerZeroOracleAbi.json';
+import layerZeroOracleAbi from './FluxLayerZeroOracle.json';
 import logger from "../../services/LoggerService";
 import { sleep } from "../../services/TimerUtils";
 import { DataRequestConfirmationsQueue } from "../../models/DataRequestConfirmationsQueue";
@@ -61,7 +61,7 @@ export class LayerZeroModule extends Module {
                         address: destinationModule.internalConfig.oracleContractAddress,
                         amount: '0',
                         method: 'proceedUpdateBlockHeader',
-                        abi: layerZeroOracleAbi,
+                        abi: layerZeroOracleAbi.abi,
                         params: {
                             dstNetworkAddress: request.args[1],
                             srcChainId: request.originNetwork.networkId,
@@ -88,7 +88,7 @@ export class LayerZeroModule extends Module {
         const w3Instance = new Web3(websocketProvider);
         // ABI is valid but types of web3.js is a lil outdated..
         // @ts-ignore
-        const contract = new w3Instance.eth.Contract(layerZeroOracleAbi, this.internalConfig.oracleContractAddress);
+        const contract = new w3Instance.eth.Contract(layerZeroOracleAbi.abi, this.internalConfig.oracleContractAddress);
 
         contract.events.NotifyOracleOfBlock().on('data', async (data: any) => {
             if (this.receivedTransactions.has(data.transactionHash)) {
@@ -126,6 +126,9 @@ export class LayerZeroModule extends Module {
                 internalId: `${this.network.id}-${block.number.toString()}-${data.returnValues.chainId}-${data.transactionHash}`,
                 originNetwork: this.network,
                 targetNetwork,
+                extraInfo: {
+                    payloadHash: data.returnValues.payloadHash,
+                },
             };
 
             this.receivedTransactions.add(data.transactionHash);

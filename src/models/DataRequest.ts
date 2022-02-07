@@ -14,6 +14,9 @@ export interface DataRequest {
     originNetwork: Network;
     targetNetwork: Network;
     confirmationsRequired: Big;
+    extraInfo: {
+        [key: string]: any;
+    }
 }
 
 
