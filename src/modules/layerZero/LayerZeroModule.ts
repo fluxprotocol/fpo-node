@@ -79,6 +79,7 @@ export class LayerZeroModule extends Module {
 
         batch.targetNetwork.addRequestsToQueue({
             ...batch,
+            targetAddress: this.internalConfig.oracleContractAddress,
             requests: resolvedRequests,
         });
     }
