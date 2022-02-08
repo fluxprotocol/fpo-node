@@ -1,5 +1,5 @@
 import { ModuleConfig } from "../../../models/Module";
-import { convertOldSourcePath } from "../services/PushPairJobService";
+import { convertOldSourcePath } from "../services/convertOldSourcePath";
 
 export interface Source {
     source_path: string;

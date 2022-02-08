@@ -46,7 +46,26 @@ export async function parseAppConfig(): Promise<AppConfig> {
         return new module(parsedModuleConfig, appConfig);
     });
 
-    appConfig.jobs = AVAILABLE_JOBS.map(job => new job());
+    appConfig.jobs = AVAILABLE_JOBS.map(job => new job(appConfig));
 
     return appConfig;
+}
+
+export function createSafeAppConfigString(config: AppConfig): string {
+    return JSON.stringify({
+        networkConfigs: config.networks.map((network) => {
+            return {
+                type: network.type,
+                config: network.networkConfig,
+                networkId: network.networkId,
+            };
+        }),
+        moduleConfigs: config.modules.map((module) => {
+            return {
+                type: module.type,
+                id: module.id,
+                config: module.moduleConfig,
+            }
+        }),
+    });
 }

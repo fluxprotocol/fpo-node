@@ -9,10 +9,14 @@ export function createDataRequestMock(request: Partial<DataRequest> = {}): DataR
         confirmationsRequired: new Big(1),
         createdInfo: {
             block: createBlockMock(),
+            ...request.createdInfo,
         },
         internalId: '',
         originNetwork: createNetworkMock(),
         targetNetwork: createNetworkMock(),
+        extraInfo: {
+            ...request.extraInfo,
+        },
         ...request,
     };
 }

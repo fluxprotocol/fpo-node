@@ -14,12 +14,11 @@ export default class EvmNetwork extends Network {
     private wallet: Wallet;
 
     constructor(config: EvmNetworkConfig) {
-        super(config);
+        super(EvmNetwork.type, config);
 
         this.internalConfig = parseEvmNetworkConfig(config);
         this.wallet = new Wallet(this.internalConfig.privateKey, new JsonRpcProvider(this.internalConfig.rpc));
         this.queue.start(this.onQeueuBatch.bind(this));
-
     }
 
     async onQeueuBatch(batch: DataRequestBatchResolved): Promise<void> {
@@ -38,7 +37,6 @@ export default class EvmNetwork extends Network {
                 }
 
                 const args = Object.values(request.txCallParams.params);
-                console.log('[] args -> ', args, request.txCallParams.params);
                 await contract[request.txCallParams.method](...args);
             }
         } catch (error) {

@@ -1,19 +1,25 @@
 import { FetchJob } from "../../jobs/fetch/FetchJob";
-import { AppConfig } from "../../models/AppConfig";
+import { AppConfig, createSafeAppConfigString } from "../../models/AppConfig";
+import { DataRequestResolved } from "../../models/DataRequest";
+import { DataRequestBatch } from "../../models/DataRequestBatch";
 import { Module } from "../../models/Module";
+import { OutcomeType } from "../../models/Outcome";
 import logger from "../../services/LoggerService";
 import { debouncedInterval } from "../../services/TimerUtils";
 import { parsePushPairConfig, PushPairConfig, PushPairInternalConfig } from "./models/PushPairConfig";
+import { createBatchFromPairs, createResolvePairRequest } from "./services/PushPairRequestService";
 
 export class PushPairModule extends Module {
     static type = "PushPairModule";
-    private internalConfig: PushPairInternalConfig
+    private internalConfig: PushPairInternalConfig;
+    private batch: DataRequestBatch;
 
     constructor(moduleConfig: PushPairConfig, appConfig: AppConfig) {
         super(PushPairModule.type, moduleConfig, appConfig);
 
         this.internalConfig = parsePushPairConfig(moduleConfig);
         this.id = this.internalConfig.id;
+        this.batch = createBatchFromPairs(this.internalConfig, this.network);
     }
 
     private async processPairs() {
@@ -22,10 +28,38 @@ export class PushPairModule extends Module {
             const job = this.appConfig.jobs.find(job => job.type === FetchJob.type);
             if (!job) throw new Error(`No job found with id ${FetchJob.type}`);
 
+            const resolvedRequests = await Promise.all(this.batch.requests.map(async (unresolvedRequest) => {
+                const outcome = await job.executeRequest(unresolvedRequest);
 
-            console.log('[] this.internalConfig -> ', this.internalConfig);
+                if (outcome.type === OutcomeType.Invalid) {
+                    logger.error(`[${this.id}] Could not resolve ${unresolvedRequest.internalId}`, {
+                        config: createSafeAppConfigString(this.appConfig),
+                        logs: outcome.logs,
+                    });
+                    return null;
+                }
+
+                return createResolvePairRequest(outcome, unresolvedRequest, this.internalConfig);
+            }));
+
+            const requests = resolvedRequests.filter(r => r !== null) as DataRequestResolved[];
+
+            if (requests.length === 0) {
+                logger.warn(`[${this.id}] No requests where left to submit on-chain`, {
+                    config: createSafeAppConfigString(this.appConfig),
+                });
+                return;
+            }
+
+            this.network.addRequestsToQueue({
+                ...this.batch,
+                requests,
+                targetAddress: this.internalConfig.contractAddress,
+            });
         } catch (error) {
-            logger.error(`[${this.id}] ${error}`);
+            logger.error(`[${this.id}] ${error}`, {
+                config: createSafeAppConfigString(this.appConfig),
+            });
         }
     }
 
@@ -38,7 +72,9 @@ export class PushPairModule extends Module {
             debouncedInterval(this.processPairs.bind(this), this.internalConfig.interval);
             return true;
         } catch (error) {
-            logger.error(`[${this.id}] ${error}`);
+            logger.error(`[${this.id}] ${error}`, {
+                config: createSafeAppConfigString(this.appConfig),
+            });
             return false;
         }
     }

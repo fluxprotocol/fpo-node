@@ -15,9 +15,11 @@
     "dependencies": {
         "@fluxprotocol/oracle-vm": "^2.0.0",
         "big.js": "^6.1.1",
+        "bn.js": "^5.2.0",
         "dotenv": "^15.0.0",
         "ethers": "^5.5.4",
         "lodash.topath": "^4.5.2",
+        "near-api-js": "^0.44.2",
         "web3": "^1.7.0",
         "winston-daily-rotate-file": "^4.6.0",
         "winston-transport-sentry-node": "^2.3.0"

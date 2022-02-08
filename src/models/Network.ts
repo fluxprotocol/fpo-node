@@ -35,14 +35,16 @@ export class Network extends EventEmitter {
     networkConfig: NetworkConfig;
     queue: Queue;
     id: string;
+    type: string;
     networkId: NetworkConfig['networkId'];
 
-    constructor(config: NetworkConfig) {
+    constructor(type: string, config: NetworkConfig) {
         super();
         this.networkConfig = config;
         this.id = `${config.type}-${config.networkId}`;
         this.queue = new Queue(this.id);
         this.networkId = config.networkId;
+        this.type = type;
     }
 
     async onQeueuBatch(batch: DataRequestBatch) {

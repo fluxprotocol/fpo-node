@@ -10,6 +10,7 @@ export interface DataRequestBatch {
 }
 
 export interface DataRequestBatchResolved extends DataRequestBatch {
+    targetAddress: string;
     requests: DataRequestResolved[];
 }
 
