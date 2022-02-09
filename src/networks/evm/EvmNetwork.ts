@@ -19,7 +19,7 @@ export default class EvmNetwork extends Network {
 
         this.internalConfig = parseEvmNetworkConfig(config);
         this.wallet = new Wallet(this.internalConfig.privateKey, new JsonRpcProvider(this.internalConfig.rpc));
-        this.queue.start(this.onQeueuBatch.bind(this));
+        this.queue.start(this.onQueueBatch.bind(this));
     }
 
     async view(txParams: TxCallParams): Promise<any> {
@@ -34,7 +34,7 @@ export default class EvmNetwork extends Network {
         return result;
     }
 
-    async onQeueuBatch(batch: DataRequestBatchResolved): Promise<void> {
+    async onQueueBatch(batch: DataRequestBatchResolved): Promise<void> {
         try {
             for await (const request of batch.requests) {
                 if (!request.txCallParams.abi) {

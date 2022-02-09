@@ -57,8 +57,8 @@ export class Network extends EventEmitter {
         throw new Error(`${this.id} Not implemented call`);
     }
 
-    async onQeueuBatch(batch: DataRequestBatch) {
-        throw new Error(`${this.id} Not implemented onQeueuBatch`);
+    async onQueueBatch(batch: DataRequestBatch) {
+        throw new Error(`${this.id} Not implemented onQueueBatch`);
     }
 
     async getBlock(id: string | number): Promise<Block | undefined> {

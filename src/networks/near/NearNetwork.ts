@@ -20,7 +20,7 @@ export class NearNetwork extends Network {
 
     async init(): Promise<void> {
         this.internalConfig = await parseNearNetworkConfig(this.networkConfig);
-        this.queue.start(this.onQeueuBatch.bind(this));
+        this.queue.start(this.onQueueBatch.bind(this));
     }
 
     async view(txParams: TxCallParams): Promise<any> {
@@ -44,7 +44,7 @@ export class NearNetwork extends Network {
         return result;
     }
 
-    async onQeueuBatch(batch: DataRequestBatchResolved): Promise<void> {
+    async onQueueBatch(batch: DataRequestBatchResolved): Promise<void> {
         try {
             if (!this.internalConfig) throw new Error(`[${this.id}] Config is not loaded`);
             const maxGas = new BN(this.internalConfig.maxGas);
