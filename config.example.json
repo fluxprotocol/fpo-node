@@ -1,0 +1,39 @@
+{
+    "networks": [
+        {
+            "type": "evm",
+            "networkId": 133,
+            "privateKeyEnvKey": "EVM_PRIVATE_KEY",
+            "chainId": 1313161554,
+            "rpc": "https://testnet.aurora.dev"
+        },
+        {
+            "type": "near",
+            "networkId": 122,
+            "networkType": "testnet",
+            "credentialsStorePathEnvKey": "NEAR_CREDENTIALS_STORE_PATH",
+            "rpc": "https://rpc.testnet.near.org",
+            "accountId": "{{YOUR_ACCOUNT_ID}}"
+        }
+    ],
+    "modules": [
+        {
+            "networkId": 122,
+            "contractAddress": "fpo3.franklinwaller2.testnet",
+            "pairs": [
+                {
+                    "pair": "ETH/USD_SOME_TEST",
+                    "decimals": 6,
+                    "sources": [
+                        {
+                            "source_path": "market_data.current_price.usd",
+                            "end_point": "https://api.coingecko.com/api/v3/coins/ethereum"
+                        }
+                    ]
+                }
+            ],
+            "interval": 60000,
+            "type": "PushPairModule"
+        }
+    ]
+}
