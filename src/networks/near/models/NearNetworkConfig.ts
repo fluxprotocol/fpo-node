@@ -3,7 +3,7 @@ import { Account, keyStores, utils, connect } from "near-api-js";
 import { NetworkConfig } from "../../../models/Network";
 
 export interface NearNetworkConfig extends NetworkConfig {
-    networkType?: number;
+    networkType?: string;
     privateKeyEnvKey?: string;
     credentialsStorePathEnvKey?: string;
     accountId?: string;
