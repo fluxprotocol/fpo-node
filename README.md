@@ -61,7 +61,7 @@ npm run start
 |Key|Type|Description|
 |---|---|---|
 |networks|Network[]|An array of network configuration. (Explained below)
-|pairs|Pair[]|An array of pricing pairs with there sources (Explained below)
+|pairs|Pair[]|An array of pricing pairs with the sources (Explained below)
 
 ### Network
 
