@@ -7,6 +7,7 @@ import { OutcomeType } from "../../models/Outcome";
 import logger from "../../services/LoggerService";
 import { debouncedInterval } from "../../services/TimerUtils";
 import { parsePushPairConfig, PushPairConfig, PushPairInternalConfig } from "./models/PushPairConfig";
+import { createPairIfNeeded } from "./services/PushPairCreationService";
 import { createBatchFromPairs, createResolvePairRequest } from "./services/PushPairRequestService";
 
 export class PushPairModule extends Module {
@@ -65,6 +66,13 @@ export class PushPairModule extends Module {
 
     async start(): Promise<boolean> {
         try {
+            logger.info(`[${this.id}] Creating pairs if needed..`);
+
+            await Promise.all(this.internalConfig.pairs.map(async (pair) => {
+                return createPairIfNeeded(pair, this.internalConfig, this.network);
+            }));
+
+            logger.info(`[${this.id}] Done creating pairs`);
             logger.info(`[${this.id}] Pre-submitting pairs with latest info`);
             await this.processPairs();
             logger.info(`[${this.id}] Pre-submitting done. Will be on a ${this.internalConfig.interval}ms interval`);

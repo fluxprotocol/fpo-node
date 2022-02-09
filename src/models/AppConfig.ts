@@ -35,7 +35,7 @@ export async function parseAppConfig(): Promise<AppConfig> {
         return new network(parsedNetworkConfig);
     });
 
-    if (!config.modules || !Array.isArray(config.modules)) throw new Error(`atleast 1 item in "modules" is required and it must be an array`);
+    if (!config.modules || !Array.isArray(config.modules)) throw new Error(`at least 1 item in "modules" is required and it must be an array`);
 
     appConfig.modules = config.modules.map((moduleConfig) => {
         const parsedModuleConfig = parseUnparsedModuleConfig(moduleConfig);

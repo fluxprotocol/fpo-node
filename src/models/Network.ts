@@ -1,7 +1,9 @@
 import EventEmitter from "events";
 import { Block } from "./Block";
+import { DataRequest, DataRequestResolved } from "./DataRequest";
 import { DataRequestBatch, DataRequestBatchResolved } from "./DataRequestBatch";
 import { Queue } from "./Queue";
+import { TxCallParams } from "./TxCallParams";
 
 export interface NetworkConfig {
     type: string;
@@ -45,6 +47,14 @@ export class Network extends EventEmitter {
         this.queue = new Queue(this.id);
         this.networkId = config.networkId;
         this.type = type;
+    }
+
+    async view(txParams: TxCallParams): Promise<any> {
+        throw new Error(`${this.id} Not implemented view`);
+    }
+
+    async call(txParams: TxCallParams): Promise<any> {
+        throw new Error(`${this.id} Not implemented call`);
     }
 
     async onQeueuBatch(batch: DataRequestBatch) {

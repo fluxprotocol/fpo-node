@@ -5,6 +5,7 @@ import { Contract, Wallet } from "ethers";
 import { Block, getBlockType } from "../../models/Block";
 import { DataRequestBatchResolved } from "../../models/DataRequestBatch";
 import { Network } from "../../models/Network";
+import { TxCallParams } from "../../models/TxCallParams";
 import logger from "../../services/LoggerService";
 import { EvmNetworkConfig, InternalEvmNetworkConfig, parseEvmNetworkConfig } from "./models/EvmNetworkConfig";
 
@@ -19,6 +20,18 @@ export default class EvmNetwork extends Network {
         this.internalConfig = parseEvmNetworkConfig(config);
         this.wallet = new Wallet(this.internalConfig.privateKey, new JsonRpcProvider(this.internalConfig.rpc));
         this.queue.start(this.onQeueuBatch.bind(this));
+    }
+
+    async view(txParams: TxCallParams): Promise<any> {
+        if (!txParams.abi) throw new Error(`[${this.id}] ABI is required for tx ${JSON.stringify(txParams)}`);
+        const provider = new JsonRpcProvider(this.internalConfig.rpc);
+        const contract = new Contract(txParams.address, txParams.abi, provider);
+
+        const args = Object.values(txParams.params);
+        console.log('[] args -> ', args);
+        const result = await contract[txParams.method]();
+
+        return result;
     }
 
     async onQeueuBatch(batch: DataRequestBatchResolved): Promise<void> {

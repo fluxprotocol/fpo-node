@@ -4,6 +4,7 @@ import packageJson from '../package.json';
 import { LayerZeroModule } from './modules/layerZero/LayerZeroModule';
 import { PushPairModule } from './modules/pushPair/PushPairModule';
 import { FetchJob } from './jobs/fetch/FetchJob';
+import { NearNetwork } from './networks/near/NearNetwork';
 
 config();
 
@@ -15,6 +16,6 @@ export const PROJECT_NAME = packageJson.name;
 export const PROJECT_VERSION = packageJson.version;
 export const APP_CONFIG_LOCATION = process.env.APP_CONFIG_LOCATION ?? './config.json'
 
-export const AVAILABLE_NETWORKS = [EvmNetwork];
+export const AVAILABLE_NETWORKS = [EvmNetwork, NearNetwork];
 export const AVAILABLE_MODULES = [LayerZeroModule, PushPairModule];
 export const AVAILABLE_JOBS = [FetchJob];

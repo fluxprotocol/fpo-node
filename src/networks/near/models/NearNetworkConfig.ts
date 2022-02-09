@@ -23,14 +23,17 @@ export async function parseNearNetworkConfig(config: NearNetworkConfig): Promise
 
     if (typeof config.privateKeyEnvKey !== 'undefined') {
         const privateKey = process.env[config.privateKeyEnvKey];
-        if (!privateKey) throw new Error(`[Near] No key found at ${config.privateKeyEnvKey}`);
+        if (!privateKey) throw new Error(`[Near] No value found at ${config.privateKeyEnvKey}`);
 
         const keyPair = utils.KeyPair.fromString(privateKey);
         keyStore = new keyStores.InMemoryKeyStore();
         keyStore.setKey(config.networkType, config.accountId, keyPair);
     } else if (typeof config.credentialsStorePathEnvKey !== 'undefined') {
-        const credentialsStorePath = path.resolve(config.credentialsStorePathEnvKey) + path.sep;
-        keyStore = new keyStores.UnencryptedFileSystemKeyStore(credentialsStorePath);
+        const credentialsStorePath = process.env[config.credentialsStorePathEnvKey];
+        if (!credentialsStorePath) throw new Error(`[Near] No value found at ${config.credentialsStorePathEnvKey}`);
+
+        const credentialsStorePathResolved = path.resolve(credentialsStorePath) + path.sep;
+        keyStore = new keyStores.UnencryptedFileSystemKeyStore(credentialsStorePathResolved);
     }
 
     if (!keyStore) throw new Error(`[Near] No keystore found, set either the "privateKeyEnvKey" or "credentialsStorePathEnvKey"`);

@@ -1,14 +1,18 @@
 import BN from "bn.js";
 import { transactions } from "near-api-js";
+import { FinalExecutionOutcome } from "near-api-js/lib/providers";
 import { DataRequestBatchResolved } from "../../models/DataRequestBatch";
 import { Network } from "../../models/Network";
+import { TxCallParams } from "../../models/TxCallParams";
 import logger from "../../services/LoggerService";
 import { InternalNearNetworkConfig, NearNetworkConfig, parseNearNetworkConfig } from "./models/NearNetworkConfig";
 import { isTransactionFailure } from "./services/NearTransactionService";
 
+const DEFAULT_MAX_GAS = '300000000000000';
+
 export class NearNetwork extends Network {
     static type: string = 'near';
-    private internalConfig?: InternalNearNetworkConfig;
+    internalConfig?: InternalNearNetworkConfig;
 
     constructor(config: NearNetworkConfig) {
         super(NearNetwork.type, config);
@@ -17,6 +21,27 @@ export class NearNetwork extends Network {
     async init(): Promise<void> {
         this.internalConfig = await parseNearNetworkConfig(this.networkConfig);
         this.queue.start(this.onQeueuBatch.bind(this));
+    }
+
+    async view(txParams: TxCallParams): Promise<any> {
+        if (!this.internalConfig) throw new Error(`[${this.id}] Config is not loaded`);
+
+        const result = await this.internalConfig.account.viewFunction(txParams.address, txParams.method, txParams.params);
+        return result;
+    }
+
+    async call(txParams: TxCallParams): Promise<FinalExecutionOutcome> {
+        if (!this.internalConfig) throw new Error(`[${this.id}] Config is not loaded`);
+
+        const result = await this.internalConfig.account.functionCall({
+            args: txParams.params,
+            contractId: txParams.address,
+            methodName: txParams.method,
+            attachedDeposit: txParams.amount ? new BN(txParams.amount) : undefined,
+            gas: new BN(DEFAULT_MAX_GAS)
+        });
+
+        return result;
     }
 
     async onQeueuBatch(batch: DataRequestBatchResolved): Promise<void> {

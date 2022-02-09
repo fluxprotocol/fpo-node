@@ -6,8 +6,6 @@ export interface Block {
     number: Big;
 }
 
-
-
 export interface BlockHashType {
     tag: string;
     type: 'hash';
@@ -19,7 +17,6 @@ export interface BlockTagType {
 }
 
 export type BlockTag = BlockHashType | BlockTagType;
-
 
 export function getBlockType(tag: number | string): BlockTag {
     if (typeof tag === 'number') {
