@@ -106,7 +106,7 @@ Example:
 ### near
 
 #### accessing / generating NEAR private keys
-There's multiple ways to go about this. The simplest method would be to create, or sign in to, a NEAR account using the [near web wallet](https://wallet.near.org). And then calling `NEAR_ENV={NETWORK} near login` and following the steps provided by the CLI. This will generate a access keys in `~/.near-credentials/{NETWORK}/{MY_ACCOUNT}.near.json` which can then be copied into any environment.
+There's multiple ways to go about this. The simplest method would be to create, or sign in to, a NEAR account using the [near web wallet](https://wallet.near.org). And then calling `NEAR_ENV={NETWORK} near login` and following the steps provided by the CLI. This will generate access keys in `~/.near-credentials/{NETWORK}/{MY_ACCOUNT}.near.json` which can then be copied into any environment.
 We would also recommend for you to check out batching of transactions, this makes pushing data on chain be done 1 transaction instead of multiple saving you gas. See [Batching](#batching) for more information.
 
 #### configuration
