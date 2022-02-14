@@ -21,7 +21,7 @@ To support the NEAR network, the `near-cli` package needs to be installed. (`npm
 git clone https://github.com/fluxprotocol/oracle-provider-node
 cd oracle-provider-node/
 npm install
-cp .env.example .env # add private key
+cp .env.example .env # add private key & node ID
 nano config.json # populate with contract address, API sources, network, and interval
 ```
 

@@ -11,6 +11,7 @@ export interface NetworkConfig {
     rpc: string;
     wssRpc?: string;
     blockFetchingInterval: number;
+    queueDelay: number;
     [key: string]: any;
 }
 
@@ -20,6 +21,7 @@ export function parseUnparsedNetworkConfig(config: Partial<NetworkConfig>): Netw
     if (!config.rpc || typeof config.rpc !== 'string') throw new Error(`"rpc" is required and must be a string`);
     if (config.wssRpc && typeof config.wssRpc !== 'string') throw new Error(`"wssRpc" must be a string`);
     if (config.blockFetchingInterval && typeof config.blockFetchingInterval !== 'number') throw new Error(`"blockFetchingInterval" must be a number`);
+    if (config.queueDelay && typeof config.queueDelay !== 'number') throw new Error(`"queueDelay" must be a number`);
 
     return {
         // Spread the rest. They could contain more information per network
@@ -29,6 +31,7 @@ export function parseUnparsedNetworkConfig(config: Partial<NetworkConfig>): Netw
         type: config.type,
         wssRpc: config.wssRpc,
         blockFetchingInterval: config.blockFetchingInterval ?? 5_000,
+        queueDelay: config.queueDelay ?? 1_000,
     };
 }
 
@@ -44,7 +47,7 @@ export class Network extends EventEmitter {
         super();
         this.networkConfig = config;
         this.id = `${config.type}-${config.networkId}`;
-        this.queue = new Queue(this.id);
+        this.queue = new Queue(this.id, config.queueDelay);
         this.networkId = config.networkId;
         this.type = type;
     }
