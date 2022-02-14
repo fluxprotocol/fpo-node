@@ -1,4 +1,5 @@
 import logger from "../services/LoggerService";
+import { sleep } from "../services/TimerUtils";
 import { DataRequestBatchResolved } from "./DataRequestBatch";
 
 export class Queue {
@@ -7,8 +8,7 @@ export class Queue {
     private intervalId?: NodeJS.Timer;
     id: string;
 
-
-    constructor(id: string) {
+    constructor(id: string, private queueDelay: number) {
         this.id = `${id}-queue`;
     }
 
@@ -38,6 +38,8 @@ export class Queue {
             logger.debug(`[${this.id}] Submitting batch to blockchain ${batch.internalId}`);
 
             await onBatchReady(batch);
+            // Adding more padding between transactions in order for the RPC to correctly set the nonce
+            await sleep(this.queueDelay);
 
             logger.debug(`[${this.id}] Submitting batch to blockchain completed ${batch.internalId}`);
 
