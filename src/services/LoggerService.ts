@@ -1,15 +1,16 @@
 import winston, { format } from 'winston';
 
-import { DEBUG, ENABLE_ANALYTICS, MAX_LOG_LIFETIME, PROJECT_NAME, SENTRY_DSN } from '../config';
+import { DEBUG, ENABLE_ANALYTICS, MAX_LOG_LIFETIME, PROJECT_NAME, PROJECT_VERSION, SENTRY_DSN } from '../config';
 import Sentry from 'winston-transport-sentry-node';
 import 'winston-daily-rotate-file';
 
-const logFormat = format.printf(info => `${info.timestamp} ${info.level}: ${info.message}`);
+const logFormat = format.printf(info => `v${PROJECT_VERSION} ${info.timestamp} ${info.level}: ${info.message}`);
 
 const logger = winston.createLogger({
+
     format: format.combine(
         format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss.SSS' }),
-        format.metadata({ fillExcept: ['message', 'level', 'timestamp', 'label'] })
+        format.metadata({ fillExcept: ['message', 'level', 'timestamp', 'label'] }),
     ),
     transports: [
         new winston.transports.DailyRotateFile({
@@ -35,6 +36,7 @@ if (ENABLE_ANALYTICS) {
     logger.add(new Sentry({
         sentry: {
             dsn: SENTRY_DSN,
+            release: PROJECT_VERSION,
         },
         level: 'warn',
     }));
