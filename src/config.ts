@@ -19,3 +19,4 @@ export const APP_CONFIG_LOCATION = process.env.APP_CONFIG_LOCATION ?? './config.
 export const AVAILABLE_NETWORKS = [EvmNetwork, NearNetwork];
 export const AVAILABLE_MODULES = [LayerZeroModule, PushPairModule];
 export const AVAILABLE_JOBS = [FetchJob];
+export const NODE_ID = process.env.NODE_ID ?? 'Anonymous';
