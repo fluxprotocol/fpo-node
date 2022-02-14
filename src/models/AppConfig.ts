@@ -1,5 +1,5 @@
 import { readFile } from 'fs/promises';
-import { APP_CONFIG_LOCATION, AVAILABLE_JOBS, AVAILABLE_MODULES, AVAILABLE_NETWORKS } from "../config";
+import { APP_CONFIG_LOCATION, AVAILABLE_JOBS, AVAILABLE_MODULES, AVAILABLE_NETWORKS, PROJECT_VERSION } from "../config";
 import { Job } from './Job';
 import { Module, ModuleConfig, parseUnparsedModuleConfig } from './Module';
 import { Network, NetworkConfig, parseUnparsedNetworkConfig } from "./Network";
@@ -53,6 +53,7 @@ export async function parseAppConfig(): Promise<AppConfig> {
 
 export function createSafeAppConfigString(config: AppConfig): string {
     return JSON.stringify({
+        fpoNodeVersion: PROJECT_VERSION,
         networkConfigs: config.networks.map((network) => {
             return {
                 type: network.type,
