@@ -28,8 +28,7 @@ export default class EvmNetwork extends Network {
         const contract = new Contract(txParams.address, txParams.abi, provider);
 
         const args = Object.values(txParams.params);
-        console.log('[] args -> ', args);
-        const result = await contract[txParams.method]();
+        const result = await contract[txParams.method](...args);
 
         return result;
     }
@@ -53,7 +52,9 @@ export default class EvmNetwork extends Network {
                 await contract[request.txCallParams.method](...args);
             }
         } catch (error) {
-            logger.error(`[${this.id}-onQueueBatch] ${error}`);
+            logger.error(`[${this.id}-onQueueBatch] ${error}`, {
+                config: this.networkConfig,
+            });
         }
     }
 
@@ -68,7 +69,9 @@ export default class EvmNetwork extends Network {
 
             return this.getBlock(currentBlock);
         } catch (error) {
-            logger.error(`[${this.id}-getLatestBlock] ${error}`);
+            logger.error(`[${this.id}-getLatestBlock] ${error}`, {
+                config: this.networkConfig,
+            });
             return undefined;
         }
     }
@@ -91,7 +94,9 @@ export default class EvmNetwork extends Network {
                 number: new Big(parseInt(block.number)),
             };
         } catch (error) {
-            logger.error(`[${this.id}-getBlock] ${error}`);
+            logger.error(`[${this.id}-getBlock] ${error}`, {
+                config: this.networkConfig,
+            });
             return undefined;
         }
     }
