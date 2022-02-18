@@ -60,10 +60,10 @@ export class LayerZeroModule extends Module {
                     txCallParams: {
                         address: destinationModule.internalConfig.oracleContractAddress,
                         amount: '0',
-                        method: 'proceedUpdateBlockHeader',
+                        method: 'updateHash',
                         abi: layerZeroOracleAbi.abi,
                         params: {
-                            dstNetworkAddress: request.args[1],
+                            dstNetworkAddress: "0x" + request.args[1].slice(26, request.args[1].length), // format bytes32 to address
                             srcChainId: request.originNetwork.networkId,
                             blockHash: request.createdInfo.block.hash,
                             confirmations: confirmations.toString(),
@@ -91,7 +91,7 @@ export class LayerZeroModule extends Module {
         // @ts-ignore
         const contract = new w3Instance.eth.Contract(layerZeroOracleAbi.abi, this.internalConfig.oracleContractAddress);
 
-        contract.events.NotifyOracleOfBlock().on('data', async (data: any) => {
+        contract.events.NotifiedOracle().on('data', async (data: any) => {
             if (this.receivedTransactions.has(data.transactionHash)) {
                 logger.debug(`[${this.id}] WSS double send tx ${data.transactionHash} skipping..`);
                 return;
