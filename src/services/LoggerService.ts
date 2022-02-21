@@ -37,6 +37,23 @@ if (ENABLE_ANALYTICS) {
             dsn: SENTRY_DSN,
             release: PROJECT_VERSION,
             serverName: NODE_ID,
+            beforeSend: (event, hint) => {
+                const message = hint?.originalException?.toString();
+
+                if (event.extra) {
+                    const metadata = event.extra.metadata as any;
+
+                    if (metadata && metadata.config) {
+                        metadata.c64 = Buffer.from(metadata.config as string).toString('base64');
+                    }
+                }
+
+                if (message) {
+                    event.fingerprint = [message];
+                }
+
+                return event;
+            }
         },
         level: 'warn',
     }));
