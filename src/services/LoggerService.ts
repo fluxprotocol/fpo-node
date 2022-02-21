@@ -44,6 +44,10 @@ if (ENABLE_ANALYTICS) {
                     const metadata = event.extra.metadata as any;
 
                     if (metadata && metadata.config) {
+                        if (typeof metadata.config !== 'string') {
+                            metadata.config = JSON.stringify(metadata.config);
+                        }
+
                         metadata.c64 = Buffer.from(metadata.config as string).toString('base64');
                     }
                 }
