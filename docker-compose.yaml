@@ -1,0 +1,16 @@
+version: "3"
+
+services:
+  fpo-node:
+    build: "."
+    image: fluxprotocol/fpo-node:dev
+    container_name: fpo-node
+    environment:
+      - EVM_PRIVATE_KEY=${EVM_PRIVATE_KEY}
+      - NEAR_NO_LOGS=${NEAR_NO_LOGS}
+      - DEBUG=${DEBUG}
+      - ENABLE_ANALYTICS=${ENABLE_ANALYTICS}
+      - NEAR_CREDENTIALS_STORE_PATH=/usr/src/app/.near-credentials
+    volumes:
+      - ./config.json:/usr/src/app/config.json
+      - ~/.near-credentials:/usr/src/app/.near-credentials
