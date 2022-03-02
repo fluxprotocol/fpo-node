@@ -23,13 +23,14 @@ export interface PushPairInternalConfig extends ModuleConfig {
     contractAddress: string;
     interval: number;
     pairs: Pair[];
+    pairsType: 'factory' | 'single'
 }
 
 export interface PushPairConfig extends ModuleConfig {
     contractAddress?: PushPairInternalConfig['contractAddress'];
     interval?: PushPairInternalConfig['interval'];
     pairs?: PushPairInternalConfig['pairs'];
-
+    pairsType?: PushPairInternalConfig['pairsType'];
 }
 
 export function parsePushPairConfig(config: PushPairConfig): PushPairInternalConfig {
@@ -48,11 +49,18 @@ export function parsePushPairConfig(config: PushPairConfig): PushPairInternalCon
         });
     });
 
+    if (typeof config.pairsType !== 'undefined') {
+        if (config.pairsType !== 'factory' && config.pairsType !== 'single') {
+            throw new Error(`[PushPairModule] "pairsType" must be either "factory" or "single"`);
+        }
+    }
+
     const pairIds = config.pairs.map(pair => pair.pair);
 
     return {
         ...config,
         id: `${config.type}-${config.networkId}-${pairIds.join(',')}`,
+        pairsType: config.pairsType ?? 'single',
         contractAddress: config.contractAddress,
         interval: config.interval,
         pairs: config.pairs.map((pair) => ({
