@@ -1,14 +1,16 @@
 import Big from "big.js";
 import { FetchJob } from "../../../jobs/fetch/FetchJob";
-import { DataRequest, DataRequestResolved } from "../../../models/DataRequest";
-import { createDataRequestBatch, DataRequestBatch } from "../../../models/DataRequestBatch";
+import { createDataRequestBatch } from "../../../models/DataRequestBatch";
 import { Network } from "../../../models/Network";
-import { OutcomeAnswer } from "../../../models/Outcome";
+import { OutcomeAnswer, OutcomeType } from "../../../models/Outcome";
 import { PushPairInternalConfig } from '../models/PushPairConfig';
 import FluxPriceFeedAbi from '../FluxPriceFeed.json';
+import FluxPriceFeedFactoryAbi from '../FluxPriceFeedFactory.json';
+import { PushPairDataRequest, PushPairDataRequestBatch, PushPairResolvedDataRequest } from "../models/PushPairDataRequest";
+import { logger } from "@ethersproject/wordlists";
 
-export function createBatchFromPairs(config: PushPairInternalConfig, targetNetwork: Network): DataRequestBatch {
-    const requests: DataRequest[] = config.pairs.map((pairInfo, index) => {
+export function createBatchFromPairs(config: PushPairInternalConfig, targetNetwork: Network): PushPairDataRequestBatch {
+    const requests: PushPairDataRequest[] = config.pairs.map((pairInfo, index) => {
 
         return {
             args: [
@@ -20,6 +22,7 @@ export function createBatchFromPairs(config: PushPairInternalConfig, targetNetwo
             confirmationsRequired: new Big(0),
             extraInfo: {
                 pair: pairInfo.pair,
+                decimals: pairInfo.decimals,
             },
             internalId: `${targetNetwork.id}/p${pairInfo.pair}-d${pairInfo.decimals}-i${index}`,
             originNetwork: targetNetwork,
@@ -35,11 +38,11 @@ export function createBatchFromPairs(config: PushPairInternalConfig, targetNetwo
         }
     });
 
-    return createDataRequestBatch(requests);
+    return createDataRequestBatch(requests) as PushPairDataRequestBatch;
 }
 
-export function createResolvePairRequest(outcome: OutcomeAnswer, request: DataRequest, config: PushPairInternalConfig): DataRequestResolved {
-    let txCallParams: DataRequestResolved['txCallParams'] = {
+export function createResolvePairRequest(outcome: OutcomeAnswer, request: PushPairDataRequest, config: PushPairInternalConfig): PushPairResolvedDataRequest {
+    let txCallParams: PushPairResolvedDataRequest['txCallParams'] = {
         address: config.contractAddress,
         amount: '0',
         method: '',
@@ -72,7 +75,74 @@ export function createResolvePairRequest(outcome: OutcomeAnswer, request: DataRe
 
     return {
         ...request,
-        logs: outcome.logs,
         txCallParams,
+        outcome,
+    };
+}
+
+interface EvmFactoryTxParams {
+    pricePairs: string[],
+    decimals: number[],
+    answers: string[],
+}
+
+/**
+ * Creates a single data request that combines multiple data request
+ * Only possible on the EVM using the factory contract
+ *
+ * @param {PushPairInternalConfig} config
+ * @param {PushPairResolvedDataRequest[]} requests
+ * @return {DataRequestResolved}
+ */
+export function createEvmFactoryTransmitTransaction(config: PushPairInternalConfig, requests: PushPairResolvedDataRequest[]): PushPairResolvedDataRequest {
+    // As defined by the FluxPriceFeedFactory.sol:
+    // https://github.com/fluxprotocol/fpo-evm/blob/feat/pricefeedfactory/contracts/FluxPriceFeedFactory.sol
+    const params: EvmFactoryTxParams = {
+        pricePairs: [],
+        decimals: [],
+        answers: [],
+    };
+
+    requests.forEach((request) => {
+        if (request.outcome.type === OutcomeType.Invalid) {
+            logger.warn(`[createEvmFactoryTransmitTransaction] Request ${request.internalId} was resolved to invalid`);
+            return;
+        }
+
+        params.pricePairs.push(request.extraInfo.pair);
+        params.decimals.push(request.extraInfo.decimals);
+        params.answers.push(request.outcome.answer);
+    });
+
+    return {
+        args: [],
+        confirmationsRequired: new Big(0),
+        createdInfo: {
+            // Block info is not important for this request
+            block: {
+                hash: '0x000000',
+                number: new Big(0),
+                receiptRoot: '0x000000',
+            },
+        },
+        extraInfo: {
+            decimals: 0,
+            pair: params.pricePairs.join(','),
+        },
+        internalId: `factory-${requests[0].internalId}`,
+        originNetwork: requests[0].originNetwork,
+        targetNetwork: requests[0].targetNetwork,
+        outcome: {
+            type: OutcomeType.Answer,
+            logs: [],
+            answer: params.answers.join(',')
+        },
+        txCallParams: {
+            abi: FluxPriceFeedFactoryAbi.abi,
+            address: config.contractAddress,
+            amount: '0',
+            method: 'transmit',
+            params,
+        },
     };
 }

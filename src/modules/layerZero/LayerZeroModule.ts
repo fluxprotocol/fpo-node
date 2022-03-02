@@ -9,6 +9,7 @@ import { DataRequestConfirmationsQueue } from "../../models/DataRequestConfirmat
 import { createDataRequestBatch, DataRequestBatch } from "../../models/DataRequestBatch";
 import { DataRequest, DataRequestResolved } from "../../models/DataRequest";
 import Big from "big.js";
+import { OutcomeType } from "../../models/Outcome";
 
 export class LayerZeroModule extends Module {
     static type = "LayerZeroModule";
@@ -56,7 +57,11 @@ export class LayerZeroModule extends Module {
             if (request.targetNetwork.networkConfig.type === 'evm') {
                 return {
                     ...request,
-                    logs: [],
+                    outcome: {
+                        type: OutcomeType.Answer,
+                        answer: "",
+                        logs: [],
+                    },
                     txCallParams: {
                         address: destinationModule.internalConfig.oracleContractAddress,
                         amount: '0',

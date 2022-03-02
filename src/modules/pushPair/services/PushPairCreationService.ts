@@ -51,17 +51,19 @@ async function createPairIfNeededForNear(pair: Pair, config: PushPairInternalCon
 
 export async function createPairIfNeeded(pair: Pair, config: PushPairInternalConfig, network: Network) {
     if (network.type === 'evm') {
-        // For EVM there is no pair creation, we just want to check if the decimals match.
-        const decimals = await network.view({
-            method: 'decimals',
-            address: config.contractAddress,
-            amount: '0',
-            params: {},
-            abi: FluxPriceFeedAbi.abi,
-        });
+        if (config.pairsType === 'single') {
+            // For EVM there is no pair creation, we just want to check if the decimals match.
+            const decimals = await network.view({
+                method: 'decimals',
+                address: config.contractAddress,
+                amount: '0',
+                params: {},
+                abi: FluxPriceFeedAbi.abi,
+            });
 
-        if (decimals !== pair.decimals) {
-            throw new Error(`Decimals on pair ${pair.pair}, network ${network.id} reported to have ${decimals} (contract) but node is configured for ${pair.decimals}`);
+            if (decimals !== pair.decimals) {
+                throw new Error(`Decimals on pair ${pair.pair}, network ${network.id} reported to have ${decimals} (contract) but node is configured for ${pair.decimals}`);
+            }
         }
     } else if (network.type === 'near') {
         await createPairIfNeededForNear(pair, config, network);

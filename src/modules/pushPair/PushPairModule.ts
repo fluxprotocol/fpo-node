@@ -7,13 +7,14 @@ import { OutcomeType } from "../../models/Outcome";
 import logger from "../../services/LoggerService";
 import { debouncedInterval } from "../../services/TimerUtils";
 import { parsePushPairConfig, PushPairConfig, PushPairInternalConfig } from "./models/PushPairConfig";
+import { PushPairDataRequestBatch, PushPairResolvedDataRequest } from "./models/PushPairDataRequest";
 import { createPairIfNeeded } from "./services/PushPairCreationService";
-import { createBatchFromPairs, createResolvePairRequest } from "./services/PushPairRequestService";
+import { createBatchFromPairs, createEvmFactoryTransmitTransaction, createResolvePairRequest } from "./services/PushPairRequestService";
 
 export class PushPairModule extends Module {
     static type = "PushPairModule";
     private internalConfig: PushPairInternalConfig;
-    private batch: DataRequestBatch;
+    private batch: PushPairDataRequestBatch;
 
     constructor(moduleConfig: PushPairConfig, appConfig: AppConfig) {
         super(PushPairModule.type, moduleConfig, appConfig);
@@ -43,13 +44,18 @@ export class PushPairModule extends Module {
                 return createResolvePairRequest(outcome, unresolvedRequest, this.internalConfig);
             }));
 
-            const requests = resolvedRequests.filter(r => r !== null) as DataRequestResolved[];
+            let requests: PushPairResolvedDataRequest[] = resolvedRequests.filter(r => r !== null) as PushPairResolvedDataRequest[];
 
             if (requests.length === 0) {
                 logger.warn(`[${this.id}] No requests where left to submit on-chain`, {
                     config: createSafeAppConfigString(this.appConfig),
                 });
                 return;
+            }
+
+            // With the new EVM factory we can combine multiple transmits in one transaction
+            if (this.batch.targetNetwork.type === 'evm' && this.internalConfig.pairsType === 'factory') {
+                requests = [createEvmFactoryTransmitTransaction(this.internalConfig, requests)];
             }
 
             this.network.addRequestsToQueue({

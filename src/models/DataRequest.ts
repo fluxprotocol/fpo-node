@@ -1,6 +1,7 @@
 import Big from "big.js";
 import { Block } from "./Block";
 import { Network } from "./Network";
+import { Outcome } from "./Outcome";
 import { TxCallParams } from "./TxCallParams";
 
 export interface CreatedInfo {
@@ -21,6 +22,6 @@ export interface DataRequest {
 }
 
 export interface DataRequestResolved extends DataRequest {
-    logs: string[];
+    outcome: Outcome;
     txCallParams: TxCallParams;
 }
