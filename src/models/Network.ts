@@ -1,4 +1,5 @@
 import EventEmitter from "events";
+import { Database } from "../services/DatabaseService";
 import { Block } from "./Block";
 import { DataRequest, DataRequestResolved } from "./DataRequest";
 import { DataRequestBatch, DataRequestBatchResolved } from "./DataRequestBatch";
@@ -43,11 +44,11 @@ export class Network extends EventEmitter {
     type: string;
     networkId: NetworkConfig['networkId'];
 
-    constructor(type: string, config: NetworkConfig) {
+    constructor(type: string, config: NetworkConfig, db: Database) {
         super();
         this.networkConfig = config;
         this.id = `${config.type}-${config.networkId}`;
-        this.queue = new Queue(this.id, config.queueDelay);
+        this.queue = new Queue(this.id, config.queueDelay, db);
         this.networkId = config.networkId;
         this.type = type;
     }

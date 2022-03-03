@@ -1,11 +1,13 @@
 import { JsonRpcProvider } from "@ethersproject/providers";
 import Big from "big.js";
 import { Contract, Wallet } from "ethers";
+import { LevelDB } from "level";
 
 import { Block, getBlockType } from "../../models/Block";
 import { DataRequestBatchResolved } from "../../models/DataRequestBatch";
 import { Network } from "../../models/Network";
 import { TxCallParams } from "../../models/TxCallParams";
+import { Database } from "../../services/DatabaseService";
 import logger from "../../services/LoggerService";
 import { EvmNetworkConfig, InternalEvmNetworkConfig, parseEvmNetworkConfig } from "./models/EvmNetworkConfig";
 
@@ -14,8 +16,8 @@ export default class EvmNetwork extends Network {
     internalConfig: InternalEvmNetworkConfig;
     private wallet: Wallet;
 
-    constructor(config: EvmNetworkConfig) {
-        super(EvmNetwork.type, config);
+    constructor(config: EvmNetworkConfig, db: Database) {
+        super(EvmNetwork.type, config, db);
 
         this.internalConfig = parseEvmNetworkConfig(config);
         this.wallet = new Wallet(this.internalConfig.privateKey, new JsonRpcProvider(this.internalConfig.rpc));

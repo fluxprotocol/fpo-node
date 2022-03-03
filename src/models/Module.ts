@@ -1,3 +1,4 @@
+import { Database } from "../services/DatabaseService";
 import { AppConfig } from "./AppConfig";
 import { Network, NetworkConfig } from "./Network";
 
@@ -24,8 +25,9 @@ export class Module {
     appConfig: AppConfig;
     moduleConfig: ModuleConfig;
     id: string;
+    db: Database;
 
-    constructor(type: string, moduleConfig: ModuleConfig, appConfig: AppConfig) {
+    constructor(type: string, moduleConfig: ModuleConfig, appConfig: AppConfig, db: Database) {
         const network = appConfig.networks.find(network => network.networkId === moduleConfig.networkId);
 
         if (!network) {
@@ -37,6 +39,7 @@ export class Module {
         this.moduleConfig = moduleConfig;
         this.id = `${moduleConfig.type}-${moduleConfig.networkId}`;
         this.type = type;
+        this.db = db;
     }
 
     start(): Promise<boolean> {

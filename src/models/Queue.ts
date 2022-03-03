@@ -1,3 +1,6 @@
+import { LevelDB } from "level";
+import { DB_TABLE_TX_QUEUE } from "../constants/database";
+import { Database } from "../services/DatabaseService";
 import logger from "../services/LoggerService";
 import { sleep } from "../services/TimerUtils";
 import { DataRequestBatchResolved } from "./DataRequestBatch";
@@ -7,9 +10,11 @@ export class Queue {
     processingId?: string;
     private intervalId?: NodeJS.Timer;
     id: string;
+    db: Database;
 
-    constructor(id: string, private queueDelay: number) {
+    constructor(id: string, private queueDelay: number, db: Database) {
         this.id = `${id}-queue`;
+        this.db = db;
     }
 
     has(batch: DataRequestBatchResolved): boolean {
@@ -24,6 +29,13 @@ export class Queue {
         if (this.has(batch)) return;
         this.items.push(batch);
         logger.debug(`[${this.id}] Added "${batch.internalId}" to queue`);
+        
+        // this.db.createDocument(DB_TABLE_TX_QUEUE, batch.internalId, {
+        //     targetNetwork: batch.targetNetwork,
+        //     // originNetwork: this.
+
+        // })
+        // TODO: store request in db 
     }
 
     start(onBatchReady: (batch: DataRequestBatchResolved) => Promise<void>) {
@@ -44,9 +56,11 @@ export class Queue {
             // TODO: If fails retry
             // TODO: Add Sentry logs
             this.processingId = undefined;
+            // TODO: remove request from database
         }, 100);
     }
 
+    // TODO: on sigkill stop block subscription, queue, database -> die
     stop() {
         if (!this.intervalId) return;
         clearInterval(this.intervalId);

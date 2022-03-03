@@ -4,6 +4,7 @@ import { FinalExecutionOutcome } from "near-api-js/lib/providers";
 import { DataRequestBatchResolved } from "../../models/DataRequestBatch";
 import { Network } from "../../models/Network";
 import { TxCallParams } from "../../models/TxCallParams";
+import { Database } from "../../services/DatabaseService";
 import logger from "../../services/LoggerService";
 import { InternalNearNetworkConfig, NearNetworkConfig, parseNearNetworkConfig } from "./models/NearNetworkConfig";
 import { isTransactionFailure } from "./services/NearTransactionService";
@@ -14,8 +15,8 @@ export class NearNetwork extends Network {
     static type: string = 'near';
     internalConfig?: InternalNearNetworkConfig;
 
-    constructor(config: NearNetworkConfig) {
-        super(NearNetwork.type, config);
+    constructor(config: NearNetworkConfig, db: Database) {
+        super(NearNetwork.type, config, db);
     }
 
     async init(): Promise<void> {

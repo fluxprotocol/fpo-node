@@ -1,4 +1,5 @@
 import { Network, NetworkConfig } from "../models/Network";
+import database from "../services/DatabaseService";
 
 export function createNetworkMock(config: Partial<NetworkConfig> = {}): Network {
     return new Network('network', {
@@ -9,5 +10,5 @@ export function createNetworkMock(config: Partial<NetworkConfig> = {}): Network 
         blockFetchingInterval: 5000,
         queueDelay: 5000,
         ...config
-    })
+    }, database)
 }

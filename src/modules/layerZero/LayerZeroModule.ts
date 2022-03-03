@@ -9,6 +9,8 @@ import { DataRequestConfirmationsQueue } from "../../models/DataRequestConfirmat
 import { createDataRequestBatch, DataRequestBatch } from "../../models/DataRequestBatch";
 import { DataRequest, DataRequestResolved } from "../../models/DataRequest";
 import Big from "big.js";
+import { LevelDB } from "level";
+import { Database } from "../../services/DatabaseService";
 
 export class LayerZeroModule extends Module {
     static type = "LayerZeroModule";
@@ -17,8 +19,8 @@ export class LayerZeroModule extends Module {
     confirmationsQueue: DataRequestConfirmationsQueue;
     receivedTransactions: Set<string> = new Set();
 
-    constructor(moduleConfig: LayerZeroModuleConfig, appConfig: AppConfig)  {
-        super(LayerZeroModule.type, moduleConfig, appConfig);
+    constructor(moduleConfig: LayerZeroModuleConfig, appConfig: AppConfig, db: Database)  {
+        super(LayerZeroModule.type, moduleConfig, appConfig, db);
 
         if (!this.network.networkConfig.wssRpc) throw new Error(`"wssRpc" in ${this.network.id} is required for ${LayerZeroModule.type} to work`);
         if (this.network.networkConfig.type !== 'evm') throw new Error(`Only networks with type "evm" are supported`);
@@ -136,6 +138,7 @@ export class LayerZeroModule extends Module {
             this.receivedTransactions.add(`${data.transactionHash}_${data.blockHash}`);
             logger.info(`[${this.id}] Added request ${request.internalId}`);
             this.confirmationsQueue.addBatch(createDataRequestBatch([request]));
+            // TODO: Push block number to database
         });
 
         logger.info(`[${this.id}] Started listening`);

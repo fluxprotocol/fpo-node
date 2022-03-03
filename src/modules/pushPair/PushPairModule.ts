@@ -4,6 +4,7 @@ import { DataRequestResolved } from "../../models/DataRequest";
 import { DataRequestBatch } from "../../models/DataRequestBatch";
 import { Module } from "../../models/Module";
 import { OutcomeType } from "../../models/Outcome";
+import { Database } from "../../services/DatabaseService";
 import logger from "../../services/LoggerService";
 import { debouncedInterval } from "../../services/TimerUtils";
 import { parsePushPairConfig, PushPairConfig, PushPairInternalConfig } from "./models/PushPairConfig";
@@ -15,8 +16,8 @@ export class PushPairModule extends Module {
     private internalConfig: PushPairInternalConfig;
     private batch: DataRequestBatch;
 
-    constructor(moduleConfig: PushPairConfig, appConfig: AppConfig) {
-        super(PushPairModule.type, moduleConfig, appConfig);
+    constructor(moduleConfig: PushPairConfig, appConfig: AppConfig, db: Database) {
+        super(PushPairModule.type, moduleConfig, appConfig, db);
 
         this.internalConfig = parsePushPairConfig(moduleConfig);
         this.id = this.internalConfig.id;
