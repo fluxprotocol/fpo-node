@@ -92,7 +92,7 @@ export class LayerZeroModule extends Module {
         const contract = new w3Instance.eth.Contract(layerZeroOracleAbi.abi, this.internalConfig.oracleContractAddress);
 
         contract.events.NotifiedOracle().on('data', async (data: any) => {
-            if (this.receivedTransactions.has(data.transactionHash)) {
+            if (this.receivedTransactions.has(`${data.transactionHash}_${data.blockHash}`)) {
                 logger.debug(`[${this.id}] WSS double send tx ${data.transactionHash} skipping..`);
                 return;
             }
@@ -133,7 +133,7 @@ export class LayerZeroModule extends Module {
                 },
             };
 
-            this.receivedTransactions.add(data.transactionHash);
+            this.receivedTransactions.add(`${data.transactionHash}_${data.blockHash}`);
             logger.info(`[${this.id}] Added request ${request.internalId}`);
             this.confirmationsQueue.addBatch(createDataRequestBatch([request]));
         });
