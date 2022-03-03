@@ -64,10 +64,10 @@ export class LayerZeroModule extends Module {
                         abi: layerZeroOracleAbi.abi,
                         params: {
                             dstNetworkAddress: "0x" + request.args[1].slice(26, request.args[1].length), // format bytes32 to address
-                            srcChainId: request.originNetwork.networkId,
-                            blockHash: request.createdInfo.block.hash,
-                            confirmations: confirmations.toString(),
-                            receiptRoot: request.createdInfo.block.receiptRoot,
+                            _srcChainId: request.originNetwork.networkId,
+                            _blockHash: request.createdInfo.block.hash,
+                            _confirmations: confirmations.toString(),
+                            _data: request.createdInfo.block.receiptRoot,
                         },
                     }
                 }
@@ -101,6 +101,7 @@ export class LayerZeroModule extends Module {
             await sleep(2000);
             const block = await this.network.getBlock(data.blockHash);
 
+            // TODO: sleep and try again 
             if (!block) {
                 logger.error(`[${this.id}] Could not find block ${data.blockNumber}`);
                 return;

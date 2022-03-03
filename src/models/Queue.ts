@@ -32,7 +32,6 @@ export class Queue {
 
             const batch = this.items.shift();
             if (!batch) return;
-
             this.processingId = batch.internalId;
 
             logger.debug(`[${this.id}] Submitting batch to blockchain ${batch.internalId}`);
@@ -41,8 +40,9 @@ export class Queue {
             // Adding more padding between transactions in order for the RPC to correctly set the nonce
             await sleep(this.queueDelay);
 
-            logger.debug(`[${this.id}] Submitting batch to blockchain completed ${batch.internalId}`);
-
+            logger.debug(`[${this.id}] Submitted batch to blockchain ${batch.internalId}`);
+            // TODO: If fails retry
+            // TODO: Add Sentry logs
             this.processingId = undefined;
         }, 100);
     }
