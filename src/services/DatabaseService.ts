@@ -4,6 +4,7 @@ import level from 'level';
 import subleveldown from 'subleveldown';
 import logger from './LoggerService';
 import { DB_TABLE_PROCESSED_BLOCKS, DB_TABLE_TX_QUEUE } from '../constants/database';
+import { DataRequestBatchResolved } from '../models/DataRequestBatch';
 
 export class Database {
     database?: level.LevelDB<any, any>;
@@ -39,6 +40,23 @@ export class Database {
     async createDocument(tableKey: string, id: string, obj: object) {
         const table = this.getTable(tableKey);
         await table.put(id, JSON.stringify(obj));
+    }
+
+    async addBatchToQueue(tableKey: string, id: string, batch: DataRequestBatchResolved) {
+        const table = this.getTable(tableKey);
+
+        const promises = batch.requests.map(request => table.put(
+            tableKey,
+            `${id}-${request.createdInfo.block.receiptRoot}`,
+            {
+                targetNetwork: batch.targetNetwork,
+                queueId: id,
+                blockNumber: request.createdInfo.block.number.toString(),
+                blockHash: request.createdInfo.block.hash
+            }
+
+        ));
+        await Promise.all(promises);
     }
 
     async deleteDocument(tableKey: string, id: string) {

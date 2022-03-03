@@ -27,14 +27,12 @@ export class Queue {
 
     add(batch: DataRequestBatchResolved) {
         if (this.has(batch)) return;
-        this.items.push(batch);
+        // this.items.push(batch);
         logger.debug(`[${this.id}] Added "${batch.internalId}" to queue`);
-        
-        // this.db.createDocument(DB_TABLE_TX_QUEUE, batch.internalId, {
-        //     targetNetwork: batch.targetNetwork,
-        //     // originNetwork: this.
 
-        // })
+        console.log(batch.requests[0].createdInfo.block);
+        
+        this.db.addBatchToQueue(DB_TABLE_TX_QUEUE, batch.internalId, batch)
         // TODO: store request in db 
     }
 
