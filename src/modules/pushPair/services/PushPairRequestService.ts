@@ -1,15 +1,15 @@
 import Big from "big.js";
 import { FetchJob } from "../../../jobs/fetch/FetchJob";
 import { createDataRequestBatch } from "../../../models/DataRequestBatch";
-import { Network } from "../../../models/Network";
 import { OutcomeAnswer, OutcomeType } from "../../../models/Outcome";
 import { PushPairInternalConfig } from '../models/PushPairConfig';
 import FluxPriceFeedAbi from '../FluxPriceFeed.json';
 import FluxPriceFeedFactoryAbi from '../FluxPriceFeedFactory.json';
 import { PushPairDataRequest, PushPairDataRequestBatch, PushPairResolvedDataRequest } from "../models/PushPairDataRequest";
 import { logger } from "@ethersproject/wordlists";
+import { INetwork } from "../../../models/INetwork";
 
-export function createBatchFromPairs(config: PushPairInternalConfig, targetNetwork: Network): PushPairDataRequestBatch {
+export function createBatchFromPairs(config: PushPairInternalConfig, targetNetwork: INetwork): PushPairDataRequestBatch {
     const requests: PushPairDataRequest[] = config.pairs.map((pairInfo, index) => {
 
         return {

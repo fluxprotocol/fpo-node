@@ -1,11 +1,12 @@
 import { readFile } from 'fs/promises';
 import { APP_CONFIG_LOCATION, AVAILABLE_JOBS, AVAILABLE_MODULES, AVAILABLE_NETWORKS, PROJECT_VERSION } from "../config";
+import { INetwork } from './INetwork';
 import { Job } from './Job';
 import { Module, ModuleConfig, parseUnparsedModuleConfig } from './Module';
-import { Network, NetworkConfig, parseUnparsedNetworkConfig } from "./Network";
+import { NetworkConfig, parseUnparsedNetworkConfig } from './NetworkConfig';
 
 export interface AppConfig {
-    networks: Network[];
+    networks: INetwork[];
     modules: Module[];
     jobs: Job[];
 }

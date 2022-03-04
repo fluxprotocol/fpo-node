@@ -1,6 +1,6 @@
 import path from 'path';
 import { Account, keyStores, utils, connect } from "near-api-js";
-import { NetworkConfig } from "../../../models/Network";
+import { NetworkConfig } from '../../../models/NetworkConfig';
 
 export interface NearNetworkConfig extends NetworkConfig {
     networkType?: string;

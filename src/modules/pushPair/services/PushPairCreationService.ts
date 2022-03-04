@@ -1,8 +1,8 @@
-import { Network } from "../../../models/Network";
 import { Pair, PushPairInternalConfig } from "../models/PushPairConfig";
 import FluxPriceFeedAbi from '../FluxPriceFeed.json';
 import { NearNetwork } from "../../../networks/near/NearNetwork";
 import logger from '../../../services/LoggerService';
+import { INetwork } from "../../../models/INetwork";
 
 const DEFAULT_NEAR_STORAGE_DEPOSIT = '300800000000000000000000';
 
@@ -49,7 +49,7 @@ async function createPairIfNeededForNear(pair: Pair, config: PushPairInternalCon
     }
 }
 
-export async function createPairIfNeeded(pair: Pair, config: PushPairInternalConfig, network: Network) {
+export async function createPairIfNeeded(pair: Pair, config: PushPairInternalConfig, network: INetwork) {
     if (network.type === 'evm') {
         if (config.pairsType === 'single') {
             // For EVM there is no pair creation, we just want to check if the decimals match.
@@ -66,7 +66,7 @@ export async function createPairIfNeeded(pair: Pair, config: PushPairInternalCon
             }
         }
     } else if (network.type === 'near') {
-        await createPairIfNeededForNear(pair, config, network);
+        await createPairIfNeededForNear(pair, config, network as NearNetwork);
     } else {
         throw new Error(`Network type ${network.type} is not supported for price pushing`);
     }

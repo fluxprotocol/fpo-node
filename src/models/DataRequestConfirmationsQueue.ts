@@ -3,7 +3,7 @@ import logger from "../services/LoggerService";
 import { debouncedInterval } from "../services/TimerUtils";
 import { Block } from "./Block";
 import { DataRequestBatch, hasBatchEnoughConfirmations } from "./DataRequestBatch";
-import { Network } from "./Network";
+import { INetwork } from "./INetwork";
 
 type Callback = (batch: DataRequestBatch, confirmations: Big) => any;
 
@@ -11,11 +11,11 @@ export class DataRequestConfirmationsQueue {
     batches: Map<string, DataRequestBatch> = new Map();
     currentBlock?: Block;
     id: string;
-    network: Network;
+    network: INetwork;
 
     callback: Callback = () => { };
 
-    constructor(network: Network) {
+    constructor(network: INetwork) {
         this.id = `cq-${network.id}`;
         this.network = network;
 

@@ -1,5 +1,6 @@
 import { AppConfig } from "./AppConfig";
-import { Network, NetworkConfig } from "./Network";
+import { INetwork } from "./INetwork";
+import { NetworkConfig } from "./NetworkConfig";
 
 export interface ModuleConfig {
     type: string;
@@ -20,7 +21,7 @@ export function parseUnparsedModuleConfig(config: Partial<ModuleConfig> = {}): M
 export class Module {
     static type: string = 'listener';
     type: string = 'listener';
-    network: Network;
+    network: INetwork;
     appConfig: AppConfig;
     moduleConfig: ModuleConfig;
     id: string;
