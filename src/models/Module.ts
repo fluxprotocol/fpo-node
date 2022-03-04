@@ -1,3 +1,4 @@
+import { Database } from "../services/DatabaseService";
 import { AppConfig } from "./AppConfig";
 import { Network, NetworkConfig } from "./Network";
 

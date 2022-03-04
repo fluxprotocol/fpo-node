@@ -20,3 +20,8 @@ export const AVAILABLE_NETWORKS = [EvmNetwork, NearNetwork];
 export const AVAILABLE_MODULES = [LayerZeroModule, PushPairModule];
 export const AVAILABLE_JOBS = [FetchJob];
 export const NODE_ID = process.env.NODE_ID ?? 'Anonymous';
+
+export const DB_TABLE_PROCESSED_BLOCKS: string = "processed_blocks";
+export const DB_TABLE_TX_QUEUE: string = "tx_queue";
+export const DB_NAME = 'fpo_database';
+export const DB_PATH = './';

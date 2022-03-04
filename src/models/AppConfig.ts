@@ -32,7 +32,7 @@ export async function parseAppConfig(): Promise<AppConfig> {
 
         if (!network) throw new Error(`Network type "${parsedNetworkConfig.type}" does not exist`);
 
-        return new network(parsedNetworkConfig);
+        return new network(parsedNetworkConfig, appConfig);
     });
 
     if (!config.modules || !Array.isArray(config.modules)) throw new Error(`at least 1 item in "modules" is required and it must be an array`);

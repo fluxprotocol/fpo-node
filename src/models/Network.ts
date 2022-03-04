@@ -1,6 +1,8 @@
+import { logger } from "ethers";
 import EventEmitter from "events";
+import { Database } from "../services/DatabaseService";
+import { AppConfig } from "./AppConfig";
 import { Block } from "./Block";
-import { DataRequest, DataRequestResolved } from "./DataRequest";
 import { DataRequestBatch, DataRequestBatchResolved } from "./DataRequestBatch";
 import { Queue } from "./Queue";
 import { TxCallParams } from "./TxCallParams";
@@ -43,11 +45,11 @@ export class Network extends EventEmitter {
     type: string;
     networkId: NetworkConfig['networkId'];
 
-    constructor(type: string, config: NetworkConfig) {
+    constructor(type: string, config: NetworkConfig, appConfig: AppConfig) {
         super();
         this.networkConfig = config;
         this.id = `${config.type}-${config.networkId}`;
-        this.queue = new Queue(this.id, config.queueDelay);
+        this.queue = new Queue(this.id, config.queueDelay, appConfig);
         this.networkId = config.networkId;
         this.type = type;
     }
@@ -73,7 +75,7 @@ export class Network extends EventEmitter {
     }
 
     async init(): Promise<void> {
-        throw new Error(`${this.id} Not implemented init`);
+        await this.queue.init();
     }
 
     addRequestsToQueue(batch: DataRequestBatchResolved): void {

@@ -9,5 +9,5 @@ export function createNetworkMock(config: Partial<NetworkConfig> = {}): Network 
         blockFetchingInterval: 5000,
         queueDelay: 5000,
         ...config
-    })
+    }, {} as any)
 }

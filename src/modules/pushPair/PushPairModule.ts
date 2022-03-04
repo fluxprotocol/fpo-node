@@ -4,6 +4,7 @@ import { DataRequestResolved } from "../../models/DataRequest";
 import { DataRequestBatch } from "../../models/DataRequestBatch";
 import { Module } from "../../models/Module";
 import { OutcomeType } from "../../models/Outcome";
+import { Database } from "../../services/DatabaseService";
 import logger from "../../services/LoggerService";
 import { debouncedInterval } from "../../services/TimerUtils";
 import { parsePushPairConfig, PushPairConfig, PushPairInternalConfig } from "./models/PushPairConfig";
