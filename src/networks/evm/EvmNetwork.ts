@@ -4,14 +4,17 @@ import { Contract, Wallet } from "ethers";
 import { AppConfig } from "../../models/AppConfig";
 
 import { Block, getBlockType } from "../../models/Block";
+import { DataRequestResolved } from "../../models/DataRequest";
 import { DataRequestBatchResolved } from "../../models/DataRequestBatch";
 import { Network } from "../../models/Network";
 import { TxCallParams } from "../../models/TxCallParams";
 import { Database } from "../../services/DatabaseService";
 import logger from "../../services/LoggerService";
+import { sleep } from "../../services/TimerUtils";
 import { EvmNetworkConfig, InternalEvmNetworkConfig, parseEvmNetworkConfig } from "./models/EvmNetworkConfig";
 
 export default class EvmNetwork extends Network {
+    maxRetries: number = 5;
     static type: string = "evm";
     internalConfig: InternalEvmNetworkConfig;
     private wallet: Wallet;
@@ -51,7 +54,7 @@ export default class EvmNetwork extends Network {
                 }
 
                 const args = Object.values(request.txCallParams.params);
-                await contract[request.txCallParams.method](...args);
+                await this.sendRequest(contract, request, args);
             }
         } catch (error) {
             logger.error(`[${this.id}-onQueueBatch] ${error}`, {
@@ -59,6 +62,39 @@ export default class EvmNetwork extends Network {
             });
         }
     }
+
+    async sendRequest(contract: Contract, request: DataRequestResolved, args: any, retries: number = 0): Promise<void> {
+        if (retries < this.maxRetries) {
+            try {
+                await contract[request.txCallParams.method](...args);
+            } catch(error: any) {
+                logger.info(`[${this.id}-onQueueBatch] transaction failed retrying in 1s...`)
+                logger.info(`[${this.id}-onQueueBatch] ${error}`)
+                await sleep(1000);
+                await this.sendRequest(contract, request, args, retries++);
+            }
+        } else {
+            logger.error(`[${this.id}-onQueueBatch] retried more than ${this.maxRetries} times, dropping request`)
+        }
+    }
+
+    // async getLogs(txParams: TxCallParams) {
+    //     try {
+    //         const provider = new JsonRpcProvider(this.networkConfig.rpc);
+    //         const toBlock = await provider.getBlockNumber();
+    //         const fromBlock = toBlock - 100;
+    //         const filter = { 
+    //             address: txParams.address,
+    //             fromBlock,
+    //             toBlock,
+    //         }
+
+    //     } catch (error) {
+    //         logger.error(`[${this.id}-eth_getLogs] ${error}`, {
+    //             config: this.networkConfig,
+    //         });
+    //     }
+    // }
 
     async getLatestBlock(): Promise<Block | undefined> {
         try {
@@ -74,7 +110,7 @@ export default class EvmNetwork extends Network {
         }
     }
 
-    async getBlock(id: string | number): Promise<Block | undefined> {
+    async getBlock(id: string | number, retries: number = 0): Promise<Block | undefined> {
         try {
             const blockType = getBlockType(id);
             const provider = new JsonRpcProvider(this.networkConfig.rpc);
@@ -92,10 +128,16 @@ export default class EvmNetwork extends Network {
                 number: new Big(parseInt(block.number)),
             };
         } catch (error) {
-            logger.error(`[${this.id}-getBlock] ${error}`, {
-                config: this.networkConfig,
-            });
-            return undefined;
+            if (retries < this.maxRetries) {
+                logger.info(`[${this.id}-getBlock] failed fetching block, retrying`);
+                await sleep(1000);
+                return await this.getBlock(id, retries++);
+            } else {
+                logger.error(`[${this.id}-getBlock] ${error}`, {
+                    config: this.networkConfig,
+                });
+                return undefined;
+            }
         }
     }
 }
