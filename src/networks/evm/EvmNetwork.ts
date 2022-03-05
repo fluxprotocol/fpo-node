@@ -14,7 +14,7 @@ import { sleep } from "../../services/TimerUtils";
 import { EvmNetworkConfig, InternalEvmNetworkConfig, parseEvmNetworkConfig } from "./models/EvmNetworkConfig";
 
 export default class EvmNetwork extends Network {
-    maxRetries: number = 5;
+    maxRetries: number = 10;
     static type: string = "evm";
     internalConfig: InternalEvmNetworkConfig;
     private wallet: Wallet;
@@ -100,7 +100,6 @@ export default class EvmNetwork extends Network {
         try {
             const provider = new JsonRpcProvider(this.networkConfig.rpc);
             const currentBlock = await provider.getBlockNumber();
-
             return this.getBlock(currentBlock);
         } catch (error) {
             logger.error(`[${this.id}-getLatestBlock] ${error}`, {
@@ -130,7 +129,7 @@ export default class EvmNetwork extends Network {
         } catch (error) {
             if (retries < this.maxRetries) {
                 logger.info(`[${this.id}-getBlock] failed fetching block, retrying`);
-                await sleep(1000);
+                await sleep(2000);
                 return await this.getBlock(id, retries++);
             } else {
                 logger.error(`[${this.id}-getBlock] ${error}`, {
