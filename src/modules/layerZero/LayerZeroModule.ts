@@ -18,6 +18,7 @@ export class LayerZeroModule extends Module {
     internalConfig: InternalLayerZeroModuleConfig;
     confirmationsQueue: DataRequestConfirmationsQueue;
     receivedTransactions: Set<string> = new Set();
+    wsProvider: any;
 
     constructor(moduleConfig: LayerZeroModuleConfig, appConfig: AppConfig)  {
         super(LayerZeroModule.type, moduleConfig, appConfig);
@@ -26,6 +27,9 @@ export class LayerZeroModule extends Module {
         if (this.network.networkConfig.type !== 'evm') throw new Error(`Only networks with type "evm" are supported`);
 
         this.internalConfig = parseLayerZeroModuleConfig(moduleConfig);
+        this.wsProvider = new Web3.providers.WebsocketProvider(this.network.networkConfig.wssRpc!);
+        this.wsProvider.on('end', () => this.start())
+        this.wsProvider.on('error', () => this.start())
         this.confirmationsQueue = new DataRequestConfirmationsQueue(this.network);
         this.confirmationsQueue.onRequestReady(this.onConfirmationQueueRequestReady.bind(this));
     }
@@ -91,8 +95,7 @@ export class LayerZeroModule extends Module {
     }
 
     async start(): Promise<boolean> {
-        const websocketProvider = new Web3.providers.WebsocketProvider(this.network.networkConfig.wssRpc!);
-        const w3Instance = new Web3(websocketProvider);
+        const w3Instance = new Web3(this.wsProvider);
         // ABI is valid but types of web3.js is a lil outdated..
         // @ts-ignore
         const contract = new w3Instance.eth.Contract(layerZeroOracleAbi.abi, this.internalConfig.oracleContractAddress);
@@ -105,7 +108,7 @@ export class LayerZeroModule extends Module {
 
             // Extra sleep to give the RPC time to process the block
             await sleep(2000);
-            const block = await this.network.getBlock(data.blockHash);
+            const block =  await this.network.getBlock(data.blockHash);
 
             if (!block) {
                 logger.error(`[${this.id}] Could not find block ${data.blockNumber}`);
@@ -146,4 +149,5 @@ export class LayerZeroModule extends Module {
         logger.info(`[${this.id}] Started listening`);
         return true;
     }
+
 }
