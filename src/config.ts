@@ -25,3 +25,4 @@ export const DB_TABLE_PROCESSED_BLOCKS: string = "processed_blocks";
 export const DB_TABLE_TX_QUEUE: string = "tx_queue";
 export const DB_NAME = 'fpo_database';
 export const DB_PATH = './';
+export const MAX_TX_TRANSACTIONS = 10;
