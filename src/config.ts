@@ -26,3 +26,4 @@ export const DB_TABLE_TX_QUEUE: string = "tx_queue";
 export const DB_NAME = 'fpo_database';
 export const DB_PATH = './';
 export const MAX_TX_TRANSACTIONS = 10;
+export const FAILED_TX_RETRY_SLEEP_MS = Number(process.env.FAILED_TX_RETRY_SLEEP_MS ?? 2000);

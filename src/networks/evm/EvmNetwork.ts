@@ -1,7 +1,7 @@
 import { JsonRpcProvider } from "@ethersproject/providers";
 import Big from "big.js";
 import { Contract, Wallet } from "ethers";
-import { MAX_TX_TRANSACTIONS } from "../../config";
+import { FAILED_TX_RETRY_SLEEP_MS, MAX_TX_TRANSACTIONS } from "../../config";
 import { AppConfig } from "../../models/AppConfig";
 
 import { Block, getBlockType } from "../../models/Block";
@@ -9,7 +9,6 @@ import { DataRequestResolved } from "../../models/DataRequest";
 import { DataRequestBatchResolved } from "../../models/DataRequestBatch";
 import { Network } from "../../models/Network";
 import { TxCallParams } from "../../models/TxCallParams";
-import { Database } from "../../services/DatabaseService";
 import logger from "../../services/LoggerService";
 import { sleep } from "../../services/TimerUtils";
 import { EvmNetworkConfig, InternalEvmNetworkConfig, parseEvmNetworkConfig } from "./models/EvmNetworkConfig";
@@ -84,7 +83,7 @@ export default class EvmNetwork extends Network {
                 this.nextRpc();
                 logger.error(`[${this.id}-onQueueBatch] ${error}`, { config: this.networkConfig });
                 logger.info(`[${this.id}-onQueueBatch] transaction failed retrying in 1s with next RPC: ${this.getRpc()}...`);
-                await sleep(1000);
+                await sleep(FAILED_TX_RETRY_SLEEP_MS);
                 return await this.sendRequest(request, retries++);
             }
         } else {
@@ -145,7 +144,7 @@ export default class EvmNetwork extends Network {
             if (retries < MAX_TX_TRANSACTIONS) {
                 this.nextRpc();
                 logger.info(`[${this.id}-getBlock] failed fetching block, retrying with next RPC ${this.getRpc()}`);
-                await sleep(2000);
+                await sleep(FAILED_TX_RETRY_SLEEP_MS);
                 return await this.getBlock(id, retries++);
             } else {
                 logger.error(`[${this.id}-getBlock] ${error}`, {
