@@ -60,7 +60,7 @@ npm run start
 
 |Key|Type|Description|
 |---|---|---|
-|networks|Network[]|An array of network configuration. (Explained below)
+|networks|Network[]|An array of network configurations. (Explained below)
 |pairs|Pair[]|An array of pricing pairs with the sources (Explained below)
 
 ### Network
@@ -106,7 +106,7 @@ Example:
 ### near
 
 #### accessing / generating NEAR private keys
-There's multiple ways to go about this. The simplest method would be to create, or sign in to, a NEAR account using the [near web wallet](https://wallet.near.org). And then calling `NEAR_ENV={NETWORK} near login` and following the steps provided by the CLI. This will generate access keys in `~/.near-credentials/{NETWORK}/{MY_ACCOUNT}.near.json` which can then be copied into any environment.
+There are multiple ways to go about this. The simplest method would be to create or sign in to, a NEAR account using the [near web wallet](https://wallet.near.org). And then calling `NEAR_ENV={NETWORK} near login` and following the steps provided by the CLI. This will generate access keys in `~/.near-credentials/{NETWORK}/{MY_ACCOUNT}.near.json` which can then be copied into any environment.
 We would also recommend for you to check out batching of transactions, this makes pushing data on chain be done 1 transaction instead of multiple saving you gas. See [Batching](#batching) for more information.
 
 #### configuration
@@ -139,7 +139,7 @@ Example:
 
 # Modules
 
-The first party oracle works in modules which allows for extendability of the node. This is configured in the `"modules"` section (root of the `config.json`)
+The first party oracle works in modules which allow for extendability of the node. This is configured in the `"modules"` section (root of the `config.json`)
 
 ```JSON
 {
@@ -225,10 +225,23 @@ Example:
 
 ## LayerZeroModule
 
-The LayerZeroModule is only used by LayerZero, it allows for submitting block headers from one chain to another chain. For this module the `wssRpc` is required for EVM chains.
+The `LayerZeroModule` is only used by LayerZero, it allows for submitting block headers from one chain to another chain. For this module the `wssRpc` is required for EVM chains.
 
 |Key|Type|Description|
 |---|---|---|
 |type|"PushPairModule"| Used to identify what type of module this is|
 |networkId|number|The id of the network in your `"networks"` configuration. This is also the endpoint id defined by layerzero, so make sure they match|
-|oracleContractAddress|The address of the LayerZero Oracle|
+|oracleContractAddress|string|The address of the LayerZero Oracle|
+
+## BalanceCheckerModule
+
+The `BalanceCheckerModule` is used for checking that account balances have more funds than a user-defined threshold. An error will be logged if an account has insufficient funds.
+
+
+|Key|Type|Description|
+|---|---|---|
+|type|"BalanceCheckerModule"| Used to identify what type of module this is|
+|networkId|number|The id of the network in your `"networks"` configuration|
+|accounts|string[]|A list of account identifiers to be checked|
+|threshold|string|The amount below which the check will print an error (big number including decimals) |
+|interval|number|Interval between updates in ms|
