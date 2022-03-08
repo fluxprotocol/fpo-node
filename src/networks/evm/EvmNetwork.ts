@@ -100,4 +100,20 @@ export default class EvmNetwork extends Network {
             return undefined;
         }
     }
+
+    async getBalance(accountId: string): Promise<Big | undefined> {
+        try {
+            const provider = new JsonRpcProvider(this.networkConfig.rpc);
+            const balance = await provider.getBalance(accountId);
+
+            if (!balance) return;
+
+            return new Big(balance.toString());
+        } catch (error) {
+            logger.error(`[${this.id}-getBalance] ${error}`, {
+                config: this.networkConfig,
+            });
+            return undefined;
+        }
+    }
 }

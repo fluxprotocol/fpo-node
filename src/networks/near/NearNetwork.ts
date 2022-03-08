@@ -1,3 +1,4 @@
+import Big from "big.js";
 import BN from "bn.js";
 import { transactions } from "near-api-js";
 import { FinalExecutionOutcome } from "near-api-js/lib/providers";
@@ -69,6 +70,22 @@ export class NearNetwork extends Network {
             }
         } catch (error) {
             logger.error(`[${this.id}] ${error}`);
+        }
+    }
+
+    async getBalance(accountId: string): Promise<Big | undefined> {
+        try {
+            const account = await this.internalConfig?.near.account(accountId);
+            const balance = await account?.getAccountBalance();
+
+            if (!balance) return;
+
+            return new Big(balance.available);
+        } catch (error) {
+            logger.error(`[${this.id}-getBalance] ${error}`, {
+                config: this.networkConfig,
+            });
+            return undefined;
         }
     }
 }

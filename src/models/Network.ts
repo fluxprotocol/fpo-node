@@ -1,3 +1,4 @@
+import Big from "big.js";
 import EventEmitter from "events";
 import { Block } from "./Block";
 import { DataRequest, DataRequestResolved } from "./DataRequest";
@@ -74,6 +75,10 @@ export class Network extends EventEmitter {
 
     async init(): Promise<void> {
         throw new Error(`${this.id} Not implemented init`);
+    }
+
+    async getBalance(accountId: string): Promise<Big | undefined> {
+        throw new Error(`${this.id} Not implemented getBalance`);
     }
 
     addRequestsToQueue(batch: DataRequestBatchResolved): void {

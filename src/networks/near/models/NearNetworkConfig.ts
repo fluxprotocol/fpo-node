@@ -1,5 +1,5 @@
 import path from 'path';
-import { Account, keyStores, utils, connect } from "near-api-js";
+import { Account, keyStores, utils, connect, Near } from "near-api-js";
 import { NetworkConfig } from "../../../models/Network";
 
 export interface NearNetworkConfig extends NetworkConfig {
@@ -13,6 +13,7 @@ export interface NearNetworkConfig extends NetworkConfig {
 export interface InternalNearNetworkConfig extends NetworkConfig {
     account: Account;
     maxGas: string;
+    near: Near;
 }
 
 export async function parseNearNetworkConfig(config: NearNetworkConfig): Promise<InternalNearNetworkConfig> {
@@ -51,5 +52,6 @@ export async function parseNearNetworkConfig(config: NearNetworkConfig): Promise
         ...config,
         account,
         maxGas: config.maxGas ?? '300000000000000',
+        near,
     };
 }
