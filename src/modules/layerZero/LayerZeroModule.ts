@@ -34,7 +34,7 @@ export class LayerZeroModule extends Module {
                 onTimeout: false
             }
         }
-        this.wsProvider = new Web3.providers.WebsocketProvider(this.network.networkConfig.config!);
+        this.wsProvider = new Web3.providers.WebsocketProvider(this.network.networkConfig.wssRpc!, config);
 
         this.wsProvider.on('connect', () => logger.info(`[network:${this.network.id}]: (re)connected`))
         this.wsProvider.on('end', (msg: any) => logger.info(`[network:${this.network.id}]: ended ${msg}`))
