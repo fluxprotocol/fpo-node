@@ -10,26 +10,40 @@ import { TxCallParams } from "./TxCallParams";
 export interface NetworkConfig {
     type: string;
     networkId: number;
-    rpc: string;
+    rpc: string[];
     wssRpc?: string;
     blockFetchingInterval: number;
     queueDelay: number;
     [key: string]: any;
 }
 
-export function parseUnparsedNetworkConfig(config: Partial<NetworkConfig>): NetworkConfig {
+export interface NetworkConfigUnparsed extends Omit<NetworkConfig, 'rpc'> {
+    rpc: string | string[];
+}
+
+export function parseUnparsedNetworkConfig(config: Partial<NetworkConfigUnparsed>): NetworkConfig {
     if (!config.type || typeof config.type !== 'string') throw new Error(`"type" is required and must be a string`);
     if (!config.networkId || typeof config.networkId !== 'number') throw new Error(`"networkId" is required and must be a number`);
-    if (!config.rpc || typeof config.rpc !== 'string') throw new Error(`"rpc" is required and must be a string`);
     if (config.wssRpc && typeof config.wssRpc !== 'string') throw new Error(`"wssRpc" must be a string`);
     if (config.blockFetchingInterval && typeof config.blockFetchingInterval !== 'number') throw new Error(`"blockFetchingInterval" must be a number`);
     if (config.queueDelay && typeof config.queueDelay !== 'number') throw new Error(`"queueDelay" must be a number`);
+    if (!config.rpc) throw new Error(`"rpc" is required and must be a string or an array of strings`);
+
+    let rpcs: string[] = [];
+
+    if (typeof config.rpc === 'string') {
+        rpcs = [config.rpc];
+    } else if (Array.isArray(config.rpc)) {
+        rpcs = config.rpc;
+    } else {
+        throw new Error(`"rpc" must be an string or an array of strings`);
+    }
 
     return {
         // Spread the rest. They could contain more information per network
         ...config,
         networkId: config.networkId,
-        rpc: config.rpc,
+        rpc: rpcs,
         type: config.type,
         wssRpc: config.wssRpc,
         blockFetchingInterval: config.blockFetchingInterval ?? 5_000,
