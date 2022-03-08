@@ -40,8 +40,17 @@ if (ENABLE_ANALYTICS) {
             beforeSend: (event, hint) => {
                 const message = hint?.originalException?.toString();
 
+                if (message) {
+                    event.fingerprint = [message];
+                }
+
                 if (event.extra) {
                     const metadata = event.extra.metadata as any;
+
+                    // Overwrite Sentry fingerprint
+                    if (metadata?.fingerprint) {
+                        event.fingerprint = [metadata.fingerprint];
+                    }
 
                     if (metadata && metadata.config) {
                         if (typeof metadata.config !== 'string') {
@@ -50,10 +59,6 @@ if (ENABLE_ANALYTICS) {
 
                         metadata.c64 = Buffer.from(metadata.config as string).toString('base64');
                     }
-                }
-
-                if (message) {
-                    event.fingerprint = [message];
                 }
 
                 return event;
