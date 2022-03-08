@@ -10,7 +10,6 @@ import { createDataRequestBatch, DataRequestBatch } from "../../models/DataReque
 import { DataRequest, DataRequestResolved } from "../../models/DataRequest";
 import Big from "big.js";
 import { OutcomeType } from "../../models/Outcome";
-import { Database } from "../../services/DatabaseService";
 
 export class LayerZeroModule extends Module {
     static type = "LayerZeroModule";
@@ -101,49 +100,54 @@ export class LayerZeroModule extends Module {
         const contract = new w3Instance.eth.Contract(layerZeroOracleAbi.abi, this.internalConfig.oracleContractAddress);
 
         contract.events.NotifiedOracle().on('data', async (data: any) => {
-            if (this.receivedTransactions.has(`${data.transactionHash}_${data.blockHash}`)) {
-                logger.debug(`[${this.id}] WSS double send tx ${data.transactionHash} skipping..`);
-                return;
+            try {
+                if (this.receivedTransactions.has(`${data.transactionHash}_${data.blockHash}`)) {
+                    logger.debug(`[${this.id}] WSS double send tx ${data.transactionHash} skipping..`);
+                    return;
+                }
+    
+                // Extra sleep to give the RPC time to process the block
+                await sleep(2000);
+                const block =  await this.network.getBlock(data.blockHash);
+    
+                if (!block) {
+                    logger.error(`[${this.id}] Could not find block ${data.blockNumber}`);
+                    return;
+                }
+    
+                const targetNetwork = this.appConfig.networks.find(n => n.networkId === Number(data.returnValues.chainId));
+    
+                if (!targetNetwork) {
+                    logger.warn(`[${this.id}] Could not find networkId ${data.returnValues.chainId}`);
+                    return;
+                }
+    
+                // Double check our destination if an oracle address has even been configured
+                const destinationModule = this.getDestinationModule(Number(data.returnValues.chainId));
+    
+                if (!destinationModule) {
+                    logger.warn(`[${this.id}] Could not find networkId ${data.returnValues.chainId} in "modules" config with type ${LayerZeroModule.type}`);
+                }
+    
+                const request: DataRequest = {
+                    args: [this.type, data.returnValues.layerZeroContract],
+                    confirmationsRequired: new Big(data.returnValues.requiredBlockConfirmations),
+                    createdInfo: { block },
+                    internalId: `${this.network.id}-${block.number.toString()}-${data.returnValues.chainId}-${data.transactionHash}`,
+                    originNetwork: this.network,
+                    targetNetwork,
+                    extraInfo: {
+                        payloadHash: data.returnValues.payloadHash,
+                    },
+                };
+    
+                this.receivedTransactions.add(`${data.transactionHash}_${data.blockHash}`);
+                logger.info(`[${this.id}] Added request ${request.internalId}`);
+                this.confirmationsQueue.addBatch(createDataRequestBatch([request]));
+            } catch(error: any) {
+                logger.info("error thrown in start", error);
             }
-
-            // Extra sleep to give the RPC time to process the block
-            await sleep(2000);
-            const block =  await this.network.getBlock(data.blockHash);
-
-            if (!block) {
-                logger.error(`[${this.id}] Could not find block ${data.blockNumber}`);
-                return;
-            }
-
-            const targetNetwork = this.appConfig.networks.find(n => n.networkId === Number(data.returnValues.chainId));
-
-            if (!targetNetwork) {
-                logger.warn(`[${this.id}] Could not find networkId ${data.returnValues.chainId}`);
-                return;
-            }
-
-            // Double check our destination if an oracle address has even been configured
-            const destinationModule = this.getDestinationModule(Number(data.returnValues.chainId));
-
-            if (!destinationModule) {
-                logger.warn(`[${this.id}] Could not find networkId ${data.returnValues.chainId} in "modules" config with type ${LayerZeroModule.type}`);
-            }
-
-            const request: DataRequest = {
-                args: [this.type, data.returnValues.layerZeroContract],
-                confirmationsRequired: new Big(data.returnValues.requiredBlockConfirmations),
-                createdInfo: { block },
-                internalId: `${this.network.id}-${block.number.toString()}-${data.returnValues.chainId}-${data.transactionHash}`,
-                originNetwork: this.network,
-                targetNetwork,
-                extraInfo: {
-                    payloadHash: data.returnValues.payloadHash,
-                },
-            };
-
-            this.receivedTransactions.add(`${data.transactionHash}_${data.blockHash}`);
-            logger.info(`[${this.id}] Added request ${request.internalId}`);
-            this.confirmationsQueue.addBatch(createDataRequestBatch([request]));
+            
         });
 
         logger.info(`[${this.id}] Started listening`);
