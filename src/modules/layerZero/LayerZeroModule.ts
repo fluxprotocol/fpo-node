@@ -26,9 +26,19 @@ export class LayerZeroModule extends Module {
         if (this.network.networkConfig.type !== 'evm') throw new Error(`Only networks with type "evm" are supported`);
 
         this.internalConfig = parseLayerZeroModuleConfig(moduleConfig);
-        this.wsProvider = new Web3.providers.WebsocketProvider(this.network.networkConfig.wssRpc!);
-        this.wsProvider.on('end', () => this.start())
-        this.wsProvider.on('error', () => this.start())
+        const config = {
+            reconnect: {
+                auto: true, 
+                delay: 1000,
+                maxAttempts: 5,
+                onTimeout: false
+            }
+        }
+        this.wsProvider = new Web3.providers.WebsocketProvider(this.network.networkConfig.config!);
+
+        this.wsProvider.on('connect', () => logger.info(`[network:${this.network.id}]: (re)connected`))
+        this.wsProvider.on('end', (msg: any) => logger.info(`[network:${this.network.id}]: ended ${msg}`))
+        this.wsProvider.on('error', (e: any) => logger.info(`[network:${this.network.id}]: error ${e}`))
         this.confirmationsQueue = new DataRequestConfirmationsQueue(this.network);
         this.confirmationsQueue.onRequestReady(this.onConfirmationQueueRequestReady.bind(this));
     }
