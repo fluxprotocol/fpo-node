@@ -133,7 +133,10 @@ export default class EvmNetwork extends Network {
                 [type]: blockType.tag,
             });
 
-            if (!block) return;
+            if (!block && retries < MAX_TX_TRANSACTIONS) {
+                await sleep(FAILED_TX_RETRY_SLEEP_MS);
+                return await this.getBlock(id, retries++);
+            };
 
             return {
                 hash: block.hash,
