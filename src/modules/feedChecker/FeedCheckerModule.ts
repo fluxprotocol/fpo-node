@@ -46,29 +46,53 @@ export class FeedCheckerModule extends Module {
         return latestTimestampResponse.toNumber() * 1000;
     }
 
+    private async fetchNearLatestTimestamp(address: string, provider: string, pair: string) {
+        const entry = await this.network.view({
+            method: 'get_entry',
+            address,
+            amount: '0',
+            params: {
+                provider,
+                pair,
+            },
+        });
+
+        // Convert contract timestamp to milliseconds
+        return Math.floor(entry.last_update / 1000000);
+    }
+
+    private checkLatestTimestamp(timestamp: number, address: string) {
+        logger.debug(`[${this.id}] [${address}] Latest Timestamp: ${new Date(timestamp).toISOString().replace('T', ' ').substring(0, 19)}`);
+
+        const diff = Date.now() - timestamp;
+        if (diff > this.internalConfig.threshold) {
+            // TODO: change logger level to error
+            logger.info(`[${this.id}] [${address}] Contract has not been updated since ${this.prettySeconds(diff / 1000)}`);
+        } else {
+            logger.debug(`[${this.id}] [${address}] Contract was updated ${this.prettySeconds(diff / 1000)} ago`);
+        }
+    }
+
     async start(): Promise<boolean> {
         debouncedInterval(async () => {
             try {
                 // Check all contracts addresses
-                logger.info(`[${this.id}] Checking all feed addresses...`);
+                logger.info(`[${this.id}] Checking feed addresses for ${this.network.type} network...`);
                 const currentTimestamp = Date.now();
 
                 if (this.network.type === 'evm') {
                     await Promise.all(this.internalConfig.addresses.map(async (address) => {
-
                         const latestTimestamp = await this.fetchEvmLatestTimestamp(address);
-                        logger.debug(`[${this.id}] [${address}] Latest Timestamp: ${new Date(latestTimestamp).toISOString().replace('T', ' ').substring(0, 19)}`);
 
-                        const diff = currentTimestamp - latestTimestamp;
-                        if (diff > this.internalConfig.threshold) {
-                            // TODO: change logger level
-                            logger.info(`[${this.id}] [${address}] Contract has not been updated since ${this.prettySeconds(diff / 1000)}`);
-                        } else {
-                            logger.debug(`[${this.id}] [${address}] Contract was updated ${this.prettySeconds(diff / 1000)} ago`);
-                        }
+                        this.checkLatestTimestamp(latestTimestamp, address);
                     }));
                 } else if (this.network.type === 'near') {
-                    console.log("Not yet implemented!");
+                    await Promise.all(this.internalConfig.addresses.map(async (address) => {
+                        // TODO: include provider and pairs into configuration
+                        const latestTimestamp = await this.fetchNearLatestTimestamp(address, "opfilabs.testnet", "NEAR/USDT");
+
+                        this.checkLatestTimestamp(latestTimestamp, this.internalConfig.addresses[0]);
+                    }));
                 } else {
                     throw new Error(`Network type ${this.network.type} is not supported for feed checking`);
                 }
