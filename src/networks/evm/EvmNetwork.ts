@@ -128,7 +128,7 @@ export default class EvmNetwork extends Network {
             const blockType = getBlockType(id);
             const provider = new JsonRpcProvider(this.getRpc());
             const type = blockType.type === 'hash' ? 'blockHash' : 'blockTag';
-
+            
             const block = await provider.perform('getBlock', {
                 [type]: blockType.tag,
             });
