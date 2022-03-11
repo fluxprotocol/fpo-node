@@ -4,6 +4,7 @@ import packageJson from '../package.json';
 import { LayerZeroModule } from './modules/layerZero/LayerZeroModule';
 import { PushPairModule } from './modules/pushPair/PushPairModule';
 import { BalanceCheckerModule } from './modules/balanceChecker/BalanceCheckerModule';
+import { FeedCheckerModule } from './modules/feedChecker/FeedCheckerModule'
 import { FetchJob } from './jobs/fetch/FetchJob';
 import { NearNetwork } from './networks/near/NearNetwork';
 
@@ -18,6 +19,6 @@ export const PROJECT_VERSION = packageJson.version;
 export const APP_CONFIG_LOCATION = process.env.APP_CONFIG_LOCATION ?? './config.json'
 
 export const AVAILABLE_NETWORKS = [EvmNetwork, NearNetwork];
-export const AVAILABLE_MODULES = [LayerZeroModule, PushPairModule, BalanceCheckerModule];
+export const AVAILABLE_MODULES = [LayerZeroModule, PushPairModule, BalanceCheckerModule, FeedCheckerModule];
 export const AVAILABLE_JOBS = [FetchJob];
 export const NODE_ID = process.env.NODE_ID ?? 'Anonymous';
