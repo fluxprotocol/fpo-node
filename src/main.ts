@@ -10,7 +10,7 @@ async function main() {
         await database.startDatabase(DB_PATH, DB_NAME);
         const appConfig = await parseAppConfig();
 
-        await Promise.all(appConfig.networks.map(network => network.init()));
+        // await Promise.all(appConfig.networks.map(network => network.init()));
 
         const jobBootResults = await Promise.all(appConfig.jobs.map(job => job.init()));
         const didJobBootFail = jobBootResults.some(isStarted => isStarted === false);

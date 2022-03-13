@@ -88,7 +88,7 @@ export class Network extends EventEmitter {
     }
 
     async init(): Promise<void> {
-        await this.queue.init();
+        throw new Error(`${this.id} Not implemented init`);
     }
 
     addRequestsToQueue(batch: DataRequestBatchResolved): void {
