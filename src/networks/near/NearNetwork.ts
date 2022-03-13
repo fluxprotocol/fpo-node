@@ -5,7 +5,6 @@ import { AppConfig } from "../../models/AppConfig";
 import { DataRequestBatchResolved } from "../../models/DataRequestBatch";
 import { Network } from "../../models/Network";
 import { TxCallParams } from "../../models/TxCallParams";
-import { Database } from "../../services/DatabaseService";
 import logger from "../../services/LoggerService";
 import { InternalNearNetworkConfig, NearNetworkConfig, parseNearNetworkConfig } from "./models/NearNetworkConfig";
 import { isTransactionFailure } from "./services/NearTransactionService";

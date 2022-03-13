@@ -1,5 +1,4 @@
 import Big from "big.js";
-import database from "../services/DatabaseService";
 import { AppConfig } from "./AppConfig";
 import { Block } from "./Block";
 import { DataRequest, DataRequestResolved } from "./DataRequest";
@@ -37,8 +36,6 @@ export async function storeDataRequestBatchResolved(tableKey: string, item: Data
             };
         }),
     };
-
-    await database.createDocument(tableKey, item.internalId, obj);
 }
 
 export function hydrateDataRequestBatchResolved(obj: any, appconfig: AppConfig): DataRequestBatchResolved {

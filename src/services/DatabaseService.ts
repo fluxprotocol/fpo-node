@@ -23,7 +23,6 @@ export class Database {
 
             // Creating all tables
             this.tables.set(DB_TABLE_PROCESSED_BLOCKS, subleveldown(db, DB_TABLE_PROCESSED_BLOCKS));
-            this.tables.set(DB_TABLE_TX_QUEUE, subleveldown(db, DB_TABLE_TX_QUEUE));
 
             this.database = db;
             resolve(db);

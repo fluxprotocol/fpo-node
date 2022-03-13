@@ -1,6 +1,5 @@
 import { logger } from "ethers";
 import EventEmitter from "events";
-import { Database } from "../services/DatabaseService";
 import { AppConfig } from "./AppConfig";
 import { Block } from "./Block";
 import { DataRequestBatch, DataRequestBatchResolved } from "./DataRequestBatch";
