@@ -70,6 +70,10 @@ export class Network extends EventEmitter {
     async view(txParams: TxCallParams): Promise<any> {
         throw new Error(`${this.id} Not implemented view`);
     }
+    
+    async getEvents(address: string, abi: any): Promise<any> {
+        throw new Error(`${this.id} Not implemented view`);
+    }
 
     async call(txParams: TxCallParams): Promise<any> {
         throw new Error(`${this.id} Not implemented call`);

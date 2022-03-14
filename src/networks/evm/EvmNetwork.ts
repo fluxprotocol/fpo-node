@@ -9,6 +9,7 @@ import { DataRequestResolved } from "../../models/DataRequest";
 import { DataRequestBatchResolved } from "../../models/DataRequestBatch";
 import { Network } from "../../models/Network";
 import { TxCallParams } from "../../models/TxCallParams";
+import database from "../../services/DatabaseService";
 import logger from "../../services/LoggerService";
 import { sleep } from "../../services/TimerUtils";
 import { EvmNetworkConfig, InternalEvmNetworkConfig, parseEvmNetworkConfig } from "./models/EvmNetworkConfig";
@@ -31,10 +32,20 @@ export default class EvmNetwork extends Network {
         if (!txParams.abi) throw new Error(`[${this.id}] ABI is required for tx ${JSON.stringify(txParams)}`);
         const provider = new JsonRpcProvider(this.getRpc());
         const contract = new Contract(txParams.address, txParams.abi, provider);
+
         const args = Object.values(txParams.params);
         const result = await contract[txParams.method](...args);
 
         return result;
+    }
+    
+    async getEvents(address: string, abi: any): Promise<any> {
+        const provider = new JsonRpcProvider(this.getRpc());
+        const contract = new Contract(address, abi, provider);
+  
+        let eventFilter = contract.filters.NotifiedOracle()
+        let events = await contract.queryFilter(eventFilter)
+        console.log(events);
     }
 
     private getRpc(): string {
@@ -78,6 +89,7 @@ export default class EvmNetwork extends Network {
                 const args = Object.values(request.txCallParams.params);
 
                 await contract[request.txCallParams.method](...args);
+                database.replaceLastBlock(request.createdInfo.block.number);
                 return true;
             } catch(error: any) {
                 this.nextRpc();

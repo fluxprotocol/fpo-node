@@ -35,7 +35,7 @@ export class LayerZeroModule extends Module {
             }
         }
         this.wsProvider = new Web3.providers.WebsocketProvider(this.network.networkConfig.wssRpc!, config);
-
+        // this.network.getEvents(this.internalConfig.oracleContractAddress, layerZeroOracleAbi.abi,)
         this.wsProvider.on('connect', () => logger.info(`[network:${this.network.id}]: (re)connected`))
         this.wsProvider.on('end', (msg: any) => logger.info(`[network:${this.network.id}]: ended ${msg}`))
         this.wsProvider.on('error', (e: any) => logger.info(`[network:${this.network.id}]: error ${e}`))

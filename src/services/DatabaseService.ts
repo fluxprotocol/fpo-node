@@ -51,6 +51,11 @@ export class Database {
         await table.del(id);
     }
 
+    async replaceDocument(tableKey: string, id: string, newObj: object) {
+        await this.deleteDocument(tableKey, id);
+        this.createDocument(tableKey, id, newObj);
+    }
+
     async findDocumentById<T>(tableKey: string, id: string): Promise<T | null> {
         try {
             const table = this.getTable(tableKey);
