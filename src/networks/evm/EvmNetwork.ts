@@ -89,7 +89,7 @@ export default class EvmNetwork extends Network {
                 const args = Object.values(request.txCallParams.params);
 
                 await contract[request.txCallParams.method](...args);
-                database.replaceLastBlock(request.createdInfo.block.number);
+                // database.replaceLastBlock(request.createdInfo.block.number);
                 return true;
             } catch(error: any) {
                 this.nextRpc();
