@@ -6,11 +6,12 @@ services:
     image: fluxprotocol/fpo-node:dev
     container_name: fpo-node
     environment:
+      - NEAR_CREDENTIALS_STORE_PATH=/usr/src/app/.near-credentials
       - EVM_PRIVATE_KEY=${EVM_PRIVATE_KEY}
       - NEAR_NO_LOGS=${NEAR_NO_LOGS}
       - DEBUG=${DEBUG}
       - ENABLE_ANALYTICS=${ENABLE_ANALYTICS}
-      - NEAR_CREDENTIALS_STORE_PATH=/usr/src/app/.near-credentials
+      - SENTRY_DSN=${SENTRY_DSN}
     volumes:
       - ./config.json:/usr/src/app/config.json
       - ~/.near-credentials:/usr/src/app/.near-credentials
