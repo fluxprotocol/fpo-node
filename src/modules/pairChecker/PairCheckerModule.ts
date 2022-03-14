@@ -1,9 +1,10 @@
 import FluxPriceFeedAbi from './FluxPriceFeed.json';
 import logger from "../../services/LoggerService";
 import { AppConfig, createSafeAppConfigString } from "../../models/AppConfig";
-import { PairCheckerModuleConfig, InternalPairCheckerModuleConfig, parsePairCheckerModuleConfig, Pair } from "./models/PairCheckerModuleConfig";
 import { Module } from "../../models/Module";
+import { PairCheckerModuleConfig, InternalPairCheckerModuleConfig, parsePairCheckerModuleConfig, Pair } from "./models/PairCheckerModuleConfig";
 import { debouncedInterval } from "../../services/TimerUtils";
+import { prettySeconds } from './utils';
 
 export class PairCheckerModule extends Module {
     static type = "PairCheckerModule";
@@ -12,25 +13,6 @@ export class PairCheckerModule extends Module {
     constructor(moduleConfig: PairCheckerModuleConfig, appConfig: AppConfig) {
         super(PairCheckerModule.type, moduleConfig, appConfig);
         this.internalConfig = parsePairCheckerModuleConfig(moduleConfig);
-    }
-
-    private prettySeconds(seconds: number): string {
-        // Seconds
-        if (seconds < 60) {
-            return Math.floor(seconds) + " seconds";
-        }
-        // Minutes
-        else if (seconds < 3600) {
-            return Math.floor(seconds / 60) + " min";
-        }
-        // Hours
-        else if (seconds < 86400) {
-            return Math.floor(seconds / 3600) + " hours";
-        }
-        // Days
-        else {
-            return Math.floor(seconds / 86400) + " days";
-        }
     }
 
     private async fetchEvmLatestTimestamp(address: string) {
@@ -67,13 +49,13 @@ export class PairCheckerModule extends Module {
         const diff = Date.now() - timestamp;
         const logInfo = `[${this.id}] [${pair.address}] [${pair.provider ?? this.internalConfig.provider}] [${pair.pair ?? '?'}]`
         if (diff > (pair.threshold ?? this.internalConfig.threshold)) {
-            logger.error(`${logInfo} Contract has not been updated since ${this.prettySeconds(diff / 1000)}`,
+            logger.error(`${logInfo} Contract has not been updated since ${prettySeconds(diff / 1000)}`,
                 {
                     config: createSafeAppConfigString(this.appConfig),
                     fingerprint: `${this.type}-pair-check`,
                 });
         } else {
-            logger.debug(`${logInfo} Contract was updated ${this.prettySeconds(diff / 1000)} ago`);
+            logger.debug(`${logInfo} Contract was updated ${prettySeconds(diff / 1000)} ago`);
         }
     }
 
