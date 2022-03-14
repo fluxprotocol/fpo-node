@@ -2,7 +2,7 @@ import { ModuleConfig } from "../../../models/Module";
 
 export interface Pair {
     address: string;
-    pair?: string;
+    pair: string;
     provider?: string;
     threshold?: number;
 }
@@ -23,13 +23,13 @@ export interface InternalPairCheckerModuleConfig extends ModuleConfig {
 
 export function parsePairCheckerModuleConfig(config: PairCheckerModuleConfig): InternalPairCheckerModuleConfig {
     if (typeof config.interval === 'undefined' || typeof config.interval !== "number") throw new Error(`[PairCheckerModule] "interval" is required and must be a number`);
-    if (typeof config.provider === 'undefined' || typeof config.provider !== "string") throw new Error(`[PairCheckerModule] "provider" is required and must be a string`);
     if (typeof config.threshold === 'undefined' || typeof config.threshold !== "number") throw new Error(`[PairCheckerModule] "threshold" is required and must be a number`);
+    if (typeof config.provider === 'undefined' || typeof config.provider !== "string") throw new Error(`[PairCheckerModule] "provider" is required and must be a string`);
 
     if (!Array.isArray(config.pairs)) throw new Error(`[PairCheckerModule] "pairs" is required and must be an array`);
-
     config.pairs.forEach((pair: Partial<Pair>) => {
         if (typeof pair.address === 'undefined' || typeof pair.address !== 'string') throw new Error(`[PairCheckerModule] "address" is required for each item in "pairs"`);
+        if (typeof pair.pair === 'undefined' || typeof pair.pair !== 'string') throw new Error(`[PairCheckerModule] "pair" is required for each item in "pairs"`);
     });
 
     return {
