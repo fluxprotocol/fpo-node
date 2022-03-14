@@ -1,17 +1,17 @@
 import FluxPriceFeedAbi from './FluxPriceFeed.json';
 import logger from "../../services/LoggerService";
 import { AppConfig, createSafeAppConfigString } from "../../models/AppConfig";
-import { FeedCheckerModuleConfig, InternalFeedCheckerModuleConfig, parseFeedCheckerModuleConfig } from "./models/FeedCheckerModuleConfig";
+import { PairCheckerModuleConfig, InternalPairCheckerModuleConfig, parsePairCheckerModuleConfig, Pair } from "./models/PairCheckerModuleConfig";
 import { Module } from "../../models/Module";
 import { debouncedInterval } from "../../services/TimerUtils";
 
-export class FeedCheckerModule extends Module {
-    static type = "FeedCheckerModule";
-    internalConfig: InternalFeedCheckerModuleConfig;
+export class PairCheckerModule extends Module {
+    static type = "PairCheckerModule";
+    internalConfig: InternalPairCheckerModuleConfig;
 
-    constructor(moduleConfig: FeedCheckerModuleConfig, appConfig: AppConfig) {
-        super(FeedCheckerModule.type, moduleConfig, appConfig);
-        this.internalConfig = parseFeedCheckerModuleConfig(moduleConfig);
+    constructor(moduleConfig: PairCheckerModuleConfig, appConfig: AppConfig) {
+        super(PairCheckerModule.type, moduleConfig, appConfig);
+        this.internalConfig = parsePairCheckerModuleConfig(moduleConfig);
     }
 
     private prettySeconds(seconds: number): string {
@@ -46,14 +46,14 @@ export class FeedCheckerModule extends Module {
         return latestTimestampResponse.toNumber() * 1000;
     }
 
-    private async fetchNearLatestTimestamp(address: string, provider: string, pair: string) {
+    private async fetchNearLatestTimestamp(pair: Pair) {
         const entry = await this.network.view({
             method: 'get_entry',
-            address,
+            address: pair.address,
             amount: '0',
             params: {
-                provider,
-                pair,
+                provider: pair.provider ?? this.internalConfig.provider,
+                pair: pair.pair,
             },
         });
 
@@ -61,15 +61,19 @@ export class FeedCheckerModule extends Module {
         return Math.floor(entry.last_update / 1000000);
     }
 
-    private checkLatestTimestamp(timestamp: number, address: string) {
-        logger.debug(`[${this.id}] [${address}] Latest Timestamp: ${new Date(timestamp).toISOString().replace('T', ' ').substring(0, 19)}`);
+    private checkLatestTimestamp(timestamp: number, pair: Pair) {
+        // logger.debug(`[${this.id}] [${pair.address}] Latest Timestamp: ${new Date(timestamp).toISOString().replace('T', ' ').substring(0, 19)}`);
 
         const diff = Date.now() - timestamp;
-        if (diff > this.internalConfig.threshold) {
-            // TODO: change logger level to error
-            logger.info(`[${this.id}] [${address}] Contract has not been updated since ${this.prettySeconds(diff / 1000)}`);
+        const logInfo = `[${this.id}] [${pair.address}] [${pair.provider ?? this.internalConfig.provider}] [${pair.pair ?? '?'}]`
+        if (diff > (pair.threshold ?? this.internalConfig.threshold)) {
+            logger.error(`${logInfo} Contract has not been updated since ${this.prettySeconds(diff / 1000)}`,
+                {
+                    config: createSafeAppConfigString(this.appConfig),
+                    fingerprint: `${this.type}-pair-check`,
+                });
         } else {
-            logger.debug(`[${this.id}] [${address}] Contract was updated ${this.prettySeconds(diff / 1000)} ago`);
+            logger.debug(`${logInfo} Contract was updated ${this.prettySeconds(diff / 1000)} ago`);
         }
     }
 
@@ -77,21 +81,19 @@ export class FeedCheckerModule extends Module {
         debouncedInterval(async () => {
             try {
                 // Check all contracts addresses
-                logger.info(`[${this.id}] Checking feed addresses for ${this.network.type} network...`);
-                const currentTimestamp = Date.now();
+                logger.info(`[${this.id}] ${this.internalConfig.provider ? "[".concat(this.internalConfig.provider, "] ") : ""}Checking feed addresses...`);
 
                 if (this.network.type === 'evm') {
-                    await Promise.all(this.internalConfig.addresses.map(async (address) => {
-                        const latestTimestamp = await this.fetchEvmLatestTimestamp(address);
+                    await Promise.all(this.internalConfig.pairs.map(async (pair) => {
+                        const latestTimestamp = await this.fetchEvmLatestTimestamp(pair.address);
 
-                        this.checkLatestTimestamp(latestTimestamp, address);
+                        this.checkLatestTimestamp(latestTimestamp, pair);
                     }));
                 } else if (this.network.type === 'near') {
-                    await Promise.all(this.internalConfig.addresses.map(async (address) => {
-                        // TODO: include provider and pairs into configuration
-                        const latestTimestamp = await this.fetchNearLatestTimestamp(address, "opfilabs.testnet", "NEAR/USDT");
+                    await Promise.all(this.internalConfig.pairs.map(async (pair) => {
+                        const latestTimestamp = await this.fetchNearLatestTimestamp(pair);//address, "opfilabs.testnet", "NEAR/USDT");
 
-                        this.checkLatestTimestamp(latestTimestamp, this.internalConfig.addresses[0]);
+                        this.checkLatestTimestamp(latestTimestamp, pair);
                     }));
                 } else {
                     throw new Error(`Network type ${this.network.type} is not supported for feed checking`);
@@ -103,7 +105,6 @@ export class FeedCheckerModule extends Module {
 
                 return false;
             }
-
         }, this.internalConfig.interval);
 
         return true;
