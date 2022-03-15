@@ -31,6 +31,8 @@ export class Database {
 
     public createTable(key: string) {
         if (!this.database) throw new Error('No database started');
+        if (this.tables.has(key)) return;
+
         this.tables.set(key, subleveldown(this.database, key));
     }
 
@@ -53,7 +55,7 @@ export class Database {
 
     async replaceDocument(tableKey: string, id: string, newObj: object) {
         await this.deleteDocument(tableKey, id);
-        this.createDocument(tableKey, id, newObj);
+        await this.createDocument(tableKey, id, newObj);
     }
 
     async findDocumentById<T>(tableKey: string, id: string): Promise<T | null> {

@@ -50,6 +50,28 @@ export function parseUnparsedNetworkConfig(config: Partial<NetworkConfigUnparsed
     };
 }
 
+export interface WatchEventConfig {
+    address: string;
+    topic: string;
+    prefix: string;
+    resync?: boolean;
+    fromBlock?: number | "latest";
+    toBlock?: number | "latest";
+    blockSteps?: number;
+    pollMs?: number;
+    abi?: any;
+}
+
+export interface TxEvent {
+    blockNumber: number;
+    blockHash: string;
+    transactionHash: string;
+    logIndex: number;
+    args: {
+        [key: string]: any;
+    };
+}
+
 export class Network extends EventEmitter {
     static type = "network";
     networkConfig: NetworkConfig;
@@ -70,7 +92,15 @@ export class Network extends EventEmitter {
     async view(txParams: TxCallParams): Promise<any> {
         throw new Error(`${this.id} Not implemented view`);
     }
-    
+
+    async watchEvent(watchConfig: WatchEventConfig, onEvent: (events: TxEvent) => void) {
+        throw new Error(`${this.id} Not implemented watchEvents`);
+    }
+
+    async markEventAsProcessed(config: WatchEventConfig, event: TxEvent) {
+        throw new Error(`${this.id} Not implemented markEventAsProcessed`);
+    }
+
     async getEvents(address: string, abi: any): Promise<any> {
         throw new Error(`${this.id} Not implemented view`);
     }

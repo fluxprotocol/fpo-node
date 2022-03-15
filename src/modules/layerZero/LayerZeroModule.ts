@@ -10,6 +10,7 @@ import { createDataRequestBatch, DataRequestBatch } from "../../models/DataReque
 import { DataRequest, DataRequestResolved } from "../../models/DataRequest";
 import Big from "big.js";
 import { OutcomeType } from "../../models/Outcome";
+import { TxEvent } from "../../models/Network";
 
 export class LayerZeroModule extends Module {
     static type = "LayerZeroModule";
@@ -28,14 +29,15 @@ export class LayerZeroModule extends Module {
         this.internalConfig = parseLayerZeroModuleConfig(moduleConfig);
         const config = {
             reconnect: {
-                auto: true, 
+                auto: true,
                 delay: 1000,
                 maxAttempts: 5,
                 onTimeout: false
             }
         }
-        this.wsProvider = new Web3.providers.WebsocketProvider(this.network.networkConfig.wssRpc!, config);
-        // this.network.getEvents(this.internalConfig.oracleContractAddress, layerZeroOracleAbi.abi,)
+
+        this.wsProvider = new Web3.providers.WebsocketProvider(this.network.networkConfig.wssRpc, config);
+        this.network.getEvents(this.internalConfig.oracleContractAddress, layerZeroOracleAbi.abi)
         this.wsProvider.on('connect', () => logger.info(`[network:${this.network.id}]: (re)connected`))
         this.wsProvider.on('end', (msg: any) => logger.info(`[network:${this.network.id}]: ended ${msg}`))
         this.wsProvider.on('error', (e: any) => logger.info(`[network:${this.network.id}]: error ${e}`))
@@ -103,6 +105,61 @@ export class LayerZeroModule extends Module {
     }
 
     async start(): Promise<boolean> {
+        await this.network.watchEvent({
+            prefix: this.type,
+            address: this.internalConfig.oracleContractAddress,
+            topic: 'NotifiedOracle',
+            abi: layerZeroOracleAbi.abi,
+            fromBlock: 6541184,
+            resync: true,
+        }, async (data: TxEvent) => {
+            if (this.receivedTransactions.has(`${data.transactionHash}_${data.blockHash}`)) {
+                logger.debug(`[${this.id}] WSS double send tx ${data.transactionHash} skipping..`);
+                return;
+            }
+
+            // Extra sleep to give the RPC time to process the block
+            await sleep(2000);
+            const block = await this.network.getBlock(data.blockHash);
+
+            if (!block) {
+                logger.error(`[${this.id}] Could not find block ${data.blockNumber}`);
+                return;
+            }
+
+            const targetNetwork = this.appConfig.networks.find(n => n.networkId === Number(data.args.chainId));
+
+            if (!targetNetwork) {
+                logger.warn(`[${this.id}] Could not find networkId ${data.args.chainId}`);
+                return;
+            }
+
+            // Double check our destination if an oracle address has even been configured
+            const destinationModule = this.getDestinationModule(Number(data.args.chainId));
+
+            if (!destinationModule) {
+                logger.warn(`[${this.id}] Could not find networkId ${data.args.chainId} in "modules" config with type ${LayerZeroModule.type}`);
+            }
+
+            const request: DataRequest = {
+                args: [this.type, data.args.layerZeroContract],
+                confirmationsRequired: new Big(data.args.requiredBlockConfirmations),
+                createdInfo: { block },
+                internalId: `${this.network.id}-${block.number.toString()}-${data.args.chainId}-${data.transactionHash}`,
+                originNetwork: this.network,
+                targetNetwork,
+                extraInfo: {
+                    payloadHash: data.args.payloadHash,
+                },
+            };
+
+            this.receivedTransactions.add(`${data.transactionHash}_${data.blockHash}`);
+            logger.info(`[${this.id}] Added request ${request.internalId}`);
+            this.confirmationsQueue.addBatch(createDataRequestBatch([request]));
+        });
+
+        return true;
+
         const w3Instance = new Web3(this.wsProvider);
         // ABI is valid but types of web3.js is a lil outdated..
         // @ts-ignore
@@ -114,30 +171,30 @@ export class LayerZeroModule extends Module {
                     logger.debug(`[${this.id}] WSS double send tx ${data.transactionHash} skipping..`);
                     return;
                 }
-    
+
                 // Extra sleep to give the RPC time to process the block
                 await sleep(2000);
                 const block =  await this.network.getBlock(data.blockHash);
-    
+
                 if (!block) {
                     logger.error(`[${this.id}] Could not find block ${data.blockNumber}`);
                     return;
                 }
-    
+
                 const targetNetwork = this.appConfig.networks.find(n => n.networkId === Number(data.returnValues.chainId));
-    
+
                 if (!targetNetwork) {
                     logger.warn(`[${this.id}] Could not find networkId ${data.returnValues.chainId}`);
                     return;
                 }
-    
+
                 // Double check our destination if an oracle address has even been configured
                 const destinationModule = this.getDestinationModule(Number(data.returnValues.chainId));
-    
+
                 if (!destinationModule) {
                     logger.warn(`[${this.id}] Could not find networkId ${data.returnValues.chainId} in "modules" config with type ${LayerZeroModule.type}`);
                 }
-    
+
                 const request: DataRequest = {
                     args: [this.type, data.returnValues.layerZeroContract],
                     confirmationsRequired: new Big(data.returnValues.requiredBlockConfirmations),
@@ -149,14 +206,13 @@ export class LayerZeroModule extends Module {
                         payloadHash: data.returnValues.payloadHash,
                     },
                 };
-    
+
                 this.receivedTransactions.add(`${data.transactionHash}_${data.blockHash}`);
                 logger.info(`[${this.id}] Added request ${request.internalId}`);
                 this.confirmationsQueue.addBatch(createDataRequestBatch([request]));
             } catch(error: any) {
                 logger.info("error thrown in start", error);
             }
-            
         });
 
         logger.info(`[${this.id}] Started listening`);
