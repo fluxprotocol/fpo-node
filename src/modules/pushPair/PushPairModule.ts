@@ -1,16 +1,16 @@
-import { FetchJob } from "../../jobs/fetch/FetchJob";
-import { AppConfig, createSafeAppConfigString } from "../../models/AppConfig";
-import { DataRequestResolved } from "../../models/DataRequest";
-import { DataRequestBatch } from "../../models/DataRequestBatch";
-import { Module } from "../../models/Module";
-import { OutcomeType } from "../../models/Outcome";
-import logger from "../../services/LoggerService";
-import { debouncedInterval } from "../../services/TimerUtils";
-import { parsePushPairConfig, PushPairConfig, PushPairInternalConfig } from "./models/PushPairConfig";
-import { PushPairDataRequestBatch, PushPairResolvedDataRequest } from "./models/PushPairDataRequest";
-import { createPairIfNeeded } from "./services/PushPairCreationService";
-import { createBatchFromPairs, createEvmFactoryTransmitTransaction, createResolvePairRequest } from "./services/PushPairRequestService";
 import FluxPriceFeed from './FluxPriceFeed.json';
+import FluxPriceFeedFactory from './FluxPriceFeedFactory.json';
+import logger from "../../services/LoggerService";
+import { AppConfig, createSafeAppConfigString } from "../../models/AppConfig";
+import { FetchJob } from "../../jobs/fetch/FetchJob";
+import { Module } from "../../models/Module";
+import { NearNetwork } from "../../networks/near/NearNetwork";
+import { OutcomeType } from "../../models/Outcome";
+import { PushPairDataRequestBatch, PushPairResolvedDataRequest } from "./models/PushPairDataRequest";
+import { computeFactoryPairId } from './utils';
+import { createBatchFromPairs, createEvmFactoryTransmitTransaction, createResolvePairRequest } from "./services/PushPairRequestService";
+import { createPairIfNeeded } from "./services/PushPairCreationService";
+import { parsePushPairConfig, PushPairConfig, PushPairInternalConfig } from "./models/PushPairConfig";
 
 export class PushPairModule extends Module {
     static type = "PushPairModule";
@@ -25,39 +25,72 @@ export class PushPairModule extends Module {
         this.batch = createBatchFromPairs(this.internalConfig, this.network);
     }
 
-    private async fetchLatestTimestamp() {
-        let latestTimestampResponse;
-        if (this.network.type === 'near') {
-            console.log("Not yet implemented")
-        }
-        else if (this.network.type === 'evm' && this.internalConfig.pairsType === 'single') {
-            latestTimestampResponse = (await this.network.view({
+    private async fetchEvmLastUpdate() {
+        let timeStamp;
+        if (this.internalConfig.pairsType === 'single') {
+            timeStamp = await this.network.view({
                 method: 'latestTimestamp',
                 address: this.internalConfig.contractAddress,
                 amount: '0',
                 params: {},
                 abi: FluxPriceFeed.abi,
-            })).toNumber();
-        }
-        else if (this.internalConfig.pairsType === 'factory') { // EVM check is not required as only 2 network types exist
-            console.log("Not yet implemented")
-        } else {
-            throw new Error(`Failed to fetch timestamp for network ${this.network.type} and pairs type ${this.internalConfig.pairsType}`);
+            });
+        } else { // If not 'single', pairs type is 'factory'
+            // Contract returns [answer, updatedAt, statusCode]
+            timeStamp = (await this.network.view({
+                method: 'valueFor',
+                address: this.internalConfig.contractAddress,
+                amount: '0',
+                params: {
+                    id: computeFactoryPairId(this.internalConfig.pairs[0].pair, this.internalConfig.pairs[0].decimals)
+                },
+                abi: FluxPriceFeedFactory.abi,
+            }))[1];
         }
 
         // Convert contract timestamp to milliseconds
-        return latestTimestampResponse.toNumber() * 1000;
+        return timeStamp.toNumber() * 1000;
+    }
+
+    private async fetchNearLastUpdate(network: NearNetwork) {
+        const entry = await this.network.view({
+            method: 'get_entry',
+            address: this.internalConfig.contractAddress,
+            amount: '0',
+            params: {
+                provider: network.internalConfig?.account.accountId,
+                pair: this.internalConfig.pairs[0].pair,
+            },
+        });
+
+        // Convert contract timestamp to milliseconds
+        return Math.floor(entry.last_update / 1000000);
+    }
+
+    private async fetchLastUpdate() {
+        let lastUpdate;
+        if (this.network.type === 'near') {
+            lastUpdate = await this.fetchNearLastUpdate(this.network);
+        }
+        else if (this.network.type === 'evm') {
+            lastUpdate = await this.fetchEvmLastUpdate();
+        }
+        else {
+            throw new Error(`Failed to fetch last update for network ${this.network.type} and pairs type ${this.internalConfig.pairsType}`);
+        }
+
+        return lastUpdate;
     }
 
     private async processPairs() {
         try {
             // Fetch elapsed time (in milliseconds) since last pair(s) update
-            const timeSinceUpdate = Date.now() - await this.fetchLatestTimestamp();
+            const timeSinceUpdate = Date.now() - await this.fetchLastUpdate();
 
             let remainingInterval;
             if (timeSinceUpdate < this.internalConfig.interval) {
                 remainingInterval = this.internalConfig.interval - timeSinceUpdate;
-                logger.debug(`[${this.id}] Target update interval not yet reached. Delaying update ${Math.floor(remainingInterval / 1000)}s`);
+                logger.debug(`[${this.id}] Target update interval not yet reached. Delaying update ${Math.floor(remainingInterval / 1000)}s ...`);
 
                 setTimeout(this.processPairs.bind(this), remainingInterval);
                 return;
@@ -105,13 +138,12 @@ export class PushPairModule extends Module {
                 targetAddress: this.internalConfig.contractAddress,
             });
 
-            logger.debug(`[${this.id}] Next update scheduled in ${Math.floor(remainingInterval / 1000)}s`);
+            logger.debug(`[${this.id}] Next update in ${Math.floor(remainingInterval / 1000)}s`);
             setTimeout(this.processPairs.bind(this), remainingInterval);
         } catch (error) {
             logger.error(`[${this.id}] ${error}`, {
                 config: createSafeAppConfigString(this.appConfig),
             });
-
             setTimeout(this.processPairs.bind(this), this.internalConfig.interval);
         }
     }
@@ -119,16 +151,14 @@ export class PushPairModule extends Module {
     async start(): Promise<boolean> {
         try {
             logger.info(`[${this.id}] Creating pairs if needed..`);
-
             await Promise.all(this.internalConfig.pairs.map(async (pair) => {
                 return createPairIfNeeded(pair, this.internalConfig, this.network);
             }));
-
             logger.info(`[${this.id}] Done creating pairs`);
 
             logger.info(`[${this.id}] Pre-submitting pairs with latest info`);
             await this.processPairs();
-            logger.info(`[${this.id}] ======= Pre-submitting done. Will be on a ${this.internalConfig.interval}ms interval`);
+            logger.info(`[${this.id}] Pre-submitting done. Will be on a ${this.internalConfig.interval}ms interval`);
 
             return true;
         } catch (error) {
