@@ -10,6 +10,7 @@ import { parsePushPairConfig, PushPairConfig, PushPairInternalConfig } from "./m
 import { PushPairDataRequestBatch, PushPairResolvedDataRequest } from "./models/PushPairDataRequest";
 import { createPairIfNeeded } from "./services/PushPairCreationService";
 import { createBatchFromPairs, createEvmFactoryTransmitTransaction, createResolvePairRequest } from "./services/PushPairRequestService";
+import FluxPriceFeed from './FluxPriceFeed.json';
 
 export class PushPairModule extends Module {
     static type = "PushPairModule";
@@ -24,8 +25,46 @@ export class PushPairModule extends Module {
         this.batch = createBatchFromPairs(this.internalConfig, this.network);
     }
 
+    private async fetchLatestTimestamp() {
+        let latestTimestampResponse;
+        if (this.network.type === 'near') {
+            console.log("Not yet implemented")
+        }
+        else if (this.network.type === 'evm' && this.internalConfig.pairsType === 'single') {
+            latestTimestampResponse = (await this.network.view({
+                method: 'latestTimestamp',
+                address: this.internalConfig.contractAddress,
+                amount: '0',
+                params: {},
+                abi: FluxPriceFeed.abi,
+            })).toNumber();
+        }
+        else if (this.internalConfig.pairsType === 'factory') { // EVM check is not required as only 2 network types exist
+            console.log("Not yet implemented")
+        } else {
+            throw new Error(`Failed to fetch timestamp for network ${this.network.type} and pairs type ${this.internalConfig.pairsType}`);
+        }
+
+        // Convert contract timestamp to milliseconds
+        return latestTimestampResponse.toNumber() * 1000;
+    }
+
     private async processPairs() {
         try {
+            // Fetch elapsed time (in milliseconds) since last pair(s) update
+            const timeSinceUpdate = Date.now() - await this.fetchLatestTimestamp();
+
+            let remainingInterval;
+            if (timeSinceUpdate < this.internalConfig.interval) {
+                remainingInterval = this.internalConfig.interval - timeSinceUpdate;
+                logger.debug(`[${this.id}] Target update interval not yet reached. Delaying update ${Math.floor(remainingInterval / 1000)}s`);
+
+                setTimeout(this.processPairs.bind(this), remainingInterval);
+                return;
+            } else {
+                remainingInterval = this.internalConfig.interval;
+            }
+
             logger.info(`[${this.id}] Processing job`);
             const job = this.appConfig.jobs.find(job => job.type === FetchJob.type);
             if (!job) throw new Error(`No job found with id ${FetchJob.type}`);
@@ -50,6 +89,8 @@ export class PushPairModule extends Module {
                 logger.warn(`[${this.id}] No requests where left to submit on-chain`, {
                     config: createSafeAppConfigString(this.appConfig),
                 });
+
+                setTimeout(this.processPairs.bind(this), remainingInterval);
                 return;
             }
 
@@ -63,10 +104,15 @@ export class PushPairModule extends Module {
                 requests,
                 targetAddress: this.internalConfig.contractAddress,
             });
+
+            logger.debug(`[${this.id}] Next update scheduled in ${Math.floor(remainingInterval / 1000)}s`);
+            setTimeout(this.processPairs.bind(this), remainingInterval);
         } catch (error) {
             logger.error(`[${this.id}] ${error}`, {
                 config: createSafeAppConfigString(this.appConfig),
             });
+
+            setTimeout(this.processPairs.bind(this), this.internalConfig.interval);
         }
     }
 
@@ -79,11 +125,11 @@ export class PushPairModule extends Module {
             }));
 
             logger.info(`[${this.id}] Done creating pairs`);
+
             logger.info(`[${this.id}] Pre-submitting pairs with latest info`);
             await this.processPairs();
-            logger.info(`[${this.id}] Pre-submitting done. Will be on a ${this.internalConfig.interval}ms interval`);
+            logger.info(`[${this.id}] ======= Pre-submitting done. Will be on a ${this.internalConfig.interval}ms interval`);
 
-            debouncedInterval(this.processPairs.bind(this), this.internalConfig.interval);
             return true;
         } catch (error) {
             logger.error(`[${this.id}] ${error}`, {
