@@ -52,7 +52,7 @@ export default class EvmNetwork extends Network {
         // console.log('jep', events);
     }
 
-    async markEventAsFinished(config: WatchEventConfig, event: TxEvent) {
+    async markEventAsProcessed(config: WatchEventConfig, event: TxEvent) {
         const eventsTableName = `${this.dbPrefix}_${config.prefix}_event_${config.address}_${config.topic}`;
         let currentStoredEvents = await database.findDocumentById<StoredEvents>(eventsTableName, event.blockHash);
 
@@ -149,7 +149,7 @@ export default class EvmNetwork extends Network {
                     events: [],
                 };
 
-                logger.debug(`[${this.type}] Storing wavepoint for block ${endBlock.number.toString()}`);
+                logger.debug(`[${this.id}] Storing wavepoint for block ${endBlock.number.toString()}`);
                 await database.createOrUpdateDocument(eventsTableName, endBlock.hash, storedEvents);
 
             }
@@ -214,7 +214,7 @@ export default class EvmNetwork extends Network {
             const latestBlock = await this.getLatestBlock();
             if (!latestBlock) return;
 
-            startingBlock = toBlock;
+            startingBlock = toBlock - 10;
             toBlock = clamp(latestBlock.number.toNumber(), toBlock, toBlock + blockSteps);
         }, config.pollMs ?? 10_000);
     }
@@ -250,6 +250,10 @@ export default class EvmNetwork extends Network {
     async sendRequest(request: DataRequestResolved, retries: number = 0): Promise<boolean> {
         if (retries < MAX_TX_TRANSACTIONS) {
             try {
+                if (retries !== 0) {
+                    logger.info(`[${this.id}] Retrying transaction ${request.internalId} with ${retries} retries`);
+                }
+
                 const contract = new Contract(request.txCallParams.address, request.txCallParams.abi, this.wallet);
 
                 if (!contract[request.txCallParams.method]) {
@@ -264,13 +268,16 @@ export default class EvmNetwork extends Network {
                 return true;
             } catch(error: any) {
                 this.nextRpc();
-                logger.error(`[${this.id}-onQueueBatch] ${error}`, { config: this.networkConfig });
-                logger.info(`[${this.id}-onQueueBatch] transaction failed retrying in 1s with next RPC: ${this.getRpc()}...`);
+                logger.error(`[${this.id}-sendRequest] ${error}`, { config: this.networkConfig });
+                logger.info(`[${this.id}-sendRequest] transaction ${request.internalId} failed retrying in 1s with next RPC: ${this.getRpc()}...`);
                 await sleep(FAILED_TX_RETRY_SLEEP_MS);
-                return await this.sendRequest(request, retries++);
+                logger.debug(`[${this.id}-sendRequest] Sleep over, retrying now`);
+                const retryCounter = retries + 1;
+                const result = await this.sendRequest(request, retryCounter);
+                return result;
             }
         } else {
-            logger.error(`[${this.id}-onQueueBatch] retried more than ${MAX_TX_TRANSACTIONS} times, dropping request`);
+            logger.error(`[${this.id}-sendRequest] retried more than ${MAX_TX_TRANSACTIONS} times, dropping request`);
             return false;
         }
     }
