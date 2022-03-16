@@ -1,15 +1,12 @@
-import FluxPriceFeed from './FluxPriceFeed.json';
-import FluxPriceFeedFactory from './FluxPriceFeedFactory.json';
 import logger from "../../services/LoggerService";
 import { AppConfig, createSafeAppConfigString } from "../../models/AppConfig";
 import { FetchJob } from "../../jobs/fetch/FetchJob";
 import { Module } from "../../models/Module";
-import { NearNetwork } from "../../networks/near/NearNetwork";
 import { OutcomeType } from "../../models/Outcome";
 import { PushPairDataRequestBatch, PushPairResolvedDataRequest } from "./models/PushPairDataRequest";
-import { computeFactoryPairId } from './utils';
 import { createBatchFromPairs, createEvmFactoryTransmitTransaction, createResolvePairRequest } from "./services/PushPairRequestService";
 import { createPairIfNeeded } from "./services/PushPairCreationService";
+import { fetchEvmLastUpdate, fetchNearLastUpdate } from './services/FetchLastUpdateService';
 import { parsePushPairConfig, PushPairConfig, PushPairInternalConfig } from "./models/PushPairConfig";
 
 export class PushPairModule extends Module {
@@ -25,55 +22,13 @@ export class PushPairModule extends Module {
         this.batch = createBatchFromPairs(this.internalConfig, this.network);
     }
 
-    private async fetchEvmLastUpdate() {
-        let timeStamp;
-        if (this.internalConfig.pairsType === 'single') {
-            timeStamp = await this.network.view({
-                method: 'latestTimestamp',
-                address: this.internalConfig.contractAddress,
-                amount: '0',
-                params: {},
-                abi: FluxPriceFeed.abi,
-            });
-        } else { // If not 'single', pairs type is 'factory'
-            // Contract returns [answer, updatedAt, statusCode]
-            timeStamp = (await this.network.view({
-                method: 'valueFor',
-                address: this.internalConfig.contractAddress,
-                amount: '0',
-                params: {
-                    id: computeFactoryPairId(this.internalConfig.pairs[0].pair, this.internalConfig.pairs[0].decimals)
-                },
-                abi: FluxPriceFeedFactory.abi,
-            }))[1];
-        }
-
-        // Convert contract timestamp to milliseconds
-        return timeStamp.toNumber() * 1000;
-    }
-
-    private async fetchNearLastUpdate(network: NearNetwork) {
-        const entry = await this.network.view({
-            method: 'get_entry',
-            address: this.internalConfig.contractAddress,
-            amount: '0',
-            params: {
-                provider: network.internalConfig?.account.accountId,
-                pair: this.internalConfig.pairs[0].pair,
-            },
-        });
-
-        // Convert contract timestamp to milliseconds
-        return Math.floor(entry.last_update / 1000000);
-    }
-
     private async fetchLastUpdate() {
         let lastUpdate;
         if (this.network.type === 'near') {
-            lastUpdate = await this.fetchNearLastUpdate(this.network);
+            lastUpdate = await fetchNearLastUpdate(this.internalConfig, this.network);
         }
         else if (this.network.type === 'evm') {
-            lastUpdate = await this.fetchEvmLastUpdate();
+            lastUpdate = await fetchEvmLastUpdate(this.internalConfig, this.network);
         }
         else {
             throw new Error(`Failed to fetch last update for network ${this.network.type} and pairs type ${this.internalConfig.pairsType}`);

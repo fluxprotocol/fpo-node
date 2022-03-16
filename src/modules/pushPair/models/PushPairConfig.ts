@@ -1,5 +1,5 @@
 import { ModuleConfig } from "../../../models/Module";
-import { convertOldSourcePath } from "../services/convertOldSourcePath";
+import { convertOldSourcePath } from "../services/utils";
 
 export interface Source {
     source_path: string;
