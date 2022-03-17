@@ -1,10 +1,16 @@
 import Libp2p, { Connection, create, CreateOptions, Libp2pOptions, MuxedStream } from "libp2p";
-import TCP from 'libp2p-tcp';
-const Mplex = require('libp2p-mplex'); // no ts support yet :/
-import { NOISE } from '@chainsafe/libp2p-noise';
+import TCP from "libp2p-tcp";
+const Mplex = require("libp2p-mplex"); // no ts support yet :/
+import { NOISE } from "@chainsafe/libp2p-noise";
 import { Multiaddr } from "multiaddr";
-import { pipe } from 'it-pipe';
-import { fromString } from 'uint8arrays/from-string';
+import PeerId from "peer-id";
+import BufferList from "bl/BufferList";
+
+async function* createAsyncIterable(syncIterable: Uint8Array[]) {
+	for (const elem of syncIterable) {
+		yield elem;
+	}
+}
 
 export class Communicator {
 	_connections: Connection[] = [];
@@ -37,7 +43,7 @@ export class Communicator {
 		this._node = await create(this._options);
 	}
 
-	async start(): Promise<[Multiaddr, string]> {
+	async start(): Promise<[Multiaddr, PeerId]> {
 		if (this._node === undefined) {
 			throw new Error('Node not initialized');
 		}
@@ -50,7 +56,7 @@ export class Communicator {
 
 		return [
 			this._node.multiaddrs[0],
-			this._node.peerId.toB58String(),
+			this._node.peerId,
 		];
 	}
 
@@ -81,38 +87,24 @@ export class Communicator {
 		this._connections.push(await this._node?.dial(ma));
 	}
 
-	handle_incoming(): void {
+	handle_incoming(callback: (source: AsyncIterable<Uint8Array | BufferList>) => Promise<void>): void {
 		if (this._node === undefined) {
 			throw new Error('Node not initialized');
 		}
 
 		this._node.handle(this._protocol, async ({ stream }) => {
-			pipe(
-				// read from connection stream
-				stream,
-				// handle incoming message from stream
-				async (stream: MuxedStream) => {
-					for await (const msg of stream) {
-						console.log('r:', msg.toString());
-					}
-				}
-			)
+			await callback(stream.source);
 		});
 	}
 
-	async send(message: string): Promise<void> {
+	async send(data: Uint8Array[]): Promise<void> {
 		if (this._node === undefined) {
 			throw new Error('Node not initialized');
 		}
 
 		for (const connection of this._connections) {
 			const { stream } = await connection.newStream(this._protocol);
-			pipe(
-				// message to send
-				[fromString(message)],
-				// write to connection stream
-				stream.sink,
-			)
+			await stream.sink(createAsyncIterable(data));
 		}
 	}
 }
