@@ -54,7 +54,10 @@ export default class EvmNetwork extends Network {
 
     async markEventAsProcessed(config: WatchEventConfig, event: TxEvent) {
         const eventsTableName = `${this.dbPrefix}_${config.prefix}_event_${config.address}_${config.topic}`;
+        console.log('[] eventsTableName -> ', eventsTableName);
         let currentStoredEvents = await database.findDocumentById<StoredEvents>(eventsTableName, event.blockHash);
+
+        console.log('[markEventAsProcessed] event -> ', event, currentStoredEvents);
 
         if (!currentStoredEvents) {
             logger.warn(`[${this.id}] Tried to delete non existing event`, {
@@ -81,8 +84,8 @@ export default class EvmNetwork extends Network {
         database.createTable(eventsTableName);
         const blockSteps = config.blockSteps ?? 100;
 
-        const provider = new JsonRpcProvider(this.getRpc());
-        const contract = new Contract(config.address, config.abi, provider);
+        let provider = new JsonRpcProvider(this.getRpc());
+        let contract = new Contract(config.address, config.abi, provider);
         const latestBlock = await this.getLatestBlock();
         if (!latestBlock) throw new Error('Could not fetch latest block');
 
@@ -136,6 +139,11 @@ export default class EvmNetwork extends Network {
 
         debouncedInterval(async () => {
             logger.debug(`[${this.id}] Looking for topic ${config.topic} with block range ${startingBlock}-${toBlock}`);
+
+            // Setting the contract again in case of an RPC switch
+            provider = new JsonRpcProvider(this.getRpc());
+            contract = new Contract(config.address, config.abi, provider);
+
             const events = await contract.queryFilter(eventFilter, startingBlock, toBlock);
 
             // We want to make sure we atleast have a pointer so we don't keep fetching the same data with a restart
@@ -236,9 +244,7 @@ export default class EvmNetwork extends Network {
                     continue;
                 }
 
-                if (!await this.sendRequest(request)) {
-                    continue;
-                }
+                await this.sendRequest(request);
             }
         } catch (error) {
             logger.error(`[${this.id}-onQueueBatch] ${error}`, {
@@ -264,7 +270,6 @@ export default class EvmNetwork extends Network {
                 const args = Object.values(request.txCallParams.params);
 
                 await contract[request.txCallParams.method](...args);
-                // database.replaceLastBlock(request.createdInfo.block.number);
                 return true;
             } catch(error: any) {
                 this.nextRpc();
@@ -281,24 +286,6 @@ export default class EvmNetwork extends Network {
             return false;
         }
     }
-
-    // async getLogs(txParams: TxCallParams) {
-    //     try {
-    //         const provider = new JsonRpcProvider(this.networkConfig.rpc);
-    //         const toBlock = await provider.getBlockNumber();
-    //         const fromBlock = toBlock - 100;
-    //         const filter = {
-    //             address: txParams.address,
-    //             fromBlock,
-    //             toBlock,
-    //         }
-
-    //     } catch (error) {
-    //         logger.error(`[${this.id}-eth_getLogs] ${error}`, {
-    //             config: this.networkConfig,
-    //         });
-    //     }
-    // }
 
     async getLatestBlock(): Promise<Block | undefined> {
         try {
