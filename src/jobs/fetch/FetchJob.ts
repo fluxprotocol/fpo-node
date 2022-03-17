@@ -1,10 +1,12 @@
-import { execute, InMemoryCache } from '@fluxprotocol/oracle-vm';
-import { createSafeAppConfigString } from '../../models/AppConfig';
+import loadBasicFetchBinary from "./loadBinary";
+import logger from "../../services/LoggerService";
 import { DataRequest } from "../../models/DataRequest";
+import { ExecuteResult } from '@fluxprotocol/oracle-vm/dist/models/ExecuteResult';
 import { Job } from "../../models/Job";
 import { Outcome, OutcomeType } from "../../models/Outcome";
-import logger from "../../services/LoggerService";
-import loadBasicFetchBinary from "./loadBinary";
+import { createSafeAppConfigString } from '../../models/AppConfig';
+import { execute, InMemoryCache } from '@fluxprotocol/oracle-vm';
+import { executeFetch } from './executeFetch';
 
 export class FetchJob extends Job {
     static type = 'FetchJob';
@@ -25,14 +27,19 @@ export class FetchJob extends Job {
     async executeRequest(request: DataRequest): Promise<Outcome> {
         try {
             const binary = await loadBasicFetchBinary();
-            const executeResult = await execute({
+            const params = {
                 args: request.args,
                 binary,
                 env: {},
                 gasLimit: (300_000_000_000_000).toString(),
                 randomSeed: '0x0001',
                 timestamp: 1,
-            }, this.vmCache);
+            };
+            const executeResult = await execute(params, this.vmCache);
+            console.log("===== VM output ===== \n", executeResult);
+
+            const executeResult2: ExecuteResult = await executeFetch(params);
+            console.log("===== JS output ===== \n", executeResult2);
 
             logger.debug(`[${this.id}-${request.internalId}] exit with ${executeResult.code} \n ${executeResult.logs.join('\n')}`);
 
@@ -105,4 +112,3 @@ export class FetchJob extends Job {
         }
     }
 }
-
