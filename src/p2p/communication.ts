@@ -1,4 +1,4 @@
-import Libp2p, { Connection, create, CreateOptions, Libp2pOptions, MuxedStream } from "libp2p";
+import Libp2p, { Connection, create, CreateOptions, Libp2pOptions } from "libp2p";
 import TCP from "libp2p-tcp";
 const Mplex = require("libp2p-mplex"); // no ts support yet :/
 import { NOISE } from "@chainsafe/libp2p-noise";
@@ -51,6 +51,8 @@ export class Communicator {
 		await this._node.start();
 
 		for (const peer of this._peers) {
+			// TODO: Should build awareness of which connections succeeded and failed here.
+			// This way we can have a notion of retry.
 			await this.connect(peer);
 		}
 
@@ -75,6 +77,7 @@ export class Communicator {
 			throw new Error('Node not initialized');
 		}
 
+		// TODO: Need to try catch here otherwise trying to connect to a node that's down would crash.
 		this._connections.push(await this._node?.dial(ma));
 	}
 
