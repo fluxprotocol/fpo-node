@@ -22,3 +22,6 @@ export const AVAILABLE_NETWORKS = [EvmNetwork, NearNetwork];
 export const AVAILABLE_MODULES = [LayerZeroModule, PushPairModule, BalanceCheckerModule, PairCheckerModule];
 export const AVAILABLE_JOBS = [FetchJob];
 export const NODE_ID = process.env.NODE_ID ?? 'Anonymous';
+
+export const TELEGRAM_BOT_API = process.env.TELEGRAM_BOT_TOKEN ? `https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}` : undefined;
+export const TELEGRAM_BOT_CHAT_ID = process.env.TELEGRAM_BOT_CHAT_ID;
