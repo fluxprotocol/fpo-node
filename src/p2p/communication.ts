@@ -7,9 +7,20 @@ import PeerId from "peer-id";
 import BufferList from "bl/BufferList";
 import { readFileSync, writeFile } from "fs";
 
+import logger from "../services/LoggerService";
+
 async function* createAsyncIterable(syncIterable: Uint8Array[]) {
 	for (const elem of syncIterable) {
 		yield elem;
+	}
+}
+
+async function attempt<R>(comm: Communicator, def: R, attempt: () => Promise<R>): Promise<R> {
+	if (comm._node === undefined) {
+		logger.error('The communication node has not been started.');
+		return def;
+	} else {
+		return attempt();
 	}
 }
 
@@ -53,90 +64,99 @@ export class Communicator {
 	}
 
 	async retry(): Promise<void> {
-		if (this._node === undefined) {
-			throw new Error('Node not initialized');
-		}
-
-		for (const peer of this._retry) {
-			if (await this.connect(peer)) {
-				this._retry.delete(peer);
+		attempt(this, null, async () => {
+			for (const peer of this._retry) {
+				if (await this.connect(peer)) {
+					this._retry.delete(peer);
+				}
 			}
-		}
+		});
 	}
 
-	async start(): Promise<[Multiaddr, PeerId]> {
-		if (this._node === undefined) {
-			throw new Error('Node not initialized');
-		}
+	async start(): Promise<[Multiaddr, PeerId] | void> {
+		attempt(this, null, async () => {
+			// Node will definitely exist.
+			await this._node?.start();
 
-		await this._node.start();
-
-		for (const peer of this._peers) {
-			if (!await this.connect(peer)) {
-				this._retry.add(peer);
+			for (const peer of this._peers) {
+				if (!await this.connect(peer)) {
+					this._retry.add(peer);
+				}
 			}
-		}
 
-		return [
-			this._node.multiaddrs[0],
-			this._node.peerId,
-		];
+			return [
+				this._node?.multiaddrs[0],
+				this._node?.peerId,
+			];
+		});
 	}
 
 	async stop(file: string): Promise<void> {
-		if (this._node === undefined) {
-			throw new Error('Node not initialized');
-		}
-
-		await this._node?.stop();
-		this.save_peers(file);
+		attempt(this, null, async () => {
+			// Node will definitely exist.
+			await this._node?.stop();
+			this.save_peers(file);
+		});
 	}
 
 	async connect(ma: Multiaddr): Promise<boolean> {
-		if (this._node === undefined) {
-			// TODO: log this instead?
-			throw new Error('Node not initialized');
-		}
+		return attempt(this, false, async () => {
+			// Node will definitely exist.
+			try {
+				this._peers.add(ma);
+				const conn = await this._node?.dial(ma);
+				if (conn !== undefined) {
+					this._connections.add(conn);
+					return true;
+				}
 
-		try {
-			this._peers.add(ma);
-			this._connections.add(await this._node?.dial(ma));
-			return true;
-		} catch (error) {
-			// TODO: Should we log this?
-			return false;	
-		}
+				return false;				
+			} catch (error) {
+				logger.error(`Node failed to connect to ${ma} with error '${error}'.`);
+				return false;
+			}
+		});
+		
 	}
 
-	async connect_from_details(ip: string, address: string, transport: string, port: string, peerID: string): Promise<void> {
-		if (this._node === undefined) {
-			throw new Error('Node not initialized');
-		}
+	async connect_from_details(ip: string, address: string, transport: string, port: string, peerID: string): Promise<boolean> {
+		return attempt(this, false, async () => {
+			const ma = new Multiaddr(`/${ip}/${address}/${transport}/${port}/p2p/${peerID}`);
 
-		const ma = new Multiaddr(`/${ip}/${address}/${transport}/${port}/p2p/${peerID}`);
-		this._peers.add(ma);
-		this._connections.add(await this._node?.dial(ma));
+			// Node will definitely exist.
+			try {
+				this._peers.add(ma);
+
+				const conn = await this._node?.dial(ma);
+				if (conn !== undefined) {
+					this._connections.add(conn);
+					return true;
+				}
+
+				return false;
+			} catch (error) {
+				logger.error(`Node failed to connect to ${ma} with error '${error}'.`);
+				return false;
+			}
+		});
 	}
 
-	handle_incoming(callback: (source: AsyncIterable<Uint8Array | BufferList>) => Promise<void>): void {
-		if (this._node === undefined) {
-			throw new Error('Node not initialized');
-		}
-
-		this._node.handle(this._protocol, async ({ stream }) => {
-			await callback(stream.source);
+	async handle_incoming(callback: (source: AsyncIterable<Uint8Array | BufferList>) => Promise<void>): Promise<void> {
+		await attempt(this, null, async () => {
+			// Node will definitely exist.
+			this._node?.handle(this._protocol, async ({ stream }) => {
+				await callback(stream.source);
+			});
 		});
 	}
 
 	async send(data: Uint8Array[]): Promise<void> {
-		if (this._node === undefined) {
-			throw new Error('Node not initialized');
-		}
-
-		for (const connection of this._connections) {
-			const { stream } = await connection.newStream(this._protocol);
-			await stream.sink(createAsyncIterable(data));
-		}
+		attempt(this, null, async () => {
+			for (const connection of this._connections) {
+				const { stream } = await connection.newStream(this._protocol);
+				await stream.sink(createAsyncIterable(data));
+			}
+		});
 	}
 
 	save_peers(file: string): void {
@@ -148,7 +168,7 @@ export class Communicator {
 
 		writeFile(file, json, (err) => {
 			if (err) {
-				// TODO error logging.
+				logger.error(`Failed to write peers to file '${file}' with error '${err}'.`);
 				return;
 			}
 		});
