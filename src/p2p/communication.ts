@@ -29,7 +29,7 @@ export class Communicator {
 	_options: Libp2pOptions & CreateOptions;
 	_node?: Libp2p;
 	_peers: Set<Multiaddr>;
-	_peers_file?: string;
+	_peers_file: string;
 	_retry: Set<Multiaddr> = new Set();
 	_protocol: string;
 
@@ -50,9 +50,11 @@ export class Communicator {
 		}
 
 		if (peers === undefined) {
+			this._peers_file = 'peers.json';
 			this._peers = new Set();
 		} else {
-			this._peers = this.load_peers(peers);
+			this._peers_file = peers;
+			this._peers = this.load_peers();
 		}
 
 		
@@ -91,11 +93,11 @@ export class Communicator {
 		});
 	}
 
-	async stop(file: string): Promise<void> {
+	async stop(): Promise<void> {
 		attempt(this, null, async () => {
 			// Node will definitely exist.
 			await this._node?.stop();
-			this.save_peers(file);
+			this.save_peers();
 		});
 	}
 
@@ -159,23 +161,23 @@ export class Communicator {
 		});
 	}
 
-	save_peers(file: string): void {
+	save_peers(): void {
 		const peers = {
 			peers: this._peers
 		};
 
 		const json = JSON.stringify(peers, null, 4);
 
-		writeFile(file, json, (err) => {
+		writeFile(this._peers_file, json, (err) => {
 			if (err) {
-				logger.error(`Failed to write peers to file '${file}' with error '${err}'.`);
+				logger.error(`Failed to write peers to file '${this._peers_file}' with error '${err}'.`);
 				return;
 			}
 		});
 	}
 
-	load_peers(file: string): Set<Multiaddr> {
-		const json = readFileSync(file, 'utf-8');
+	load_peers(): Set<Multiaddr> {
+		const json = readFileSync(this._peers_file, 'utf-8');
 		const peers_object = JSON.parse(json);
 		return peers_object.peers;
 	}
