@@ -15,12 +15,12 @@ async function* createAsyncIterable(syncIterable: Uint8Array[]) {
 	}
 }
 
-async function attempt<R>(comm: Communicator, def: R, attempt: () => Promise<R>): Promise<R> {
+async function attempt<R>(comm: Communicator, def: R, attempt: (node: Libp2p) => Promise<R>): Promise<R> {
 	if (comm._node === undefined) {
 		logger.error('The communication node has not been started.');
 		return def;
 	} else {
-		return attempt();
+		return attempt(comm._node);
 	}
 }
 
@@ -57,7 +57,7 @@ export class Communicator {
 			this._peers = this.load_peers();
 		}
 
-		
+
 		this._protocol = protcol;
 	}
 
@@ -76,9 +76,9 @@ export class Communicator {
 	}
 
 	async start(): Promise<[Multiaddr, PeerId] | void> {
-		attempt(this, null, async () => {
+		return attempt(this, undefined, async (node: Libp2p) => {
 			// Node will definitely exist.
-			await this._node?.start();
+			await node.start();
 
 			for (const peer of this._peers) {
 				if (!await this.connect(peer)) {
@@ -87,49 +87,49 @@ export class Communicator {
 			}
 
 			return [
-				this._node?.multiaddrs[0],
-				this._node?.peerId,
+				node.multiaddrs[0],
+				node.peerId,
 			];
-		});
+		})
 	}
 
 	async stop(): Promise<void> {
-		attempt(this, null, async () => {
+		attempt(this, null, async (node: Libp2p) => {
 			// Node will definitely exist.
-			await this._node?.stop();
+			await node.stop();
 			this.save_peers();
 		});
 	}
 
 	async connect(ma: Multiaddr): Promise<boolean> {
-		return attempt(this, false, async () => {
+		return attempt(this, false, async (node: Libp2p) => {
 			// Node will definitely exist.
 			try {
 				this._peers.add(ma);
-				const conn = await this._node?.dial(ma);
+				const conn = await node.dial(ma);
 				if (conn !== undefined) {
 					this._connections.add(conn);
 					return true;
 				}
 
-				return false;				
+				return false;
 			} catch (error) {
 				logger.error(`Node failed to connect to ${ma} with error '${error}'.`);
 				return false;
 			}
 		});
-		
+
 	}
 
 	async connect_from_details(ip: string, address: string, transport: string, port: string, peerID: string): Promise<boolean> {
-		return attempt(this, false, async () => {
+		return attempt(this, false, async (node: Libp2p) => {
 			const ma = new Multiaddr(`/${ip}/${address}/${transport}/${port}/p2p/${peerID}`);
 
 			// Node will definitely exist.
 			try {
 				this._peers.add(ma);
 
-				const conn = await this._node?.dial(ma);
+				const conn = await node.dial(ma);
 				if (conn !== undefined) {
 					this._connections.add(conn);
 					return true;
@@ -144,9 +144,9 @@ export class Communicator {
 	}
 
 	async handle_incoming(callback: (source: AsyncIterable<Uint8Array | BufferList>) => Promise<void>): Promise<void> {
-		await attempt(this, null, async () => {
+		await attempt(this, null, async (node: Libp2p) => {
 			// Node will definitely exist.
-			this._node?.handle(this._protocol, async ({ stream }) => {
+			node.handle(this._protocol, async ({ stream }) => {
 				await callback(stream.source);
 			});
 		});
@@ -179,6 +179,12 @@ export class Communicator {
 	load_peers(): Set<Multiaddr> {
 		const json = readFileSync(this._peers_file, 'utf-8');
 		const peers_object = JSON.parse(json);
-		return peers_object.peers;
+
+		let peers: Set<Multiaddr> = new Set();
+		for (const peer of peers_object.peers) {
+			peers.add(new Multiaddr(peer));
+		}
+
+		return peers;
 	}
 }
