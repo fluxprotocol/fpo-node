@@ -3,7 +3,7 @@ import logger from "../../services/LoggerService";
 import { AppConfig, createSafeAppConfigString } from "../../models/AppConfig";
 import { Module } from "../../models/Module";
 import { PairCheckerModuleConfig, InternalPairCheckerModuleConfig, parsePairCheckerModuleConfig, Pair } from "./models/PairCheckerModuleConfig";
-import { TELEGRAM_BOT_CHAT_ID, TELEGRAM_BOT_API } from '../../config';
+import { TELEGRAM_BOT_CHAT_ID, TELEGRAM_BOT_API, TELEGRAM_VERBOSE } from '../../config';
 import { debouncedInterval } from "../../services/TimerUtils";
 import { prettySeconds, sendTelegramMessage } from './utils';
 
@@ -45,22 +45,22 @@ export class PairCheckerModule extends Module {
     }
 
     private checkLatestTimestamp(timestamp: number, pair: Pair) {
-        const diff = Math.floor((Date.now() - timestamp) / 1000);
+        const diffInMillis = Math.floor((Date.now() - timestamp));
         const logInfo = `[${this.id}] [${pair.provider ?? this.internalConfig.provider}] [${pair.pair}] [${pair.address}]`
-        const recentlyUpdated = diff < (pair.threshold ?? this.internalConfig.threshold);
+        const recentlyUpdated = diffInMillis < (pair.threshold ?? this.internalConfig.threshold);
         if (!recentlyUpdated) {
-            logger.error(`${logInfo} Contract has not been updated since ${prettySeconds(diff)}`,
+            logger.error(`${logInfo} Contract has not been updated since ${prettySeconds(diffInMillis/1000)}`,
                 {
                     config: createSafeAppConfigString(this.appConfig),
                     fingerprint: `${this.type}-${this.internalConfig.provider}-${pair.pair}`,
                 });
         } else {
-            logger.debug(`${logInfo} Contract was updated ${prettySeconds(diff)} ago`);
+            logger.debug(`${logInfo} Contract was updated ${prettySeconds(diffInMillis / 1000)} ago`);
         }
 
         return {
             pair,
-            diff,
+            diff: diffInMillis / 1000,
             updated: recentlyUpdated
         };
     }
@@ -102,22 +102,36 @@ export class PairCheckerModule extends Module {
             reports = reports.sort(function (a, b) { return a.diff - b.diff });
             const notUpdatedReports = reports.filter(report => !report.updated);
 
-            let message;
-            const updates = `[${this.internalConfig.provider}] ${reports.length - notUpdatedReports.length}/${reports.length} pairs updated recently`
+            const allPairsUpdated = notUpdatedReports.length == 0;
+            if (TELEGRAM_VERBOSE || !allPairsUpdated) {
+                // Message summary
+                let message;
+                const updates = `[${this.internalConfig.provider}] ${reports.length - notUpdatedReports.length}/${reports.length} pairs updated recently`
+                if (allPairsUpdated) {
+                    message = `✅ *${updates}* \n\n`;
+                } else if (notUpdatedReports.length != reports.length) {
+                    message = `⚠️ *${updates}* \n\n`;
+                } else {
+                    message = `🆘 *${updates}* \n\n`;
+                }
 
-            if (notUpdatedReports.length == 0) {
-                message = `✅ *${updates}* \n\n`;
-            } else if (notUpdatedReports.length != reports.length) {
-                message = `ℹ️ *${updates}* \n\n`;
-            } else {
-                message = `🆘 *${updates}* \n\n`;
+                // Last update per pair
+                for (var i = 0; i < reports.length; i++) {
+                    message += `\t ${reports[i].updated ? '✓' : '⨯'} [[${reports[i].pair.pair}]] updated ${prettySeconds(reports[i].diff, true)} ago\n`;
+                }
+
+                await sendTelegramMessage(TELEGRAM_BOT_API, TELEGRAM_BOT_CHAT_ID, message, allPairsUpdated);
             }
 
-            for (var i = 0; i < reports.length; i++) {
-                message += `\t ${reports[i].updated ? '✓' : '⨯'} [[${reports[i].pair.pair}]] updated ${prettySeconds(reports[i].diff, true)} ago\n`;
-            }
+            // Contract addresses of not updated pairs
+            if (!allPairsUpdated) {
+                let details = `🔍 *[${this.internalConfig.provider}] Not updated addresses:* \n\n`;
+                for (var i = 0; i < notUpdatedReports.length; i++) {
+                    details += `\t*[${notUpdatedReports[i].pair.pair}]* ${notUpdatedReports[i].pair.address}\n`;
+                }
 
-            await sendTelegramMessage(TELEGRAM_BOT_API, TELEGRAM_BOT_CHAT_ID, message, notUpdatedReports.length == 0);
+                await sendTelegramMessage(TELEGRAM_BOT_API, TELEGRAM_BOT_CHAT_ID, details, allPairsUpdated);
+            }
         }
     }
 
