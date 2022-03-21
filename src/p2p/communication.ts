@@ -5,7 +5,7 @@ import { NOISE } from "@chainsafe/libp2p-noise";
 import { Multiaddr } from "multiaddr";
 import PeerId from "peer-id";
 import BufferList from "bl/BufferList";
-import { readFileSync, writeFile } from "fs";
+import { existsSync, readFileSync, writeFileSync } from "fs";
 
 import logger from "../services/LoggerService";
 
@@ -28,9 +28,9 @@ export class Communicator {
 	_connections: Set<Connection> = new Set();
 	_options: Libp2pOptions & CreateOptions;
 	_node?: Libp2p;
-	_peers: Set<Multiaddr>;
+	_peers: Set<string>;
 	_peers_file: string;
-	_retry: Set<Multiaddr> = new Set();
+	_retry: Set<string> = new Set();
 	_protocol: string;
 
 	constructor(protcol: string, peers?: string, config?: Libp2pOptions & CreateOptions) {
@@ -68,7 +68,7 @@ export class Communicator {
 	async retry(): Promise<void> {
 		attempt(this, null, async () => {
 			for (const peer of this._retry) {
-				if (await this.connect(peer)) {
+				if (await this.connect(new Multiaddr(peer))) {
 					this._retry.delete(peer);
 				}
 			}
@@ -81,7 +81,7 @@ export class Communicator {
 			await node.start();
 
 			for (const peer of this._peers) {
-				if (!await this.connect(peer)) {
+				if (!await this.connect(new Multiaddr(peer))) {
 					this._retry.add(peer);
 				}
 			}
@@ -94,10 +94,22 @@ export class Communicator {
 	}
 
 	async stop(): Promise<void> {
-		attempt(this, null, async (node: Libp2p) => {
+		attempt(this, false, async (node: Libp2p) => {
 			// Node will definitely exist.
-			await node.stop();
-			this.save_peers();
+			try {
+				for (const peer of this._peers) {
+					node.hangUp(peer);
+				}
+
+				this.save_peers();
+
+				await node.stop();
+
+				return true;
+			} catch (error) {
+				logger.error(`Node failed to stop with error '${error}'.`);
+				return false;
+			}
 		});
 	}
 
@@ -105,7 +117,7 @@ export class Communicator {
 		return attempt(this, false, async (node: Libp2p) => {
 			// Node will definitely exist.
 			try {
-				this._peers.add(ma);
+				this._peers.add(ma.toString());
 				const conn = await node.dial(ma);
 				if (conn !== undefined) {
 					this._connections.add(conn);
@@ -123,11 +135,14 @@ export class Communicator {
 
 	async connect_from_details(ip: string, address: string, transport: string, port: string, peerID: string): Promise<boolean> {
 		return attempt(this, false, async (node: Libp2p) => {
+			const mas = `/${ip}/${address}/${transport}/${port}/p2p/${peerID}`;
 			const ma = new Multiaddr(`/${ip}/${address}/${transport}/${port}/p2p/${peerID}`);
 
 			// Node will definitely exist.
 			try {
-				this._peers.add(ma);
+				if (!this._peers.has(mas)) {
+					this._peers.add(mas);
+				}
 
 				const conn = await node.dial(ma);
 				if (conn !== undefined) {
@@ -137,6 +152,7 @@ export class Communicator {
 
 				return false;
 			} catch (error) {
+				this._peers.delete(mas);
 				logger.error(`Node failed to connect to ${ma} with error '${error}'.`);
 				return false;
 			}
@@ -162,27 +178,28 @@ export class Communicator {
 	}
 
 	save_peers(): void {
-		const peers = {
-			peers: this._peers
-		};
+
+		let peers = [];
+		for (const peer of this._peers) {
+			peers.push(peer.toString());
+		}
 
 		const json = JSON.stringify(peers, null, 4);
 
-		writeFile(this._peers_file, json, (err) => {
-			if (err) {
-				logger.error(`Failed to write peers to file '${this._peers_file}' with error '${err}'.`);
-				return;
-			}
-		});
+		writeFileSync(this._peers_file, json);
 	}
 
-	load_peers(): Set<Multiaddr> {
-		const json = readFileSync(this._peers_file, 'utf-8');
-		const peers_object = JSON.parse(json);
+	load_peers(): Set<string> {
+		if (!existsSync(this._peers_file)) {
+			return new Set();
+		}
 
-		let peers: Set<Multiaddr> = new Set();
-		for (const peer of peers_object.peers) {
-			peers.add(new Multiaddr(peer));
+		const json = readFileSync(this._peers_file, 'utf-8');
+		const peers_list: string[] = JSON.parse(json);
+
+		let peers: Set<string> = new Set();
+		for (const peer of peers_list) {
+			peers.add(peer);
 		}
 
 		return peers;
