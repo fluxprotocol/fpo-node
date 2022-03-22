@@ -23,5 +23,7 @@ export const AVAILABLE_MODULES = [LayerZeroModule, PushPairModule, BalanceChecke
 export const AVAILABLE_JOBS = [FetchJob];
 export const NODE_ID = process.env.NODE_ID ?? 'Anonymous';
 
-export const TELEGRAM_BOT_API = process.env.TELEGRAM_BOT_TOKEN ? `https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}` : undefined;
-export const TELEGRAM_BOT_CHAT_ID = process.env.TELEGRAM_BOT_CHAT_ID;
+export const ENABLE_TELEGRAM_NOTIFICATIONS = process.env.ENABLE_TELEGRAM_NOTIFICATIONS === 'true';
+export const TELEGRAM_BOT_API = process.env.TELEGRAM_BOT_TOKEN ? `https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}` : "";
+export const TELEGRAM_ALERTS_CHAT_ID = process.env.TELEGRAM_ALERTS_CHAT_ID;
+export const TELEGRAM_STATS_CHAT_ID = process.env.TELEGRAM_STATS_CHAT_ID;

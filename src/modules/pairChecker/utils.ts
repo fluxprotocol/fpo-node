@@ -1,4 +1,4 @@
-import { TELEGRAM_BOT_CHAT_ID, TELEGRAM_BOT_API } from "../../config";
+import { TELEGRAM_ALERTS_CHAT_ID, TELEGRAM_BOT_API } from "../../config";
 
 export function prettySeconds(seconds: number, short?: boolean): string {
     // Seconds
@@ -17,19 +17,4 @@ export function prettySeconds(seconds: number, short?: boolean): string {
     else {
         return Math.floor(seconds / 86400) + `${short ? "d" : " days"}`;
     }
-}
-
-export async function sendTelegramMessage(url: string, chatId: string, text: string, disableNotification?: boolean) {
-    return await fetch(`${url}/sendMessage`, {
-        method: "POST",
-        body: JSON.stringify({
-            chat_id: chatId,
-            text,
-            parse_mode: "Markdown",
-            disable_notification: disableNotification ?? false
-        }),
-        headers: {
-            'Content-Type': 'application/json'
-        },
-    });
 }

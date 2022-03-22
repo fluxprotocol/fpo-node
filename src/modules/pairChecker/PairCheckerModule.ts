@@ -1,19 +1,22 @@
 import FluxPriceFeedAbi from './FluxPriceFeed.json';
 import logger from "../../services/LoggerService";
 import { AppConfig, createSafeAppConfigString } from "../../models/AppConfig";
+import { ENABLE_TELEGRAM_NOTIFICATIONS, TELEGRAM_ALERTS_CHAT_ID, TELEGRAM_BOT_API, TELEGRAM_STATS_CHAT_ID } from '../../config';
 import { Module } from "../../models/Module";
 import { PairCheckerModuleConfig, InternalPairCheckerModuleConfig, parsePairCheckerModuleConfig, Pair } from "./models/PairCheckerModuleConfig";
-import { TELEGRAM_BOT_CHAT_ID, TELEGRAM_BOT_API, TELEGRAM_VERBOSE } from '../../config';
 import { debouncedInterval } from "../../services/TimerUtils";
-import { prettySeconds, sendTelegramMessage } from './utils';
+import { notifyTelegram, sendTelegramMessage } from './services/TelegramNotificationService';
+import { prettySeconds } from './utils';
 
 export class PairCheckerModule extends Module {
     static type = "PairCheckerModule";
     internalConfig: InternalPairCheckerModuleConfig;
+    lastCheckAnyFailed: boolean;
 
     constructor(moduleConfig: PairCheckerModuleConfig, appConfig: AppConfig) {
         super(PairCheckerModule.type, moduleConfig, appConfig);
         this.internalConfig = parsePairCheckerModuleConfig(moduleConfig);
+        this.lastCheckAnyFailed = false;
     }
 
     private async fetchEvmLatestTimestamp(address: string) {
@@ -49,7 +52,8 @@ export class PairCheckerModule extends Module {
         const logInfo = `[${this.id}] [${pair.provider ?? this.internalConfig.provider}] [${pair.pair}] [${pair.address}]`
         const recentlyUpdated = diffInMillis < (pair.threshold ?? this.internalConfig.threshold);
         if (!recentlyUpdated) {
-            logger.error(`${logInfo} Contract has not been updated since ${prettySeconds(diffInMillis/1000)}`,
+            this.lastCheckAnyFailed = true;
+            logger.error(`${logInfo} Contract has not been updated since ${prettySeconds(diffInMillis / 1000)}`,
                 {
                     config: createSafeAppConfigString(this.appConfig),
                     fingerprint: `${this.type}-${this.internalConfig.provider}-${pair.pair}`,
@@ -59,7 +63,11 @@ export class PairCheckerModule extends Module {
         }
 
         return {
-            pair,
+            pair: {
+                provider: this.internalConfig.provider,
+                threshold: this.internalConfig.threshold,
+                ...pair,
+            },
             diff: diffInMillis / 1000,
             updated: recentlyUpdated
         };
@@ -71,6 +79,9 @@ export class PairCheckerModule extends Module {
             diff: number;
             updated: boolean;
         }[] = [];
+        const forceNotification = this.lastCheckAnyFailed;
+        this.lastCheckAnyFailed = false;
+        // TODO: Move try/catch block?
         try {
             // Check all contracts addresses
             logger.info(`[${this.id}] ${this.internalConfig.provider ? "[" + this.internalConfig.provider + "] " : ""}Checking ${this.internalConfig.pairs.length} pair addresses...`);
@@ -98,44 +109,32 @@ export class PairCheckerModule extends Module {
         }
 
         // Send messages to telegram chat (if environment variables are set)
-        if (reports.length > 0 && TELEGRAM_BOT_API && TELEGRAM_BOT_CHAT_ID) {
-            reports = reports.sort(function (a, b) { return a.diff - b.diff });
-            const notUpdatedReports = reports.filter(report => !report.updated);
-
-            const allPairsUpdated = notUpdatedReports.length == 0;
-            if (TELEGRAM_VERBOSE || !allPairsUpdated) {
-                // Message summary
-                let message;
-                const updates = `[${this.internalConfig.provider}] ${reports.length - notUpdatedReports.length}/${reports.length} pairs updated recently`
-                if (allPairsUpdated) {
-                    message = `✅ *${updates}* \n\n`;
-                } else if (notUpdatedReports.length != reports.length) {
-                    message = `⚠️ *${updates}* \n\n`;
-                } else {
-                    message = `🆘 *${updates}* \n\n`;
-                }
-
-                // Last update per pair
-                for (var i = 0; i < reports.length; i++) {
-                    message += `\t ${reports[i].updated ? '✓' : '⨯'} [[${reports[i].pair.pair}]] updated ${prettySeconds(reports[i].diff, true)} ago\n`;
-                }
-
-                await sendTelegramMessage(TELEGRAM_BOT_API, TELEGRAM_BOT_CHAT_ID, message, allPairsUpdated);
-            }
-
-            // Contract addresses of not updated pairs
-            if (!allPairsUpdated) {
-                let details = `🔍 *[${this.internalConfig.provider}] Not updated addresses:* \n\n`;
-                for (var i = 0; i < notUpdatedReports.length; i++) {
-                    details += `\t*[${notUpdatedReports[i].pair.pair}]* ${notUpdatedReports[i].pair.address}\n`;
-                }
-
-                await sendTelegramMessage(TELEGRAM_BOT_API, TELEGRAM_BOT_CHAT_ID, details, allPairsUpdated);
-            }
+        if (reports.length > 0 && ENABLE_TELEGRAM_NOTIFICATIONS) {
+            await notifyTelegram(reports, this.internalConfig.provider, forceNotification);
         }
     }
 
     async start(): Promise<boolean> {
+        // Check environment variables
+        if (ENABLE_TELEGRAM_NOTIFICATIONS) {
+            if (!TELEGRAM_BOT_API) {
+                // TODO: log error
+                logger.error(`[${this.id}] Could not start \`PairCheckerModule\`: \`TELEGRAM_BOT_TOKEN\` is undefined`, {
+                    config: createSafeAppConfigString(this.appConfig),
+                });
+
+                return false;
+            } else if (!TELEGRAM_ALERTS_CHAT_ID && !TELEGRAM_STATS_CHAT_ID) {
+                // TODO: log error
+                logger.error(`[${this.id}] Could not start \`PairCheckerModule\`: \`TELEGRAM_ALERTS_CHAT_ID\` and \`TELEGRAM_STATS_CHAT_ID\` are undefined`, {
+                    config: createSafeAppConfigString(this.appConfig),
+                });
+
+                return false;
+            }
+
+        }
+
         await this.checkAllPairs();
 
         debouncedInterval(async () => {
