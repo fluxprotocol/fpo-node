@@ -24,7 +24,7 @@ async function attempt<R>(comm: Communicator, def: R, attempt: (node: Libp2p) =>
 	}
 }
 
-export class Communicator {
+export default class Communicator {
 	_connections: Set<Connection> = new Set();
 	_options: Libp2pOptions & CreateOptions;
 	_node?: Libp2p;
@@ -33,7 +33,7 @@ export class Communicator {
 	_retry: Set<string> = new Set();
 	_protocol: string;
 
-	constructor(protcol: string, peers?: string, config?: Libp2pOptions & CreateOptions) {
+	constructor(protocol: string, config?: Libp2pOptions & CreateOptions, peers?: string) {
 		if (config === undefined) {
 			this._options = {
 				addresses: {
@@ -58,7 +58,7 @@ export class Communicator {
 		}
 
 
-		this._protocol = protcol;
+		this._protocol = protocol;
 	}
 
 	async init(): Promise<void> {
@@ -180,8 +180,12 @@ export class Communicator {
 		}
 
 		const json = JSON.stringify(peers, null, 4);
-
-		writeFileSync(this._peers_file, json);
+		try {
+			writeFileSync(this._peers_file, json);
+		} catch (error) {
+			logger.error(`Node failed to save peers with error '${error}'.`);
+		}
+		
 	}
 
 	load_peers(): Set<string> {
@@ -189,14 +193,20 @@ export class Communicator {
 			return new Set();
 		}
 
-		const json = readFileSync(this._peers_file, 'utf-8');
-		const peers_list: string[] = JSON.parse(json);
+		try {
+			const json = readFileSync(this._peers_file, 'utf-8');
+			const peers_list: string[] = JSON.parse(json);
 
-		let peers: Set<string> = new Set();
-		for (const peer of peers_list) {
-			peers.add(peer);
+			let peers: Set<string> = new Set();
+			for (const peer of peers_list) {
+				peers.add(peer);
+			}
+
+			return peers;
+		} catch (error) {
+			logger.error(`Node failed to load peers with error '${error}'.`);
+			return new Set();
 		}
 
-		return peers;
 	}
 }
