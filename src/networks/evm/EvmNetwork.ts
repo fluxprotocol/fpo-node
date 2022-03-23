@@ -34,8 +34,8 @@ export default class EvmNetwork extends Network {
     }
 
     async onQueueBatch(batch: DataRequestBatchResolved): Promise<void> {
-        try {
-            for await (const request of batch.requests) {
+        for await (const request of batch.requests) {
+            try {
                 if (!request.txCallParams.abi) {
                     logger.warn(`[${this.id}] Tx ${request.internalId} was not processed due to missing ABI`);
                     continue;
@@ -50,11 +50,11 @@ export default class EvmNetwork extends Network {
 
                 const args = Object.values(request.txCallParams.params);
                 await contract[request.txCallParams.method](...args);
+            } catch (error) {
+                logger.error(`[${this.id}-onQueueBatch] ${error}`, {
+                    config: this.networkConfig,
+                });
             }
-        } catch (error) {
-            logger.error(`[${this.id}-onQueueBatch] ${error}`, {
-                config: this.networkConfig,
-            });
         }
     }
 
