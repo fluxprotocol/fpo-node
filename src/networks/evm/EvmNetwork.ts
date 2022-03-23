@@ -51,8 +51,9 @@ export default class EvmNetwork extends Network {
                 const args = Object.values(request.txCallParams.params);
                 await contract[request.txCallParams.method](...args);
             } catch (error) {
-                logger.error(`[${this.id}-onQueueBatch] ${error}`, {
+                logger.error(`[${this.id}-onQueueBatch] [${request.internalId}] ${error}`, {
                     config: this.networkConfig,
+                    fingerprint: `${this.type}-${this.networkId}-onQueueBatch-failure`,
                 });
             }
         }
@@ -71,6 +72,7 @@ export default class EvmNetwork extends Network {
         } catch (error) {
             logger.error(`[${this.id}-getLatestBlock] ${error}`, {
                 config: this.networkConfig,
+                fingerprint: `${this.type}-${this.networkId}-getLatestBlock-failure`,
             });
             return undefined;
         }
@@ -96,6 +98,7 @@ export default class EvmNetwork extends Network {
         } catch (error) {
             logger.error(`[${this.id}-getBlock] ${error}`, {
                 config: this.networkConfig,
+                fingerprint: `${this.type}-${this.networkId}-getBlock-failure`,
             });
             return undefined;
         }
@@ -112,6 +115,7 @@ export default class EvmNetwork extends Network {
         } catch (error) {
             logger.error(`[${this.id}-getBalance] ${error}`, {
                 config: this.networkConfig,
+                fingerprint: `${this.type}-${this.networkId}-getBalance-failure`,
             });
             return undefined;
         }
