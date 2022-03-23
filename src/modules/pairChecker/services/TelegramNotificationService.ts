@@ -23,10 +23,10 @@ export async function notifyTelegram(reports: { pair: Pair; diff: number; update
         } else {
             stats = `🆘 *${updates}* \n\n`;
         }
-
         // Last update per pair
         for (var i = 0; i < reports.length; i++) {
-            stats += `\t ${reports[i].updated ? '✓' : '⨯'} [[${reports[i].pair.pair}]] updated ${prettySeconds(reports[i].diff, true)} ago\n`;
+            const statMessage = `${reports[i].diff != -1 ? `updated ${prettySeconds(reports[i].diff, true)} ago` : `check failed`}`;
+            stats += `\t ${reports[i].updated ? '✓' : '⨯'} [[${reports[i].pair.pair}]] ${statMessage}\n`;
         }
 
         messages.push(stats);
