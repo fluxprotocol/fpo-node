@@ -98,6 +98,7 @@ export class PushPairModule extends Module {
         } catch (error) {
             logger.error(`[${this.id}] ${error}`, {
                 config: createSafeAppConfigString(this.appConfig),
+                fingerprint: `${this.type}-${this.internalConfig.networkId}-processPairs-failure`,
             });
             setTimeout(this.processPairs.bind(this), this.internalConfig.interval);
         }
@@ -119,6 +120,7 @@ export class PushPairModule extends Module {
         } catch (error) {
             logger.error(`[${this.id}] ${error}`, {
                 config: createSafeAppConfigString(this.appConfig),
+                fingerprint: `${this.type}-${this.internalConfig.networkId}-start-failure`,
             });
             return false;
         }

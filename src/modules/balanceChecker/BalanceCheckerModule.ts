@@ -44,6 +44,7 @@ export class BalanceCheckerModule extends Module {
             } catch (error) {
                 logger.error(`[${this.id}] ${error}`, {
                     config: createSafeAppConfigString(this.appConfig),
+                    fingerprint: `${this.type}-balance-failure`,
                 });
 
                 return false;

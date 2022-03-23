@@ -118,16 +118,16 @@ export class PairCheckerModule extends Module {
         // Check environment variables
         if (ENABLE_TELEGRAM_NOTIFICATIONS) {
             if (!TELEGRAM_BOT_API) {
-                // TODO: log error
                 logger.error(`[${this.id}] Could not start \`PairCheckerModule\`: \`TELEGRAM_BOT_TOKEN\` is undefined`, {
                     config: createSafeAppConfigString(this.appConfig),
+                    fingerprint: `${this.type}-${this.internalConfig.provider}-start-failure`,
                 });
 
                 return false;
             } else if (!TELEGRAM_ALERTS_CHAT_ID && !TELEGRAM_STATS_CHAT_ID) {
-                // TODO: log error
                 logger.error(`[${this.id}] Could not start \`PairCheckerModule\`: \`TELEGRAM_ALERTS_CHAT_ID\` and \`TELEGRAM_STATS_CHAT_ID\` are undefined`, {
                     config: createSafeAppConfigString(this.appConfig),
+                    fingerprint: `${this.type}-${this.internalConfig.provider}-start-failure`,
                 });
 
                 return false;
