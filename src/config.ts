@@ -12,7 +12,7 @@ config();
 
 export const MAX_LOG_LIFETIME = '14d';
 export const DEBUG = process.env.DEBUG === 'true';
-export const SENTRY_DSN = process.env.SENTRY_DSN ?? 'https://f3df268cea12441c85812120267992f4@o1104820.ingest.sentry.io/6132195';
+export const SENTRY_DSN = process.env.SENTRY_DSN;
 export const ENABLE_ANALYTICS = process.env.ENABLE_ANALYTICS ? process.env.ENABLE_ANALYTICS === 'true' : true;
 export const PROJECT_NAME = packageJson.name;
 export const PROJECT_VERSION = packageJson.version;

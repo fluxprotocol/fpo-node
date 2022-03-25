@@ -2,16 +2,21 @@ version: "3"
 
 services:
   fpo-node:
-    build: "."
-    image: fluxprotocol/fpo-node:dev
-    container_name: fpo-node
+    image: fluxprotocol/fpo-node
     environment:
-      - NEAR_CREDENTIALS_STORE_PATH=/usr/src/app/.near-credentials
-      - EVM_PRIVATE_KEY=${EVM_PRIVATE_KEY}
-      - NEAR_NO_LOGS=${NEAR_NO_LOGS}
       - DEBUG=${DEBUG}
       - ENABLE_ANALYTICS=${ENABLE_ANALYTICS}
+      - EVM_PRIVATE_KEY=${EVM_PRIVATE_KEY}
+      - NEAR_CREDENTIALS_STORE_PATH=/usr/src/app/.near-credentials
+      - NEAR_ENV=${NEAR_ENV}
+      - NEAR_NO_LOGS=${NEAR_NO_LOGS}
+      - NEAR_PRIVATE_KEY=${NEAR_PRIVATE_KEY}
+      - NODE_ID=${NODE_ID}
       - SENTRY_DSN=${SENTRY_DSN}
+      - ENABLE_TELEGRAM_NOTIFICATIONS=${ENABLE_TELEGRAM_NOTIFICATIONS}
+      - TELEGRAM_ALERTS_CHAT_ID=${TELEGRAM_ALERTS_CHAT_ID}
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - TELEGRAM_STATS_CHAT_ID=${TELEGRAM_STATS_CHAT_ID}
     volumes:
       - ./config.json:/usr/src/app/config.json
-      - ~/.near-credentials:/usr/src/app/.near-credentials
+      - ~/.near-credentials/:/usr/src/app/.near-credentials
