@@ -22,3 +22,11 @@ export const AVAILABLE_NETWORKS = [EvmNetwork, NearNetwork];
 export const AVAILABLE_MODULES = [LayerZeroModule, PushPairModule, BalanceCheckerModule, PairCheckerModule];
 export const AVAILABLE_JOBS = [FetchJob];
 export const NODE_ID = process.env.NODE_ID ?? 'Anonymous';
+
+export const DB_TABLE_PROCESSED_BLOCKS: string = "processed_blocks";
+export const DB_TABLE_TX_QUEUE: string = "tx_queue";
+export const DB_NAME = 'fpo_database';
+export const DB_PATH = './';
+
+export const MAX_TX_TRANSACTIONS = 10;
+export const FAILED_TX_RETRY_SLEEP_MS = Number(process.env.FAILED_TX_RETRY_SLEEP_MS ?? 2000);

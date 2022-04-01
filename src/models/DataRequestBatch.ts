@@ -1,4 +1,5 @@
 import Big from "big.js";
+import { AppConfig } from "./AppConfig";
 import { Block } from "./Block";
 import { DataRequest, DataRequestResolved } from "./DataRequest";
 import { Network } from "./Network";
@@ -12,6 +13,59 @@ export interface DataRequestBatch {
 export interface DataRequestBatchResolved extends DataRequestBatch {
     targetAddress: string;
     requests: DataRequestResolved[];
+}
+
+export async function storeDataRequestBatchResolved(tableKey: string, item: DataRequestBatchResolved) {
+    // Since we use classes for each request we need to convert them in a JSON friendly way
+    const obj = {
+        ...item,
+        targetNetwork: item.targetNetwork.networkId,
+        requests: item.requests.map((request) => {
+            return {
+                ...request,
+                originNetwork: request.originNetwork.networkId,
+                targetNetwork: request.targetNetwork.networkId,
+                confirmationsRequired: request.confirmationsRequired.toString(),
+                createdInfo: {
+                    ...request.createdInfo,
+                    block: {
+                        ...request.createdInfo.block,
+                        number: request.createdInfo.block.number.toString(),
+                    }
+                },
+            };
+        }),
+    };
+}
+
+export function hydrateDataRequestBatchResolved(obj: any, appconfig: AppConfig): DataRequestBatchResolved {
+    const targetNetwork = appconfig.networks.find(n => n.networkId === obj.targetNetwork);
+
+    // restore back from what's created by the above function
+    const result: DataRequestBatchResolved = {
+        ...obj,
+        targetNetwork,
+        requests: obj.requests.map((request: any) => {
+            const targetNetwork = appconfig.networks.find(n => n.networkId === request.targetNetwork);
+            const originNetwork = appconfig.networks.find(n => n.networkId === request.originNetwork);
+
+            return {
+                ...request,
+                originNetwork,
+                targetNetwork,
+                confirmationsRequired: new Big(request.confirmationsRequired),
+                createdInfo: {
+                    ...request.createdInfo,
+                    block: {
+                        ...request.createdInfo.block,
+                        number: new Big(request.createdInfo.block.number),
+                    }
+                },
+            }
+        }),
+    };
+
+    return result;
 }
 
 let nonce = 0;

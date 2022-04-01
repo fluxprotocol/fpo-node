@@ -1,14 +1,15 @@
+import database from './services/DatabaseService';
 import logger from './services/LoggerService';
 import { parseAppConfig } from './models/AppConfig';
-import { PROJECT_NAME, PROJECT_VERSION } from './config';
+import { DB_NAME, DB_PATH, PROJECT_NAME, PROJECT_VERSION } from './config';
 
 async function main() {
     logger.info(`🧙 Starting ${PROJECT_NAME} v${PROJECT_VERSION}`);
 
     try {
-        const appConfig = await parseAppConfig();
+        await database.startDatabase(DB_PATH, DB_NAME);
 
-        await Promise.all(appConfig.networks.map(network => network.init()));
+        const appConfig = await parseAppConfig();
 
         const jobBootResults = await Promise.all(appConfig.jobs.map(job => job.init()));
         const didJobBootFail = jobBootResults.some(isStarted => isStarted === false);

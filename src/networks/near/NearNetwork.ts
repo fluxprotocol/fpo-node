@@ -2,6 +2,7 @@ import Big from "big.js";
 import BN from "bn.js";
 import { transactions } from "near-api-js";
 import { FinalExecutionOutcome } from "near-api-js/lib/providers";
+import { AppConfig } from "../../models/AppConfig";
 import { DataRequestBatchResolved } from "../../models/DataRequestBatch";
 import { Network } from "../../models/Network";
 import { TxCallParams } from "../../models/TxCallParams";
@@ -15,11 +16,12 @@ export class NearNetwork extends Network {
     static type: string = 'near';
     internalConfig?: InternalNearNetworkConfig;
 
-    constructor(config: NearNetworkConfig) {
-        super(NearNetwork.type, config);
+    constructor(config: NearNetworkConfig, appConfig: AppConfig) {
+        super(NearNetwork.type, config, appConfig);
     }
 
     async init(): Promise<void> {
+        await super.init();
         this.internalConfig = await parseNearNetworkConfig(this.networkConfig);
         this.queue.start(this.onQueueBatch.bind(this));
     }

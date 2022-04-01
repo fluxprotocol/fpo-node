@@ -1,15 +1,18 @@
 import logger from "../services/LoggerService";
 import { sleep } from "../services/TimerUtils";
-import { DataRequestBatchResolved } from "./DataRequestBatch";
+import { AppConfig } from "./AppConfig";
+import { DataRequestBatchResolved, hydrateDataRequestBatchResolved, storeDataRequestBatchResolved } from "./DataRequestBatch";
 
 export class Queue {
     items: DataRequestBatchResolved[] = [];
     processingId?: string;
     private intervalId?: NodeJS.Timer;
+    private appConfig: AppConfig;
     id: string;
 
-    constructor(id: string, private queueDelay: number) {
+    constructor(id: string, private queueDelay: number, appConfig: AppConfig) {
         this.id = `${id}-queue`;
+        this.appConfig = appConfig;
     }
 
     has(batch: DataRequestBatchResolved): boolean {
@@ -20,7 +23,7 @@ export class Queue {
         return this.items.some(item => item.internalId === batch.internalId);
     }
 
-    add(batch: DataRequestBatchResolved) {
+    async add(batch: DataRequestBatchResolved) {
         if (this.has(batch)) return;
         this.items.push(batch);
         logger.debug(`[${this.id}] Added "${batch.internalId}" to queue`);

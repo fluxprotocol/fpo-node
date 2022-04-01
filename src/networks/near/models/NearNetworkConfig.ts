@@ -41,7 +41,7 @@ export async function parseNearNetworkConfig(config: NearNetworkConfig): Promise
 
     const near = await connect({
         networkId: config.networkType,
-        nodeUrl: config.rpc,
+        nodeUrl: config.rpc[0],
         keyStore,
         headers: {},
     });
