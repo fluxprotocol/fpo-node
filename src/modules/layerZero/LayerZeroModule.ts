@@ -114,7 +114,6 @@ export class LayerZeroModule extends Module {
         });
 
         resolvedRequests.forEach(async (request) => {
-            console.log('[] this.watchConfig -> ', this.watchConfig);
             await this.network.markEventAsProcessed(this.watchConfig, request.extraInfo.event);
         });
     }

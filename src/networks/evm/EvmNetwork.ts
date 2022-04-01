@@ -1,6 +1,6 @@
 import { JsonRpcProvider } from "@ethersproject/providers";
 import Big from "big.js";
-import { BigNumber, Contract, Wallet } from "ethers";
+import { BigNumber, Contract, ethers, Wallet } from "ethers";
 import { FAILED_TX_RETRY_SLEEP_MS, MAX_TX_TRANSACTIONS } from "../../config";
 import { AppConfig } from "../../models/AppConfig";
 
@@ -237,19 +237,19 @@ export default class EvmNetwork extends Network {
     }
 
     async onQueueBatch(batch: DataRequestBatchResolved): Promise<void> {
-        try {
-            for await (const request of batch.requests) {
+        for await (const request of batch.requests) {
+                try {
                 if (!request.txCallParams.abi) {
                     logger.warn(`[${this.id}] Tx ${request.internalId} was not processed due to missing ABI`);
                     continue;
                 }
 
                 await this.sendRequest(request);
+            } catch (error) {
+                logger.error(`[${this.id}-onQueueBatch] ${error}`, {
+                    config: this.networkConfig,
+                });
             }
-        } catch (error) {
-            logger.error(`[${this.id}-onQueueBatch] ${error}`, {
-                config: this.networkConfig,
-            });
         }
     }
 
@@ -269,7 +269,9 @@ export default class EvmNetwork extends Network {
 
                 const args = Object.values(request.txCallParams.params);
 
-                await contract[request.txCallParams.method](...args);
+                let tx = await contract[request.txCallParams.method](...args);
+                await tx.wait();
+                logger.info(`[${this.id}-sendRequest] hash for tx with id ${request.internalId}  is: ${tx.hash}`);
                 return true;
             } catch(error: any) {
                 this.nextRpc();
