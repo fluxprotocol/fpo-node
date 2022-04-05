@@ -18,6 +18,8 @@ async function main() {
         const didModuleBootFail = moduleBootResults.some(isStarted => isStarted === false);
         if (didModuleBootFail) throw new Error(`Failed to boot due a module issue`);
 
+        await appConfig.healthcheck.start();
+
         logger.info(`🚀 Booted`);
     } catch (error) {
         logger.error(`${error}`);

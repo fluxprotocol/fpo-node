@@ -27,3 +27,6 @@ export const ENABLE_TELEGRAM_NOTIFICATIONS = process.env.ENABLE_TELEGRAM_NOTIFIC
 export const TELEGRAM_BOT_API = process.env.TELEGRAM_BOT_TOKEN ? `https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}` : "";
 export const TELEGRAM_ALERTS_CHAT_ID = process.env.TELEGRAM_ALERTS_CHAT_ID;
 export const TELEGRAM_STATS_CHAT_ID = process.env.TELEGRAM_STATS_CHAT_ID;
+
+export const HEALTHCHECK_ENABLED = process.env.HEALTHCHECK_ENABLED === 'true';
+export const HEALTHCHECK_PORT = process.env.HEALTHCHECK_PORT ?? '80';

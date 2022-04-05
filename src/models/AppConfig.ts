@@ -1,10 +1,12 @@
 import { readFile } from 'fs/promises';
-import { APP_CONFIG_LOCATION, AVAILABLE_JOBS, AVAILABLE_MODULES, AVAILABLE_NETWORKS, PROJECT_VERSION } from "../config";
+import { APP_CONFIG_LOCATION, AVAILABLE_JOBS, AVAILABLE_MODULES, AVAILABLE_NETWORKS, HEALTHCHECK_ENABLED, HEALTHCHECK_PORT, PROJECT_VERSION } from "../config";
+import { Healthcheck } from '../healthCheck/Healthcheck';
 import { Job } from './Job';
 import { Module, ModuleConfig, parseUnparsedModuleConfig } from './Module';
 import { Network, NetworkConfig, parseUnparsedNetworkConfig } from "./Network";
 
 export interface AppConfig {
+    healthcheck: Healthcheck;
     networks: Network[];
     modules: Module[];
     jobs: Job[];
@@ -16,13 +18,21 @@ export interface UnparsedAppConfig {
 }
 
 export async function parseAppConfig(): Promise<AppConfig> {
+    const config: UnparsedAppConfig = JSON.parse((await readFile(APP_CONFIG_LOCATION)).toString('utf-8'));
+
+    let port = Number(HEALTHCHECK_PORT)
+    if (isNaN(port)) throw new Error(`"HEALTHCHECK_PORT" environment variable must be a number`);
+    let healthcheck = new Healthcheck({
+        enabled: HEALTHCHECK_ENABLED,
+        port
+    });
+
     const appConfig: AppConfig = {
+        healthcheck,
         networks: [],
         modules: [],
         jobs: [],
     };
-
-    const config: UnparsedAppConfig = JSON.parse((await readFile(APP_CONFIG_LOCATION)).toString('utf-8'));
 
     if (!config.networks || !Array.isArray(config.networks)) throw new Error(`"networks" is required and must be an array`);
 

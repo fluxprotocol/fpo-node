@@ -9,7 +9,8 @@
     "private": false,
     "scripts": {
         "test": "jest",
-        "start": "yarn build && node 'dist/src/main.js' start",
+        "dev": "yarn build && node 'dist/src/main.js'",
+        "start": "node 'dist/src/main.js'",
         "build": "tsc -p ."
     },
     "dependencies": {
@@ -17,6 +18,7 @@
         "bn.js": "^5.2.0",
         "dotenv": "^15.0.0",
         "ethers": "^5.5.4",
+        "express": "^4.17.3",
         "jsonpath-plus": "^6.0.1",
         "lodash.topath": "^4.5.2",
         "near-api-js": "^0.44.2",
@@ -26,6 +28,7 @@
     },
     "devDependencies": {
         "@types/big.js": "^6.1.2",
+        "@types/express": "^4.17.13",
         "@types/jest": "^27.4.0",
         "@types/lodash.topath": "^4.5.6",
         "@types/node": "^17.0.14",
