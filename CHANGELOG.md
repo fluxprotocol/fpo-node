@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.1.0](https://github.com/fluxprotocol/fpo-node/compare/v1.0.0...v1.1.0) (2022-04-06)
+
+
+### Features
+
+* **balancechecker:** Add support for telegram stats and error messages ([c2b17ce](https://github.com/fluxprotocol/fpo-node/commit/c2b17ce529df237e3c223511305d95ee930d837c))
+* **healthcheck:** Add healthcheck endpoint ([c3da10b](https://github.com/fluxprotocol/fpo-node/commit/c3da10b85e01d212d50b31ac6ad26bdcd1f10a95))
+
 ## 1.0.0 (2022-04-01)
 
 
