@@ -1,6 +1,8 @@
 import Big from "big.js";
 import { JSONPath } from "jsonpath-plus"
 import { Source } from "../../modules/pushPair/models/PushPairConfig";
+import logger from "../../services/LoggerService";
+import { sleep } from "../../services/TimerUtils";
 
 /**
  * Same as `@fluxprotocol/oracle-vm/dist/models/ExecuteResult`.
@@ -125,11 +127,20 @@ export async function executeFetch(args: string[]): Promise<ExecuteResult> {
     }
 
     for await (let source of sources) {
-        const httpResponse = await fetch(source.end_point, {
-            method: source.http_method,
-            body: source.http_body,
-            headers: source.http_headers,
-        });
+        let httpResponse: Response | undefined;
+        try {
+            httpResponse = await retryFetch(source.end_point, {
+                method: source.http_method,
+                body: source.http_body,
+                headers: source.http_headers,
+            });
+        } catch (error) {
+            return buildExecutionOutput({
+                code: "ERR_HTTP_UNKNOWN",
+                message: `${funcName} could not fetch ${error}`,
+                args,
+            });
+        }
 
         if (!httpResponse.ok) {
             return buildExecutionOutput({
@@ -222,5 +233,29 @@ function buildExecutionOutput(error: ExecutionError): ExecuteResult {
         code: 1,
         gasUsed: "0",
         logs: [JSON.stringify(error)]
+    }
+}
+
+async function retryFetch(input: RequestInfo, init?: RequestInit, maxRetries = 5, waitTimeMs = 200): Promise<Response> {
+    let response: Response | undefined;
+
+    try {
+        response = await fetch(input, init);
+
+        if (response.ok || (maxRetries - 1) === 0) {
+            return response;
+        }
+
+        await sleep(waitTimeMs);
+
+        return retryFetch(input, init, maxRetries - 1, waitTimeMs);
+    } catch (error) {
+        if ((maxRetries - 1) === 0) {
+            throw error;
+        }
+
+        logger.warn(`[retryFetch] ${error}`);
+        await sleep(waitTimeMs);
+        return retryFetch(input, init, maxRetries - 1, waitTimeMs);
     }
 }
