@@ -123,6 +123,8 @@ export class PairCheckerModule extends Module {
                 const latestTimestamp = await this.fetchLatestTimestampFunc(pair);
 
                 if (!latestTimestamp) {
+                    this.lastCheckAnyFailed = true;
+
                     return {
                         pair,
                         diff: -1,
@@ -133,6 +135,8 @@ export class PairCheckerModule extends Module {
                 return this.checkLatestTimestamp(latestTimestamp, pair);
             }));
         } catch (error) {
+            this.lastCheckAnyFailed = true;
+
             logger.error(`[${this.id}] Check pairs unknown error`, {
                 error,
                 config: createSafeAppConfigString(this.appConfig),
