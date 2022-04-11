@@ -45,7 +45,8 @@ export class PairCheckerModule extends Module {
             // Convert contract timestamp to milliseconds
             return latestTimestamp.toNumber() * 1000;
         } catch (error) {
-            logger.error(`[${this.id}] ${error}`, {
+            logger.error(`[${this.id}] Fetch EVM latest timestamp error`, {
+                error,
                 config: createSafeAppConfigString(this.appConfig),
                 fingerprint: `${this.type}-${this.internalConfig.provider}-fetchEvmLatestTimestamp-failure`,
             });
@@ -69,7 +70,8 @@ export class PairCheckerModule extends Module {
             // Convert contract timestamp to milliseconds
             return Math.floor(entry.last_update / 1000000);
         } catch (error) {
-            logger.error(`[${this.id}] ${error}`, {
+            logger.error(`[${this.id}] Fetch NEAR latest timestamp error`, {
+                error,
                 config: createSafeAppConfigString(this.appConfig),
                 fingerprint: `${this.type}-${this.internalConfig.provider}-fetchNearLatestTimestamp-failure`,
             });
@@ -131,9 +133,10 @@ export class PairCheckerModule extends Module {
                 return this.checkLatestTimestamp(latestTimestamp, pair);
             }));
         } catch (error) {
-            logger.error(`[${this.id}] ${error}`, {
+            logger.error(`[${this.id}] Check pairs unknown error`, {
+                error,
                 config: createSafeAppConfigString(this.appConfig),
-                fingerprint: `${this.type}-${this.internalConfig.provider}-checkPairs-failure`,
+                fingerprint: `${this.type}-${this.internalConfig.provider}-checkPairs-unknown`,
             });
         }
 

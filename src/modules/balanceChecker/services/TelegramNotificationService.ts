@@ -1,7 +1,6 @@
 import { TELEGRAM_BOT_API, TELEGRAM_ALERTS_CHAT_ID, TELEGRAM_STATS_CHAT_ID } from "../../../config";
 import { Network } from "../../../models/Network";
 import logger from "../../../services/LoggerService";
-import { prettySeconds } from "../../../services/TimerUtils";
 import { BalanceReport } from "../models/BalanceReport";
 
 
@@ -62,6 +61,8 @@ export async function sendTelegramMessage(url: string, chatId: string, text: str
             },
         });
     } catch (error) {
-        logger.error(`${error}`);
+        logger.error(`[TelegramNotification] Unknown error`, {
+            error,
+        });
     }
 }

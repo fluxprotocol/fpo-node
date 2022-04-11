@@ -60,7 +60,7 @@ export default class EvmNetwork extends Network {
                     try {
                         const body = JSON.parse(error.body);
                         if (body.error && body.error.code && body.error.code === -32000 && body.error.message
-                            && (body.error.message === 'already known' || body.error.message === 'ERR_INCORRECT_NONCE')
+                            && (body.error.message === 'ERR_INCORRECT_NONCE' || body.error.message === 'already known')
                         ) {
                             logger.debug(`[${this.id}-onQueueBatch] [${request.internalId}] Request seems to be already pushed (${body.error.message})`);
 
@@ -71,10 +71,10 @@ export default class EvmNetwork extends Network {
                     }
                 }
 
-                logger.error(`[${this.id}-onQueueBatch] [${request.internalId}] ${error}`, {
-                    config: this.networkConfig,
+                logger.error(`[${this.id}-onQueueBatch] [${request.internalId}] On queue batch unknown error`, {
                     error,
-                    fingerprint: `${this.type}-${this.networkId}-onQueueBatch-failure`,
+                    config: this.networkConfig,
+                    fingerprint: `${this.type}-${this.networkId}-onQueueBatch-unknown`,
                 });
             }
         }
@@ -91,9 +91,10 @@ export default class EvmNetwork extends Network {
 
             return this.getBlock(currentBlock);
         } catch (error) {
-            logger.error(`[${this.id}-getLatestBlock] ${error}`, {
+            logger.error(`[${this.id}-getLatestBlock] Get latest block unknown error`, {
+                error,
                 config: this.networkConfig,
-                fingerprint: `${this.type}-${this.networkId}-getLatestBlock-failure`,
+                fingerprint: `${this.type}-${this.networkId}-getLatestBlock-unknown`,
             });
             return undefined;
         }
@@ -117,9 +118,10 @@ export default class EvmNetwork extends Network {
                 number: new Big(parseInt(block.number)),
             };
         } catch (error) {
-            logger.error(`[${this.id}-getBlock] ${error}`, {
+            logger.error(`[${this.id}-getBlock] Get block unknown error`, {
+                error,
                 config: this.networkConfig,
-                fingerprint: `${this.type}-${this.networkId}-getBlock-failure`,
+                fingerprint: `${this.type}-${this.networkId}-getBlock-unknown`,
             });
             return undefined;
         }
@@ -134,9 +136,10 @@ export default class EvmNetwork extends Network {
 
             return new Big(balance.toString());
         } catch (error) {
-            logger.error(`[${this.id}-getBalance] ${error}`, {
+            logger.error(`[${this.id}-getBalance] Get balance unknown error`, {
+                error,
                 config: this.networkConfig,
-                fingerprint: `${this.type}-${this.networkId}-getBalance-failure`,
+                fingerprint: `${this.type}-${this.networkId}-getBalance-unknown`,
             });
             return undefined;
         }

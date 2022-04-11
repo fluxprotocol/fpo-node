@@ -69,7 +69,9 @@ export class NearNetwork extends Network {
                 });
             }
         } catch (error) {
-            logger.error(`[${this.id}] ${error}`);
+            logger.error(`[${this.id}] On queue batch unknown error`, {
+                error
+            });
         }
     }
 
@@ -82,7 +84,8 @@ export class NearNetwork extends Network {
 
             return new Big(balance.available);
         } catch (error) {
-            logger.error(`[${this.id}-getBalance] ${error}`, {
+            logger.error(`[${this.id}-getBalance] Get balance unknown error`, {
+                error,
                 config: this.networkConfig,
             });
             return undefined;

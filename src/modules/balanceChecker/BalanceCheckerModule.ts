@@ -65,9 +65,10 @@ export class BalanceCheckerModule extends Module {
             await notifyTelegramOfBalanceReports(this.network, reports);
 
         } catch (error) {
-            logger.error(`[${this.id}] ${error}`, {
+            logger.error(`[${this.id}] Unknown error`, {
+                error,
                 config: createSafeAppConfigString(this.appConfig),
-                fingerprint: `${this.type}-balance-failure`,
+                fingerprint: `${this.type}-unknown`,
             });
         }
     }

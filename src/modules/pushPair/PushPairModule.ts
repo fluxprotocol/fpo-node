@@ -97,9 +97,10 @@ export class PushPairModule extends Module {
             logger.debug(`[${this.id}] Next update in ${Math.floor(remainingInterval / 1000)}s`);
             setTimeout(this.processPairs.bind(this), remainingInterval);
         } catch (error) {
-            logger.error(`[${this.id}] ${error}`, {
+            logger.error(`[${this.id}] Process pairs unknown error`, {
+                error,
                 config: createSafeAppConfigString(this.appConfig),
-                fingerprint: `${this.type}-${this.internalConfig.networkId}-processPairs-failure`,
+                fingerprint: `${this.type}-${this.internalConfig.networkId}-processPairs-unknown`,
             });
             setTimeout(this.processPairs.bind(this), this.internalConfig.interval);
         }
@@ -119,7 +120,8 @@ export class PushPairModule extends Module {
 
             return true;
         } catch (error) {
-            logger.error(`[${this.id}] ${error}`, {
+            logger.error(`[${this.id}] Start failure`, {
+                error,
                 config: createSafeAppConfigString(this.appConfig),
                 fingerprint: `${this.type}-${this.internalConfig.networkId}-start-failure`,
             });

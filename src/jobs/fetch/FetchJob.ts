@@ -25,13 +25,12 @@ export class FetchJob extends Job {
                     logger.warn(`[${this.id}] One or more sources could not be resolved, see vm logs for more info`, {
                         logs: executeResult.logs,
                         config: createSafeAppConfigString(this.appConfig),
-                        args: request.args,
                     });
                 } else {
-                    logger.error(`[${this.id}] Exited with code ${executeResult.code} ${executeResult.logs}`, {
+                    logger.warn(`[${this.id}] Exited with code ${executeResult.code}`, {
                         logs: executeResult.logs,
                         config: createSafeAppConfigString(this.appConfig),
-                        args: request.args,
+                        fingerprint: `${this.type}-failure-with-${executeResult.code}`,
                     });
 
                     return {
@@ -47,7 +46,7 @@ export class FetchJob extends Job {
                 logger.error(`[${this.id}] No logs outputted by VM for ${request.internalId}`, {
                     logs: executeResult.logs,
                     config: createSafeAppConfigString(this.appConfig),
-                    args: request.args,
+                    fingerprint: `${this.type}-last-log-not-found`,
                 });
 
                 return {
@@ -59,10 +58,10 @@ export class FetchJob extends Job {
             const logResult = JSON.parse(lastLog);
 
             if (logResult.type !== 'Valid') {
-                logger.error(`[${this.id}] Invalid request code: ${executeResult.code} ${executeResult.logs}`, {
+                logger.error(`[${this.id}] Invalid request code: ${executeResult.code}`, {
                     logs: executeResult.logs,
                     config: createSafeAppConfigString(this.appConfig),
-                    args: request.args,
+                    fingerprint: `${this.type}-invalid-request`,
                 });
 
                 return {
@@ -77,8 +76,9 @@ export class FetchJob extends Job {
                 answer: logResult.value,
             };
         } catch (error) {
-            logger.error(`[${this.id}] ${error}`, {
-                args: request.args,
+            logger.error(`[${this.id}] Unknown error`, {
+                error,
+                fingerprint: `${this.type}-unknown`,
             });
 
             return {

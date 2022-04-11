@@ -22,7 +22,6 @@ interface ExecuteResult {
 interface ExecutionError {
     code: string;
     message: string;
-    args: string[];
 }
 
 /**
@@ -81,7 +80,6 @@ export async function executeFetch(args: string[]): Promise<ExecuteResult> {
         return buildExecutionOutput({
             code: "ERR_INSUFFICIENT_ARGS",
             message: `${funcName} called with insufficient arguments (args.length < 3)`,
-            args
         });
     }
 
@@ -97,7 +95,6 @@ export async function executeFetch(args: string[]): Promise<ExecuteResult> {
         return buildExecutionOutput({
             code: "ERR_NO_SOURCES",
             message: `${funcName} called with no sources (args[1].length == 0)`,
-            args
         });
     }
 
@@ -107,7 +104,6 @@ export async function executeFetch(args: string[]): Promise<ExecuteResult> {
             return buildExecutionOutput({
                 code: "ERR_TOO_MUCH_SOURCES",
                 message: `${funcName} called with too many sources for sourcesType = 'string' (sources.length != 1)`,
-                args
             });
         }
     } else if (sourcesType == 'number') {
@@ -115,14 +111,12 @@ export async function executeFetch(args: string[]): Promise<ExecuteResult> {
             return buildExecutionOutput({
                 code: "ERR_NO_MULTIPLIER",
                 message: `${funcName} called with no multiplier for sourcesType = 'number' (args[3] === 'undefined')`,
-                args
             });
         }
     } else {
         return buildExecutionOutput({
             code: "ERR_UNSUPPORTED_TYPE",
             message: `${funcName} called with unsupported sourcesType (sourceType != 'string' | 'number')`,
-            args
         });
     }
 
@@ -138,7 +132,6 @@ export async function executeFetch(args: string[]): Promise<ExecuteResult> {
             return buildExecutionOutput({
                 code: "ERR_HTTP_UNKNOWN",
                 message: `${funcName} could not fetch ${error}`,
-                args,
             });
         }
 
@@ -146,7 +139,6 @@ export async function executeFetch(args: string[]): Promise<ExecuteResult> {
             return buildExecutionOutput({
                 code: "ERR_HTTP_ERROR",
                 message: `${funcName} could not fetch (status: ${httpResponse.status}))`,
-                args
             });
         }
 
@@ -157,7 +149,6 @@ export async function executeFetch(args: string[]): Promise<ExecuteResult> {
             return buildExecutionOutput({
                 code: "ERR_HTTP_NO_JSON",
                 message: `${funcName} http response could not be parsed into JSON (error: ${error})`,
-                args
             });
         }
 
@@ -169,7 +160,6 @@ export async function executeFetch(args: string[]): Promise<ExecuteResult> {
             return buildExecutionOutput({
                 code: "ERR_SOURCE_PATH",
                 message: `${funcName} invalid source path (path = ${source.source_path})`,
-                args
             });
         }
 
@@ -188,7 +178,6 @@ export async function executeFetch(args: string[]): Promise<ExecuteResult> {
                 return buildExecutionOutput({
                     code: "ERR_TOO_MUCH_RESULTS",
                     message: `${funcName} too many results for sourcesType 'number' (finder.length = ${finder.length} > 1)`,
-                    args
                 });
             }
 
@@ -208,7 +197,6 @@ export async function executeFetch(args: string[]): Promise<ExecuteResult> {
         return buildExecutionOutput({
             code: "ERR_FAILING_SOURCES",
             message: `${funcName} all sources are failing (usedSources == 0)`,
-            args
         });
     }
 
