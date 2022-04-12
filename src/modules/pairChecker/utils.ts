@@ -1,5 +1,3 @@
-import { TELEGRAM_ALERTS_CHAT_ID, TELEGRAM_BOT_API } from "../../config";
-
 export function prettySeconds(seconds: number, short?: boolean): string {
     // Seconds
     if (seconds < 60) {

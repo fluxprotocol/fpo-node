@@ -1,20 +1,11 @@
 import Big from "big.js";
 import EventEmitter from "events";
 import { Block } from "./Block";
-import { DataRequest, DataRequestResolved } from "./DataRequest";
 import { DataRequestBatch, DataRequestBatchResolved } from "./DataRequestBatch";
+import { INetwork, NetworkConfig } from "./INetwork";
 import { Queue } from "./Queue";
 import { TxCallParams } from "./TxCallParams";
 
-export interface NetworkConfig {
-    type: string;
-    networkId: number;
-    rpc: string;
-    wssRpc?: string;
-    blockFetchingInterval: number;
-    queueDelay: number;
-    [key: string]: any;
-}
 
 export function parseUnparsedNetworkConfig(config: Partial<NetworkConfig>): NetworkConfig {
     if (!config.type || typeof config.type !== 'string') throw new Error(`"type" is required and must be a string`);
@@ -36,7 +27,7 @@ export function parseUnparsedNetworkConfig(config: Partial<NetworkConfig>): Netw
     };
 }
 
-export class Network extends EventEmitter {
+export class Network extends EventEmitter implements INetwork {
     static type = "network";
     networkConfig: NetworkConfig;
     queue: Queue;
@@ -46,6 +37,7 @@ export class Network extends EventEmitter {
 
     constructor(type: string, config: NetworkConfig) {
         super();
+
         this.networkConfig = config;
         this.id = `${config.type}-${config.networkId}`;
         this.queue = new Queue(this.id, config.queueDelay);

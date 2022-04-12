@@ -1,11 +1,11 @@
 import Big from "big.js";
 import { Block } from "./Block";
 import { DataRequest, DataRequestResolved } from "./DataRequest";
-import { Network } from "./Network";
+import { INetwork } from "./INetwork";
 
 export interface DataRequestBatch {
     internalId: string;
-    targetNetwork: Network;
+    targetNetwork: INetwork;
     requests: DataRequest[];
 }
 

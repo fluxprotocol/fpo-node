@@ -1,6 +1,6 @@
 import Web3 from "web3";
 import { AppConfig } from "../../models/AppConfig";
-import { Module, ModuleConfig } from "../../models/Module";
+import { Module } from "../../models/Module";
 import { InternalLayerZeroModuleConfig, LayerZeroModuleConfig, parseLayerZeroModuleConfig } from "./models/LayerZeroModuleConfig";
 import layerZeroOracleAbi from './FluxLayerZeroOracle.json';
 import logger from "../../services/LoggerService";

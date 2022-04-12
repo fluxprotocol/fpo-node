@@ -1,5 +1,5 @@
 import logger from "../../services/LoggerService";
-import { AppConfig, createSafeAppConfigString } from "../../models/AppConfig";
+import { AppConfig } from "../../models/AppConfig";
 import { FetchJob } from "../../jobs/fetch/FetchJob";
 import { Module } from "../../models/Module";
 import { OutcomeType } from "../../models/Outcome";
@@ -8,6 +8,7 @@ import { createBatchFromPairs, createEvmFactoryTransmitTransaction, createResolv
 import { createPairIfNeeded } from "./services/PushPairCreationService";
 import { fetchEvmLastUpdate, fetchNearLastUpdate } from './services/FetchLastUpdateService';
 import { parsePushPairConfig, PushPairConfig, PushPairInternalConfig } from "./models/PushPairConfig";
+import { createSafeAppConfigString } from "../../services/AppConfigUtils";
 
 export class PushPairModule extends Module {
     static type = "PushPairModule";

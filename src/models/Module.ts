@@ -1,10 +1,8 @@
 import { AppConfig } from "./AppConfig";
-import { Network, NetworkConfig } from "./Network";
+import { IModule, ModuleConfig } from "./IModule";
+import { Network } from "./Network";
 
-export interface ModuleConfig {
-    type: string;
-    networkId: NetworkConfig['networkId'];
-}
+
 
 export function parseUnparsedModuleConfig(config: Partial<ModuleConfig> = {}): ModuleConfig {
     if (!config.type || typeof config.type !== 'string') throw new Error(`"type" is required and must be a string`);
@@ -17,7 +15,7 @@ export function parseUnparsedModuleConfig(config: Partial<ModuleConfig> = {}): M
     }
 }
 
-export class Module {
+export class Module implements IModule {
     static type: string = 'listener';
     type: string = 'listener';
     network: Network;

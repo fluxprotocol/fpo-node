@@ -1,12 +1,13 @@
 import FluxPriceFeedAbi from './FluxPriceFeed.json';
 import logger from "../../services/LoggerService";
-import { AppConfig, createSafeAppConfigString } from "../../models/AppConfig";
+import { AppConfig } from "../../models/AppConfig";
 import { ENABLE_TELEGRAM_NOTIFICATIONS, TELEGRAM_ALERTS_CHAT_ID, TELEGRAM_BOT_API, TELEGRAM_STATS_CHAT_ID } from '../../config';
 import { Module } from "../../models/Module";
 import { PairCheckerModuleConfig, InternalPairCheckerModuleConfig, parsePairCheckerModuleConfig, Pair } from "./models/PairCheckerModuleConfig";
 import { debouncedInterval } from "../../services/TimerUtils";
-import { notifyTelegram, sendTelegramMessage } from './services/TelegramNotificationService';
+import { notifyTelegram } from './services/TelegramNotificationService';
 import { prettySeconds } from './utils';
+import { createSafeAppConfigString } from '../../services/AppConfigUtils';
 
 type FetchLastTimestampFunction = (pair: Pair) => Promise<number | undefined>;
 
