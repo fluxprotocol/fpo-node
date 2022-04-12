@@ -1,4 +1,4 @@
-import { ModuleConfig } from "../../../models/Module";
+import { ModuleConfig } from "../../../models/IModule";
 
 export interface Pair {
     address: string;

@@ -1,12 +1,13 @@
 import Big from "big.js";
 import logger from "../../services/LoggerService";
-import { AppConfig, createSafeAppConfigString } from "../../models/AppConfig";
+import { AppConfig } from "../../models/AppConfig";
 import { BalanceCheckerModuleConfig, InternalBalanceCheckerModuleConfig, parseBalanceCheckerModuleConfig } from "./models/BalanceCheckerModuleConfig";
 import { BalanceReport, BalanceReportError } from "./models/BalanceReport";
 import { ENABLE_TELEGRAM_NOTIFICATIONS, TELEGRAM_ALERTS_CHAT_ID, TELEGRAM_BOT_API, TELEGRAM_STATS_CHAT_ID } from "../../config";
 import { Module } from "../../models/Module";
 import { debouncedInterval } from "../../services/TimerUtils";
 import { notifyTelegramOfBalanceReports } from "./services/TelegramNotificationService";
+import { createSafeAppConfigString } from "../../services/AppConfigUtils";
 
 export class BalanceCheckerModule extends Module {
     static type = "BalanceCheckerModule";

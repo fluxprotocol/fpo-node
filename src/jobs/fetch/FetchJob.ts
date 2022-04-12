@@ -2,8 +2,8 @@ import logger from "../../services/LoggerService";
 import { DataRequest } from "../../models/DataRequest";
 import { Job } from "../../models/Job";
 import { Outcome, OutcomeType } from "../../models/Outcome";
-import { createSafeAppConfigString } from '../../models/AppConfig';
 import { executeFetch } from './executeFetch';
+import { createSafeAppConfigString } from "../../services/AppConfigUtils";
 
 export class FetchJob extends Job {
     static type = 'FetchJob';

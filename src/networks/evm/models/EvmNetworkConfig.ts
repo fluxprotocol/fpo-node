@@ -1,4 +1,4 @@
-import { NetworkConfig } from "../../../models/Network";
+import { NetworkConfig } from "../../../models/INetwork";
 
 export interface EvmNetworkConfig extends NetworkConfig {
     chainId?: number;

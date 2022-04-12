@@ -1,4 +1,3 @@
-import logger from "../../../services/LoggerService";
 import { Pair } from "../models/PairCheckerModuleConfig";
 import { TELEGRAM_BOT_API, TELEGRAM_ALERTS_CHAT_ID, TELEGRAM_STATS_CHAT_ID } from "../../../config";
 import { prettySeconds } from "../utils";

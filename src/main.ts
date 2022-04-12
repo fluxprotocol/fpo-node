@@ -1,5 +1,5 @@
 import logger from './services/LoggerService';
-import { parseAppConfig } from './models/AppConfig';
+import { parseAppConfig } from './services/AppConfigService';
 import { PROJECT_NAME, PROJECT_VERSION } from './config';
 
 async function main() {
