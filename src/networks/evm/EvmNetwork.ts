@@ -144,4 +144,8 @@ export default class EvmNetwork extends Network {
             return undefined;
         }
     }
+
+    getWalletPublicAddress() {
+        return this.wallet.address;
+    }
 }

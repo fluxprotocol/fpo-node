@@ -23,7 +23,7 @@ export interface PushPairInternalConfig extends ModuleConfig {
     contractAddress: string;
     interval: number;
     pairs: Pair[];
-    pairsType: 'factory' | 'single'
+    pairsType: 'factory' | 'single' | 'factory2'
 }
 
 export interface PushPairConfig extends ModuleConfig {
@@ -50,8 +50,8 @@ export function parsePushPairConfig(config: PushPairConfig): PushPairInternalCon
     });
 
     if (typeof config.pairsType !== 'undefined') {
-        if (config.pairsType !== 'factory' && config.pairsType !== 'single') {
-            throw new Error(`[PushPairModule] "pairsType" must be either "factory" or "single"`);
+        if (config.pairsType !== 'factory' && config.pairsType !== 'factory2' && config.pairsType !== 'single') {
+            throw new Error(`[PushPairModule] "pairsType" must be either "factory", "single" or "factory2"`);
         }
     }
 

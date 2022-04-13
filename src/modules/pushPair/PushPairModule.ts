@@ -1,14 +1,15 @@
+import EvmNetwork from "../../networks/evm/EvmNetwork";
 import logger from "../../services/LoggerService";
 import { AppConfig } from "../../models/AppConfig";
 import { FetchJob } from "../../jobs/fetch/FetchJob";
 import { Module } from "../../models/Module";
 import { OutcomeType } from "../../models/Outcome";
 import { PushPairDataRequestBatch, PushPairResolvedDataRequest } from "./models/PushPairDataRequest";
-import { createBatchFromPairs, createEvmFactoryTransmitTransaction, createResolvePairRequest } from "./services/PushPairRequestService";
+import { createBatchFromPairs, createEvmFactory2TransmitTransaction, createEvmFactoryTransmitTransaction, createResolvePairRequest } from "./services/PushPairRequestService";
 import { createPairIfNeeded } from "./services/PushPairCreationService";
+import { createSafeAppConfigString } from "../../services/AppConfigUtils";
 import { fetchEvmLastUpdate, fetchNearLastUpdate } from './services/FetchLastUpdateService';
 import { parsePushPairConfig, PushPairConfig, PushPairInternalConfig } from "./models/PushPairConfig";
-import { createSafeAppConfigString } from "../../services/AppConfigUtils";
 
 export class PushPairModule extends Module {
     static type = "PushPairModule";
@@ -29,7 +30,7 @@ export class PushPairModule extends Module {
             lastUpdate = await fetchNearLastUpdate(this.internalConfig, this.network);
         }
         else if (this.network.type === 'evm') {
-            lastUpdate = await fetchEvmLastUpdate(this.internalConfig, this.network);
+            lastUpdate = await fetchEvmLastUpdate(this.internalConfig, this.network as EvmNetwork);
         }
         else {
             throw new Error(`Failed to fetch last update for network ${this.network.type} and pairs type ${this.internalConfig.pairsType}`);
@@ -84,8 +85,13 @@ export class PushPairModule extends Module {
             }
 
             // With the new EVM factory we can combine multiple transmits in one transaction
-            if (this.batch.targetNetwork.type === 'evm' && this.internalConfig.pairsType === 'factory') {
-                requests = [createEvmFactoryTransmitTransaction(this.internalConfig, requests)];
+            if (this.batch.targetNetwork.type === 'evm') {
+                if (this.internalConfig.pairsType === 'factory') {
+                    requests = [createEvmFactoryTransmitTransaction(this.internalConfig, requests)];
+                }
+                if (this.internalConfig.pairsType === 'factory2') {
+                    requests = [createEvmFactory2TransmitTransaction(this.internalConfig, requests)];
+                }
             }
 
             this.network.addRequestsToQueue({
