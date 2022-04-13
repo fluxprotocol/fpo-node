@@ -234,6 +234,11 @@ async function retryFetch(input: RequestInfo, init?: RequestInit, maxRetries = 5
             return response;
         }
 
+        logger.warn(`[retryFetch] HTTP error ${response.status}: ${response.statusText}`, {
+            fingerprint: "executeFetch-retry-not-ok",
+            url: response.url,
+            statusText: response.statusText
+        });
         await sleep(waitTimeMs);
 
         return retryFetch(input, init, maxRetries - 1, waitTimeMs);
@@ -242,8 +247,12 @@ async function retryFetch(input: RequestInfo, init?: RequestInit, maxRetries = 5
             throw error;
         }
 
-        logger.warn(`[retryFetch] ${error}`);
+        logger.warn(`[retryFetch] Fetching failed (retries left = ${maxRetries})`, {
+            error,
+            fingerprint: "executeFetch-retry-failure"
+        });
         await sleep(waitTimeMs);
+
         return retryFetch(input, init, maxRetries - 1, waitTimeMs);
     }
 }
