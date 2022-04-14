@@ -31,9 +31,8 @@ export default class Communicator {
 	_peers: Set<string>;
 	_peers_file: string;
 	_retry: Set<string> = new Set();
-	_protocol: string;
 
-	constructor(protocol: string, config?: Libp2pOptions & CreateOptions, peers?: string) {
+	constructor(config?: Libp2pOptions & CreateOptions, peers_file?: string) {
 		if (config === undefined) {
 			this._options = {
 				addresses: {
@@ -49,16 +48,13 @@ export default class Communicator {
 			this._options = config;
 		}
 
-		if (peers === undefined) {
+		if (peers_file === undefined) {
 			this._peers_file = 'peers.json';
 			this._peers = new Set();
 		} else {
-			this._peers_file = peers;
+			this._peers_file = peers_file;
 			this._peers = this.load_peers();
 		}
-
-
-		this._protocol = protocol;
 	}
 
 	async init(): Promise<void> {
@@ -155,25 +151,24 @@ export default class Communicator {
 		});
 	}
 
-	async handle_incoming(callback: (source: AsyncIterable<Uint8Array | BufferList>) => Promise<void>): Promise<void> {
+	async handle_incoming(protocol: string, callback: (source: AsyncIterable<Uint8Array | BufferList>) => Promise<void>): Promise<void> {
 		await attempt(this, null, async (node: Libp2p) => {
-			node.handle(this._protocol, async ({ stream }) => {
+			node.handle(protocol, async ({ stream }) => {
 				await callback(stream.source);
 			});
 		});
 	}
 
-	async send(data: Uint8Array[]): Promise<void> {
+	async send(protocol: string, data: Uint8Array[]): Promise<void> {
 		attempt(this, null, async () => {
 			for (const connection of this._connections) {
-				const { stream } = await connection.newStream(this._protocol);
+				const { stream } = await connection.newStream(protocol);
 				await stream.sink(createAsyncIterable(data));
 			}
 		});
 	}
 
 	save_peers(): void {
-
 		let peers = [];
 		for (const peer of this._peers) {
 			peers.push(peer.toString());
@@ -185,7 +180,7 @@ export default class Communicator {
 		} catch (error) {
 			logger.error(`Node failed to save peers with error '${error}'.`);
 		}
-		
+
 	}
 
 	load_peers(): Set<string> {
