@@ -25,18 +25,25 @@ export async function start_p2p(addresses: CreateOptions, peers_file: string): P
 	return p2p;
 }
 
-export async function elect_leader(): Promise<number> {
-	return 0;
+export async function elect_leader(p2p: Communicator): Promise<string> {
+	let peers = Array.from(p2p._peers);
+	peers.push(p2p._node_addr);
+	peers = peers.sort();
+	return peers[0];
 }
 
 export async function aggregate(p2p: Communicator, data_to_send: string) {
 	await p2p.start();
 	let received: number[] = [];
+	let leader: string = '';
 
 	p2p.handle_incoming('/elected/leader', async (source: AsyncIterable<Uint8Array | BufferList>) => {
 		for await (const msg of source) {
-			let leader = parseInt(msg.toString());
+			let elected = msg.toString();
 			// check if this node is the leader.
+			if (elected === leader) {
+				// send data to contract.
+			}
 		}
 	});
 
@@ -44,8 +51,8 @@ export async function aggregate(p2p: Communicator, data_to_send: string) {
 		for await (const msg of source) {
 			received.push(parseInt(msg.toString()));
 			if (received.length = p2p._peers.size) {
-				let leader = await elect_leader();
-				p2p.send('/elected/leader', [new Uint8Array(leader)]);
+				leader = await elect_leader(p2p);
+				p2p.send('/elected/leader', [fromString(leader)]);
 			}
 		}
 	});

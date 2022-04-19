@@ -28,6 +28,7 @@ export default class Communicator {
 	_connections: Set<Connection> = new Set();
 	_options: Libp2pOptions & CreateOptions;
 	_node?: Libp2p;
+	_node_addr: string;
 	_peers: Set<string>;
 	_peers_file: string;
 	_retry: Set<string> = new Set();
@@ -55,6 +56,8 @@ export default class Communicator {
 			this._peers_file = peers_file;
 			this._peers = this.load_peers();
 		}
+
+		this._node_addr = '';
 	}
 
 	async init(): Promise<void> {
@@ -80,6 +83,8 @@ export default class Communicator {
 					this._retry.add(peer);
 				}
 			}
+
+			this._node_addr = node.multiaddrs[0].toString();
 
 			return [
 				node.multiaddrs[0],
@@ -169,10 +174,7 @@ export default class Communicator {
 	}
 
 	save_peers(): void {
-		let peers = [];
-		for (const peer of this._peers) {
-			peers.push(peer.toString());
-		}
+		let peers = Array.from(this._peers).sort();
 
 		const json = JSON.stringify(peers, null, 4);
 		try {
