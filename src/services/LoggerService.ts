@@ -4,7 +4,13 @@ import { DEBUG, ENABLE_ANALYTICS, MAX_LOG_LIFETIME, NODE_ID, PROJECT_NAME, PROJE
 import Sentry from 'winston-transport-sentry-node';
 import 'winston-daily-rotate-file';
 
-const logFormat = format.printf(info => `${info.timestamp} ${info.level}: ${info.message}`);
+const logFormat = format.printf((info) => {
+    if (info.metadata?.error) {
+        return `${info.timestamp} ${info.level}: ${info.message} ${info.metadata.error}`
+    }
+
+    return `${info.timestamp} ${info.level}: ${info.message}`
+});
 
 const logger = winston.createLogger({
     format: format.combine(

@@ -1,4 +1,5 @@
-import { Network, NetworkConfig } from "../models/Network";
+import { NetworkConfig } from "../models/INetwork";
+import { Network } from "../models/Network";
 
 export function createNetworkMock(config: Partial<NetworkConfig> = {}): Network {
     return new Network('network', {

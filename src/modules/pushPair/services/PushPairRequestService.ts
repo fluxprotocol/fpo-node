@@ -1,13 +1,15 @@
 import Big from "big.js";
+import FluxPriceFeedAbi from '../FluxPriceFeed.json';
+import FluxPriceFeedFactory2Abi from '../FluxPriceFeedFactory2.json';
+import FluxPriceFeedFactoryAbi from '../FluxPriceFeedFactory.json';
+import logger from "../../../services/LoggerService";
 import { FetchJob } from "../../../jobs/fetch/FetchJob";
-import { createDataRequestBatch } from "../../../models/DataRequestBatch";
 import { Network } from "../../../models/Network";
 import { OutcomeAnswer, OutcomeType } from "../../../models/Outcome";
-import { PushPairInternalConfig } from '../models/PushPairConfig';
-import FluxPriceFeedAbi from '../FluxPriceFeed.json';
-import FluxPriceFeedFactoryAbi from '../FluxPriceFeedFactory.json';
 import { PushPairDataRequest, PushPairDataRequestBatch, PushPairResolvedDataRequest } from "../models/PushPairDataRequest";
-import { logger } from "@ethersproject/wordlists";
+import { PushPairInternalConfig } from '../models/PushPairConfig';
+import { createDataRequestBatch } from "../../../models/DataRequestBatch";
+import { ethers } from "ethers";
 
 export function createBatchFromPairs(config: PushPairInternalConfig, targetNetwork: Network): PushPairDataRequestBatch {
     const requests: PushPairDataRequest[] = config.pairs.map((pairInfo, index) => {
@@ -88,7 +90,7 @@ interface EvmFactoryTxParams {
 
 /**
  * Creates a single data request that combines multiple data request
- * Only possible on the EVM using the factory contract
+ * Only possible on the EVM using the factory contract (< 2.0.0)
  *
  * @param {PushPairInternalConfig} config
  * @param {PushPairResolvedDataRequest[]} requests
@@ -139,6 +141,75 @@ export function createEvmFactoryTransmitTransaction(config: PushPairInternalConf
         },
         txCallParams: {
             abi: FluxPriceFeedFactoryAbi.abi,
+            address: config.contractAddress,
+            amount: '0',
+            method: 'transmit',
+            params,
+        },
+    };
+}
+
+interface EvmFactoryTxParams2 {
+    pricePairs: string[],
+    decimals: number[],
+    answers: string[],
+    provider: string,
+}
+
+/**
+ * Creates a single data request that combines multiple data request
+ * Only possible on the EVM using the factory contract v2.0.0
+ *
+ * @param {PushPairInternalConfig} config
+ * @param {PushPairResolvedDataRequest[]} requests
+ * @return {DataRequestResolved}
+ */
+export function createEvmFactory2TransmitTransaction(config: PushPairInternalConfig, requests: PushPairResolvedDataRequest[]): PushPairResolvedDataRequest {
+    // As defined by the FluxPriceFeedFactory.sol:
+    // https://github.com/fluxprotocol/fpo-evm/blob/feat/pricefeedfactory/contracts/FluxPriceFeedFactory.sol
+    const params: EvmFactoryTxParams2 = {
+        pricePairs: [],
+        decimals: [],
+        answers: [],
+        provider: ethers.constants.AddressZero
+    };
+
+    requests.forEach((request) => {
+        if (request.outcome.type === OutcomeType.Invalid) {
+            logger.warn(`[createEvmFactory2TransmitTransaction] Request ${request.internalId} was resolved to invalid`);
+            return;
+        }
+
+        params.pricePairs.push(request.extraInfo.pair);
+        params.decimals.push(request.extraInfo.decimals);
+        params.answers.push(request.outcome.answer);
+    });
+
+    return {
+        args: [],
+        confirmationsRequired: new Big(0),
+        createdInfo: {
+            // Block info is not important for this request
+            block: {
+                hash: '0x000000',
+                number: new Big(0),
+                receiptRoot: '0x000000',
+            },
+        },
+        extraInfo: {
+            decimals: 0,
+            pair: params.pricePairs.join(','),
+        },
+        internalId: `factory-${requests[0].internalId}`,
+        originNetwork: requests[0].originNetwork,
+        targetNetwork: requests[0].targetNetwork,
+        outcome: {
+            type: OutcomeType.Answer,
+            logs: [],
+            answer: params.answers.join(',')
+        },
+        txCallParams: {
+            abi: FluxPriceFeedFactory2Abi.abi,
             address: config.contractAddress,
             amount: '0',
             method: 'transmit',

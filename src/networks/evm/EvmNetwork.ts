@@ -1,13 +1,13 @@
-import { JsonRpcProvider } from "@ethersproject/providers";
 import Big from "big.js";
 import { Contract, Wallet } from "ethers";
+import { JsonRpcProvider } from "@ethersproject/providers";
 
+import logger from "../../services/LoggerService";
 import { Block, getBlockType } from "../../models/Block";
 import { DataRequestBatchResolved } from "../../models/DataRequestBatch";
+import { EvmNetworkConfig, InternalEvmNetworkConfig, parseEvmNetworkConfig } from "./models/EvmNetworkConfig";
 import { Network } from "../../models/Network";
 import { TxCallParams } from "../../models/TxCallParams";
-import logger from "../../services/LoggerService";
-import { EvmNetworkConfig, InternalEvmNetworkConfig, parseEvmNetworkConfig } from "./models/EvmNetworkConfig";
 
 export default class EvmNetwork extends Network {
     static type: string = "evm";
@@ -34,8 +34,8 @@ export default class EvmNetwork extends Network {
     }
 
     async onQueueBatch(batch: DataRequestBatchResolved): Promise<void> {
-        try {
-            for await (const request of batch.requests) {
+        for await (const request of batch.requests) {
+            try {
                 if (!request.txCallParams.abi) {
                     logger.warn(`[${this.id}] Tx ${request.internalId} was not processed due to missing ABI`);
                     continue;
@@ -50,11 +50,33 @@ export default class EvmNetwork extends Network {
 
                 const args = Object.values(request.txCallParams.params);
                 await contract[request.txCallParams.method](...args);
+            } catch (error: any) {
+                // Try to check if SERVER ERROR was because a node already pushed the same update
+                //
+                // Error messages (i.e. `error.body.error.message`) differ depending on the network.
+                //  - Aurora Testnet: `ERR_INCORRECT_NONCE`
+                //  - Goerli: `already known`
+                if (error.code === 'SERVER_ERROR' && error.body) {
+                    try {
+                        const body = JSON.parse(error.body);
+                        if (body.error && body.error.code && body.error.code === -32000 && body.error.message
+                            && (body.error.message === 'ERR_INCORRECT_NONCE' || body.error.message === 'already known')
+                        ) {
+                            logger.debug(`[${this.id}-onQueueBatch] [${request.internalId}] Request seems to be already pushed (${body.error.message})`);
+
+                            continue;
+                        }
+                    } catch (error) {
+                        // Do nothing as error will be logged in next lines
+                    }
+                }
+
+                logger.error(`[${this.id}-onQueueBatch] [${request.internalId}] On queue batch unknown error`, {
+                    error,
+                    config: this.networkConfig,
+                    fingerprint: `${this.type}-${this.networkId}-onQueueBatch-unknown`,
+                });
             }
-        } catch (error) {
-            logger.error(`[${this.id}-onQueueBatch] ${error}`, {
-                config: this.networkConfig,
-            });
         }
     }
 
@@ -69,8 +91,10 @@ export default class EvmNetwork extends Network {
 
             return this.getBlock(currentBlock);
         } catch (error) {
-            logger.error(`[${this.id}-getLatestBlock] ${error}`, {
+            logger.error(`[${this.id}-getLatestBlock] Get latest block unknown error`, {
+                error,
                 config: this.networkConfig,
+                fingerprint: `${this.type}-${this.networkId}-getLatestBlock-unknown`,
             });
             return undefined;
         }
@@ -94,8 +118,10 @@ export default class EvmNetwork extends Network {
                 number: new Big(parseInt(block.number)),
             };
         } catch (error) {
-            logger.error(`[${this.id}-getBlock] ${error}`, {
+            logger.error(`[${this.id}-getBlock] Get block unknown error`, {
+                error,
                 config: this.networkConfig,
+                fingerprint: `${this.type}-${this.networkId}-getBlock-unknown`,
             });
             return undefined;
         }
@@ -110,10 +136,16 @@ export default class EvmNetwork extends Network {
 
             return new Big(balance.toString());
         } catch (error) {
-            logger.error(`[${this.id}-getBalance] ${error}`, {
+            logger.error(`[${this.id}-getBalance] Get balance unknown error`, {
+                error,
                 config: this.networkConfig,
+                fingerprint: `${this.type}-${this.networkId}-getBalance-unknown`,
             });
             return undefined;
         }
+    }
+
+    getWalletPublicAddress() {
+        return this.wallet.address;
     }
 }

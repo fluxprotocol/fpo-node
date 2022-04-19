@@ -1,14 +1,16 @@
 # fpo-node
-Provider node for pushing and settling data requests for first-party price feeds on NEAR & EVM chains
+
+Provider node for pushing and settling data requests for first-party price feeds on NEAR & EVM chains.
 
 ## Usage
 
 ### Pre-requisites
 
-You must have node.js installed. We are using `v14.18.1`.
+You must have node.js installed. We are using `v14.19`.
 
 ## For providing data on an EVM chain
-First, deploy a `FluxPriceFeed.sol` contract by [cloning the `price-feeds-evm` repository and following the README](https://github.com/fluxprotocol/price-feeds-evm), saving your contract address to use here. Alternatively, leave the default `config.json` contract address to test your API sources without deploying a new contract, using a contract we deployed to Aurora with access control removed. 
+
+First, deploy a `FluxPriceFeed.sol` contract by [cloning the `fpo-evm` repository and following the README](https://github.com/fluxprotocol/fpo-evm), saving your contract address to use here. Alternatively, leave the default `config.json` contract address to test your API sources without deploying a new contract, using a contract we deployed to Aurora with access control removed. 
 You must deploy a new contract for each pair you provide on an EVM chain.
 
 ## For providing data on NEAR
@@ -18,14 +20,12 @@ To support the NEAR network, the `near-cli` package needs to be installed. (`npm
 ### General Set-up
 
 ```bash
-git clone https://github.com/fluxprotocol/oracle-provider-node
-cd oracle-provider-node/
+git clone https://github.com/fluxprotocol/fpo-node
+cd fpo-node/
 npm install
 cp .env.example .env # add private key & node ID
 nano config.json # populate with contract address, API sources, network, and interval
 ```
-
-To improve the project and receive better support please consider setting the `ENABLE_ANALYTICS` to `true`. No private keys will be submitted. 
 
 In `config.json`, each price pair is mapped to a single contract and can have any number of sources. The node will push the result of the last source that returns an answer, throwing out sources that do not respond.
 
@@ -33,19 +33,18 @@ In `config.json`, each price pair is mapped to a single contract and can have an
 
 First login using the near-cli by doing `NEAR_ENV=testnet near login` (`NEAR_ENV=mainnet` for mainnet). This will store private keys inside the `~/.near-credentials/testnet` (or `/mainnet` for mainnet). If for some reason the data is not in those folders please manually copy the private key over from `~/.near-credentials/default` over to the desired network folder.
 
-
 In the `config.json` Make sure if you are using NEAR to change the accountId (containing `{{YOUR_ACCOUNT_ID}}`) with your accountId that you just used to login with. Also if you want to deploy for mainnet make sure the `networkType` is set to mainnet and `rpc` is set to `https://rpc.testnet.near.org`.
 
-In the `.env` file you just created change the `NEAR_CREDENTIALS_STORE_PATH` to the root of the `near-credentials` folder. (For example `/home/myname/.near-credentials/`).
+In the `.env` file you just created change the `NEAR_CREDENTIALS_STORE_PATH` to the root of the `near-credentials` folder. (For example `/home/{USERNAME}/.near-credentials/`).
 
-Near does not require a new contract deployment for each pair. Each pair is generated automaticly when you push a new pair. See [Contract addresses for NEAR](#contract-addresses) 
+Near does not require a new contract deployment for each pair. Each pair is generated automatically when you push a new pair. See [Contract addresses for NEAR](#contract-addresses) 
 Near is also the only one to support batching of transactions, making it cheaper for you to push data on chain. Please see [Batching](#batching)  
 
 # EVM Setup
 
 Change in the `config.json` the `chainId` and `rpc` to the desired EVM chain. Currently it's configured to use the Aurora EVM chain. 
 
-Change in the `.env` the `EVM_PRIVATE_KEY` to your private key (Not a mnemonic but the key that starts with 0x)
+Change in the `.env` the `EVM_PRIVATE_KEY` to your private key (Not a mnemonic but the key that starts with 0x).
 
 
 ### Running
@@ -54,6 +53,18 @@ To run:
 
 ```bash
 npm run start
+```
+
+Alternatively, the `fpo-node` can be run as a Docker container:
+
+```bash
+docker run -d \
+    --name fpo-node \
+    --env-file $PWD/.env \
+    --volume $PWD/config.json:/usr/src/app/config.json \
+    --volume ~/.near-credentials:/usr/src/app/.near-credentials \
+    --restart always \
+    fluxprotocol/fpo-node
 ```
 
 ## Configuring `config.json`
@@ -168,6 +179,7 @@ Pushes data to a smart contract (for example price feeds)
 |pairsType|string|Contract type being used by pairs, either "single" or "factory" (uses `FluxPriceFeedFactory` EVM contract), default is "single".|
 
 ### contract addresses for NEAR
+
 |Network|Contract address|
 |---|---|
 |testnet|fpo3.franklinwaller2.testnet|
@@ -230,7 +242,7 @@ The `LayerZeroModule` is only used by LayerZero, it allows for submitting block 
 |Key|Type|Description|
 |---|---|---|
 |type|"PushPairModule"| Used to identify what type of module this is|
-|networkId|number|The id of the network in your `"networks"` configuration. This is also the endpoint id defined by layerzero, so make sure they match|
+|networkId|number|The id of the network in your `"networks"` configuration. This is also the endpoint id defined by LayerZero, so make sure they match|
 |oracleContractAddress|string|The address of the LayerZero Oracle|
 
 ## BalanceCheckerModule

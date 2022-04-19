@@ -2,14 +2,16 @@ FROM node:14-alpine
 
 WORKDIR /usr/src/app
 
-COPY . ./
+# Copy only required files
+COPY package.json package.json
+COPY yarn.lock yarn.lock
+COPY tsconfig.json tsconfig.json
+COPY src/ src/
 
-RUN apk --no-cache add g++ gcc libgcc libstdc++ linux-headers make python3
-
-RUN yarn global add --quiet node-gyp
+# Install curl for checking container health with `curl`
+RUN apk --no-cache add curl
 
 RUN yarn
-
 RUN yarn build
 
 CMD [ "yarn", "start" ]

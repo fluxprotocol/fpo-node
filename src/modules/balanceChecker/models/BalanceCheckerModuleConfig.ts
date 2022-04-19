@@ -1,5 +1,5 @@
 import Big from "big.js";
-import { ModuleConfig } from "../../../models/Module";
+import { ModuleConfig } from "../../../models/IModule";
 
 export interface BalanceCheckerModuleConfig extends ModuleConfig {
     accounts?: string[];
