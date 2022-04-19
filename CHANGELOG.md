@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.2.0](https://github.com/fluxprotocol/fpo-node/compare/v1.1.0...v1.2.0) (2022-04-19)
+
+
+### Features
+
+* **fetchjob:** Implement retrying of fetching sources ([3a7d9d5](https://github.com/fluxprotocol/fpo-node/commit/3a7d9d5a2a05b79fa743608006a405f5168aade0))
+* **pushpair:** Add support to Factory contract v2 ([f9c5437](https://github.com/fluxprotocol/fpo-node/commit/f9c543750b4fb369bd0833c7682403a6d45f8c46))
+
+
+### Bug Fixes
+
+* **pairchecker:** Send notification update after fetch error ([b870d84](https://github.com/fluxprotocol/fpo-node/commit/b870d849e339025b3f4114d0df3bd75d3b98c063))
+* **tests:** Fix issue where circular dependencies would make tests not run ([58fe77c](https://github.com/fluxprotocol/fpo-node/commit/58fe77c1f6db2a8bde183ea98538740f1435be4d))
+
 ## [1.1.0](https://github.com/fluxprotocol/fpo-node/compare/v1.0.0...v1.1.0) (2022-04-06)
 
 
