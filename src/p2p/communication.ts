@@ -5,7 +5,7 @@ import { NOISE } from "@chainsafe/libp2p-noise";
 import { Multiaddr } from "multiaddr";
 import PeerId from "peer-id";
 import BufferList from "bl/BufferList";
-import { existsSync, readFileSync, writeFileSync } from "fs";
+import { existsSync, readFile, writeFile } from "fs";
 
 import logger from "../services/LoggerService";
 
@@ -178,7 +178,12 @@ export default class Communicator {
 
 		const json = JSON.stringify(peers, null, 4);
 		try {
-			writeFileSync(this._peers_file, json);
+			writeFile(this._peers_file, json, (err) => {
+				if (err) {
+					throw err; 
+				}
+				
+			});
 		} catch (error) {
 			logger.error(`Node failed to save peers with error '${error}'.`);
 		}
@@ -190,14 +195,19 @@ export default class Communicator {
 			return new Set();
 		}
 
+		let peers: Set<string> = new Set();
 		try {
-			const json = readFileSync(this._peers_file, 'utf-8');
-			const peers_list: string[] = JSON.parse(json);
-
-			let peers: Set<string> = new Set();
-			for (const peer of peers_list) {
-				peers.add(peer);
-			}
+			readFile(this._peers_file, 'utf-8', (err, json) => {
+				if (err) {
+					throw err;
+				}
+				
+				const peers_list: string[] = JSON.parse(json);
+				
+				for (const peer of peers_list) {
+					peers.add(peer);
+				}
+			});
 
 			return peers;
 		} catch (error) {
