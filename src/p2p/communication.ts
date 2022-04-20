@@ -5,7 +5,7 @@ import { NOISE } from "@chainsafe/libp2p-noise";
 import { Multiaddr } from "multiaddr";
 import PeerId from "peer-id";
 import BufferList from "bl/BufferList";
-import { existsSync, readFile, writeFile } from "fs";
+import { promises } from "fs";
 
 import logger from "../services/LoggerService";
 
@@ -29,7 +29,7 @@ export default class Communicator {
 	_options: Libp2pOptions & CreateOptions;
 	_node?: Libp2p;
 	_node_addr: string;
-	_peers: Set<string>;
+	_peers: Set<string> = new Set();
 	_peers_file: string;
 	_retry: Set<string> = new Set();
 
@@ -54,7 +54,6 @@ export default class Communicator {
 			this._peers = new Set();
 		} else {
 			this._peers_file = peers_file;
-			this._peers = this.load_peers();
 		}
 
 		this._node_addr = '';
@@ -62,6 +61,7 @@ export default class Communicator {
 
 	async init(): Promise<void> {
 		this._node = await create(this._options);
+		this._peers = await this.load_peers();
 	}
 
 	async retry(): Promise<void> {
@@ -173,41 +173,29 @@ export default class Communicator {
 		});
 	}
 
-	save_peers(): void {
+	async save_peers(): Promise<void> {
 		let peers = Array.from(this._peers).sort();
 
 		const json = JSON.stringify(peers, null, 4);
 		try {
-			writeFile(this._peers_file, json, (err) => {
-				if (err) {
-					throw err; 
-				}
-				
-			});
+			await promises.writeFile(this._peers_file, json);
 		} catch (error) {
 			logger.error(`Node failed to save peers with error '${error}'.`);
 		}
 
 	}
 
-	load_peers(): Set<string> {
-		if (!existsSync(this._peers_file)) {
-			return new Set();
-		}
-
-		let peers: Set<string> = new Set();
+	async load_peers(): Promise<Set<string>> {
 		try {
-			readFile(this._peers_file, 'utf-8', (err, json) => {
-				if (err) {
-					throw err;
-				}
-				
-				const peers_list: string[] = JSON.parse(json);
-				
-				for (const peer of peers_list) {
-					peers.add(peer);
-				}
-			});
+			let peers: Set<string> = new Set();
+			await promises.access(this._peers_file);
+					
+			const json = await promises.readFile(this._peers_file, 'utf-8');
+			const peers_list: string[] = JSON.parse(json);
+			
+			for (const peer of peers_list) {
+				peers.add(peer);
+			}
 
 			return peers;
 		} catch (error) {
