@@ -41,33 +41,55 @@ export function median(list: number[]): number {
 	} else {
 		return list[mid_point];
 	}
-	return 0;
 }
 
 export async function aggregate(p2p: Communicator, data_to_send: string) {
 	await p2p.start();
 	let received: number[] = [];
 	let med: number = 0;
+	let medians_received_count: number = 0;
 	let leader: string = '';
 
 	p2p.handle_incoming('/elected/leader', async (source: AsyncIterable<Uint8Array | BufferList>) => {
+		let elected = '';
 		for await (const msg of source) {
-			let elected = msg.toString();
-			// check if this node is the leader.
-			if (elected === leader) {
-				// send data to contract.
-			}
+			elected += msg.toString;
+		}
+
+		// check if this node is the leader.
+		if (elected === leader) {
+			// send data to contract.
 		}
 	});
 
-	p2p.handle_incoming('/send/data', async (source: AsyncIterable<Uint8Array | BufferList>) => {
+	p2p.handle_incoming('/calculated/median', async (source: AsyncIterable<Uint8Array | BufferList>) => {
+		let full_msg = '';
 		for await (const msg of source) {
-			received.push(parseInt(msg.toString()));
-			if (received.length = p2p._peers.size) {
-				med = median(received);
-				leader = await elect_leader(p2p);
-				p2p.send('/elected/leader', [fromString(leader)]);
-			}
+			full_msg += msg.toString;
+		}
+		medians_received_count++;
+
+		let same_median = true;
+		let received_median = parseInt(full_msg.toString());
+		if (received_median != med) {
+			same_median = false;
+			// Should throw some error here or something?
+		} else if (medians_received_count === p2p._peers.size && same_median) {
+			leader = await elect_leader(p2p);
+			p2p.send('/elected/leader', [fromString(leader)]);
+		}
+	});
+	
+	p2p.handle_incoming('/send/data', async (source: AsyncIterable<Uint8Array | BufferList>) => {
+		let full_msg = '';
+		for await (const msg of source) {
+			full_msg += msg.toString;
+		}
+
+		received.push(parseInt(full_msg.toString()));
+		if (received.length === p2p._peers.size) {
+			med = median(received);
+			p2p.send('/calculated/median', [fromString(med.toString())]);
 		}
 	});
 
