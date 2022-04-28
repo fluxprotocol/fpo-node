@@ -156,10 +156,10 @@ export default class Communicator {
 		});
 	}
 
-	async handle_incoming(protocol: string, callback: (source: AsyncIterable<Uint8Array | BufferList>) => Promise<void>): Promise<void> {
+	async handle_incoming(protocol: string, callback: (peer: Multiaddr, source: AsyncIterable<Uint8Array | BufferList>) => Promise<void>): Promise<void> {
 		await attempt(this, null, async (node: Libp2p) => {
-			node.handle(protocol, async ({ stream }) => {
-				await callback(stream.source);
+			node.handle(protocol, async ({ connection, stream }) => {
+				await callback(connection.remoteAddr, stream.source);
 			});
 		});
 	}
