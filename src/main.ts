@@ -1,12 +1,9 @@
 import logger from './services/LoggerService';
 import { parseAppConfig } from './services/AppConfigService';
 import { PROJECT_NAME, PROJECT_VERSION } from './config';
-import { aggregate, start_p2p } from './p2p/aggregator';
-import Communicator from './p2p/communication';
 
 async function main() {
     logger.info(`🧙 Starting ${PROJECT_NAME} v${PROJECT_VERSION}`);
-    let p2p: Communicator | undefined = undefined;
     try {
         const appConfig = await parseAppConfig();
 
@@ -22,15 +19,8 @@ async function main() {
 
         await appConfig.healthcheck.start();
 
-        p2p = await start_p2p(appConfig.p2p_node, appConfig.peers_file);
-        await aggregate(p2p, 'foo');
-
         logger.info(`🚀 Booted`);
     } catch (error) {
-        if (p2p) {
-            p2p.stop();
-        }
-        
         logger.error(`${error}`);
         process.exit(1);
     }

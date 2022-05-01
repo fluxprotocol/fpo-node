@@ -11,13 +11,16 @@ import { createSafeAppConfigString } from "../../services/AppConfigUtils";
 import { fetchEvmLastUpdate, fetchNearLastUpdate } from './services/FetchLastUpdateService';
 import { parseP2PConfig, P2PConfig, P2PInternalConfig } from "./models/P2PConfig";
 import Communicator from "../../p2p/communication";
-import { init_p2p } from "../../p2p/aggregator";
+import TCP from "libp2p-tcp";
+const Mplex = require("libp2p-mplex"); // no ts support yet :/
+import { NOISE } from "@chainsafe/libp2p-noise";
+import { aggregate } from "../../p2p/aggregator";
 
 export class P2PModule extends Module {
     static type = "P2PModule";
     private internalConfig: P2PInternalConfig;
     private batch: P2PDataRequestBatch;
-    private p2p?: Communicator;
+    private p2p: Communicator;
 
     constructor(moduleConfig: P2PConfig, appConfig: AppConfig) {
         super(P2PModule.type, moduleConfig, appConfig);
@@ -25,6 +28,14 @@ export class P2PModule extends Module {
         this.internalConfig = parseP2PConfig(moduleConfig);
         this.id = this.internalConfig.id;
         this.batch = createBatchFromPairs(this.internalConfig, this.network);
+        this.p2p = new Communicator({
+            ...appConfig.p2p_node,
+            modules: {
+                transport: [TCP],
+                streamMuxer: [Mplex],
+                connEncryption: [NOISE],
+            }
+        }, appConfig.peers_file);
     }
 
     private async fetchLastUpdate() {
@@ -64,6 +75,13 @@ export class P2PModule extends Module {
 
             const resolvedRequests = await Promise.all(this.batch.requests.map(async (unresolvedRequest) => {
                 // this sends the data
+                let median;
+                await aggregate(this.p2p, '123', async (median: number) => {
+                    median = median;
+                });
+
+                // do something with median here.
+
                 const outcome = await job.executeRequest(unresolvedRequest);
 
                 if (outcome.type === OutcomeType.Invalid) {
@@ -75,6 +93,7 @@ export class P2PModule extends Module {
                 }
 
                 return createResolvePairRequest(outcome, unresolvedRequest, this.internalConfig);
+                
             }));
 
             let requests: P2PResolvedDataRequest[] = resolvedRequests.filter(r => r !== null) as P2PResolvedDataRequest[];
@@ -127,9 +146,13 @@ export class P2PModule extends Module {
             logger.info(`[${this.id}] Pre-submitting pairs with latest info`);
             await this.processPairs();
             logger.info(`[${this.id}] Pre-submitting done. Will be on a ${this.internalConfig.interval}ms interval`);
-
+            logger.info(`Initializing p2p node...`);
+            await this.p2p.init();
+            logger.info(`Starting p2p node...`);
+            await this.p2p.start();
             return true;
         } catch (error) {
+            await this.p2p.stop();
             logger.error(`[${this.id}] Start failure`, {
                 error,
                 config: createSafeAppConfigString(this.appConfig),

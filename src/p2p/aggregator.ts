@@ -8,23 +8,7 @@ import BufferList from "bl/BufferList";
 import { fromString } from 'uint8arrays/from-string';
 
 import logger from "../services/LoggerService";
-
-export async function init_p2p(addresses: CreateOptions, peers_file: string): Promise<Communicator> {
-	const p2p = new Communicator(
-		{
-			...addresses,
-			modules: {
-				transport: [TCP],
-				streamMuxer: [Mplex],
-				connEncryption: [NOISE],
-			}
-		},
-		peers_file
-	);
-	await p2p.init();
-
-	return p2p;
-}
+import { send } from "process";
 
 let current_leader = 0;
 
@@ -53,8 +37,7 @@ export function median(list: number[]): number {
 	}
 }
 
-export async function aggregate(p2p: Communicator, data_to_send: string) {
-	await p2p.start();
+export async function aggregate<O>(p2p: Communicator, data_to_send: string, sender: (data: number) => Promise<O>) {
 	let received: number[] = [];
 	let med: number = 0;
 	let medians_received_count: number = 0;
@@ -72,11 +55,20 @@ export async function aggregate(p2p: Communicator, data_to_send: string) {
 		leaders_received_count++;
 		if (elected !== leader) {
 			logger.error(`Received elected leader \`${elected}\' from peer \`${peer}\` but it did not match our elected leader \`${leader}\``);
-		} else if (leaders_received_count === p2p._peers.size && leader == p2p._node_addr) { // check if we are the leader
-			// send data to contract.
+		} else if (leaders_received_count === p2p._peers.size) { // check if we are the leader
+			if (leader == p2p._node_addr) {
+				// send data to contract.
+				await sender(med);
+			}
 			// check if leader didn't send it if so ask someone else to send it.
 			// after publishing the leader shares the transaction hash and the peers verify the transaction hash right parameters to right contract
 			
+			// reset
+			received = [];
+			med = 0;
+			medians_received_count = 0;
+			leader = '';
+			leaders_received_count = 0;
 		}
 	});
 
