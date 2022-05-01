@@ -84,7 +84,7 @@ export default class Communicator {
 				}
 			}
 
-			this._node_addr = node.multiaddrs[0].toString();
+			this._node_addr = `${node.multiaddrs[0]}/p2p/${node.peerId.toJSON().id}`;
 
 			return [
 				node.multiaddrs[0],
@@ -153,6 +153,12 @@ export default class Communicator {
 				logger.error(`Node failed to connect to ${ma} with error '${error}'.`);
 				return false;
 			}
+		});
+	}
+
+	async unhandle(protocol: string): Promise<void> {
+		await attempt(this, null, async (node: Libp2p) => {
+			await node.unhandle(protocol);
 		});
 	}
 

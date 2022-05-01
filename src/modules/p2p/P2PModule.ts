@@ -142,14 +142,14 @@ export class P2PModule extends Module {
                 return createPairIfNeeded(pair, this.internalConfig, this.network);
             }));
             logger.info(`[${this.id}] Done creating pairs`);
-
-            logger.info(`[${this.id}] Pre-submitting pairs with latest info`);
-            await this.processPairs();
-            logger.info(`[${this.id}] Pre-submitting done. Will be on a ${this.internalConfig.interval}ms interval`);
+            
             logger.info(`Initializing p2p node...`);
             await this.p2p.init();
             logger.info(`Starting p2p node...`);
             await this.p2p.start();
+            logger.info(`[${this.id}] Pre-submitting pairs with latest info`);
+            await this.processPairs();
+            logger.info(`[${this.id}] Pre-submitting done. Will be on a ${this.internalConfig.interval}ms interval`);
             return true;
         } catch (error) {
             await this.p2p.stop();
