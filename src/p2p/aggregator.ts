@@ -1,8 +1,9 @@
-import Communicator from './communication';
+import Big from "big.js";
 import { Multiaddr } from "multiaddr";
 import BufferList from "bl/BufferList";
 import { fromString } from 'uint8arrays/from-string';
 
+import Communicator from './communication';
 import logger from "../services/LoggerService";
 
 let current_leader = 0;
@@ -20,21 +21,21 @@ export async function elect_leader(p2p: Communicator): Promise<string> {
 	return elected;
 }
 
-export function median(list: number[]): number {
+export function median(list: Big[]): Big {
 	list = list.sort();
 
-	let mid_point = list.length / 2 ;
+	let mid_point = Math.floor(list.length / 2);
 
 	if (mid_point % 2) {
-		return (list[mid_point - 1] + list[mid_point]) / 2;
+		return (list[mid_point - 1].plus(list[mid_point])).div(2);
 	} else {
 		return list[mid_point];
 	}
 }
 
-export async function aggregate<O>(p2p: Communicator, data_to_send: string, sender: (data: number) => Promise<O>) {
-	let received: number[] = [parseInt(data_to_send)];
-	let med: number = 0;
+export async function aggregate<O>(p2p: Communicator, data_to_send: Big, sender: (data: Big) => Promise<O>) {
+	let received: Big[] = [data_to_send];
+	let med: Big = new Big(0);
 	let medians_received_count: number = 0;
 	let leader: string = '';
 	let leaders_received_count: number = 0;
@@ -72,7 +73,7 @@ export async function aggregate<O>(p2p: Communicator, data_to_send: string, send
 		logger.info(`Received median \`${full_msg}\' from peer \`${peer}\``);
 
 		let same_median = true;
-		let received_median = parseFloat(full_msg);
+		let received_median = new Big(full_msg);
 		if (received_median !== med) {
 			logger.error(`Received median \`${full_msg}\' from peer \`${peer}\` but it did not match our median \`${med}\``);
 			same_median = false;
@@ -96,7 +97,7 @@ export async function aggregate<O>(p2p: Communicator, data_to_send: string, send
 		}
 		logger.info(`Received data \`${full_msg}\' from peer \`${peer}\``);
 
-		received.push(parseInt(full_msg));
+		received.push(new Big(full_msg));
 		// account for our data
 		if (received.length === (p2p._peers.size + 1)) {
 			med = median(received);
@@ -108,5 +109,5 @@ export async function aggregate<O>(p2p: Communicator, data_to_send: string, send
 	});
 
 	logger.info(`Sending data to peers ${data_to_send}`);
-	p2p.send('/send/data', [fromString(data_to_send)]);
+	p2p.send('/send/data', [fromString(data_to_send.toString())]);
 }

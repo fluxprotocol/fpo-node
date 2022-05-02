@@ -15,6 +15,7 @@ import TCP from "libp2p-tcp";
 const Mplex = require("libp2p-mplex"); // no ts support yet :/
 import { NOISE } from "@chainsafe/libp2p-noise";
 import { aggregate } from "../../p2p/aggregator";
+import Big from "big.js";
 
 export class P2PModule extends Module {
     static type = "P2PModule";
@@ -75,8 +76,8 @@ export class P2PModule extends Module {
 
             const resolvedRequests = await Promise.all(this.batch.requests.map(async (unresolvedRequest) => {
                 // this sends the data
-                let median;
-                await aggregate(this.p2p, '123', async (median: number) => {
+                let median: Big;
+                await aggregate(this.p2p, new Big(1), async (median: Big) => {
                     median = median;
                 });
 
