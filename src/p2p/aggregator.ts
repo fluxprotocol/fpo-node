@@ -74,7 +74,7 @@ export async function aggregate<O>(p2p: Communicator, data_to_send: Big, sender:
 
 		let same_median = true;
 		let received_median = new Big(full_msg);
-		if (received_median !== med) {
+		if (!received_median.eq(med)) {
 			logger.error(`Received median \`${full_msg}\' from peer \`${peer}\` but it did not match our median \`${med}\``);
 			same_median = false;
 			// Should throw some error here or something?
