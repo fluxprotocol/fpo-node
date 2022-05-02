@@ -176,7 +176,9 @@ Pushes data to a smart contract (for example price feeds)
 |contractAddress|Which address to post the answers to. See below for addresses on NEAR (EVM requires a new contract deployment for each pair)|
 |interval|number|Interval between updates in ms.|
 |pairs|Pair[]|An array of Pairs, If the networkId is coupled to an EVM network this can only be 1 pair. NEAR allows for multiple pairs and batches them together in 1 transaction, we recommend a max of 20 pairs|
-|pairsType|string|Contract type being used by pairs, either "single" or "factory" (uses `FluxPriceFeedFactory` EVM contract), default is "single".|
+|pairsType|string|Contract type being used by pairs, either "single", "factory" or "factory2" (uses `FluxPriceFeedFactory` EVM contract), default is "single".|
+
+Note: For using the latest [`FluxPriceFeedFactory`](https://github.com/fluxprotocol/fpo-evm/blob/main/contracts/FluxPriceFeedFactory.sol) (version 2.0.0), the key `pairsType` should be set to `factory2`.
 
 ### contract addresses for NEAR
 
