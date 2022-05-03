@@ -1,0 +1,29 @@
+{
+    "networks": [
+        {
+            "type": "solana",
+            "privateKeyEnvKey": "SOL_PRIVATE_KEY",
+            "rpc": "https://api.devnet.solana.com",
+            "wss":"wss://api.devnet.solana.com/"
+        }
+    ],
+    "modules": [
+        {
+            "contractAddress": "9dCoMgAE3xhNEhgpMNpGjdh5sLhs5F84RkvWVXfJwt4u",
+            "pairs": [
+                {
+                    "pair": "ETH/USD_SOME_TEST",
+                    "decimals": 6,
+                    "sources": [
+                        {
+                            "source_path": "market_data.current_price.usd",
+                            "end_point": "https://api.coingecko.com/api/v3/coins/ethereum"
+                        }
+                    ]
+                }
+            ],
+            "interval": 60000,
+            "type": "PushPairModule"
+        }
+    ]
+}
