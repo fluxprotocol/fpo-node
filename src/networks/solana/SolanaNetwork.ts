@@ -9,7 +9,7 @@ import {Connection, Commitment, PublicKey, LAMPORTS_PER_SOL} from "@solana/web3.
 
 
 export default class SolanaNetwork extends Network {
-    static type: string = "evm";
+    static type: string = "solana";
     internalConfig: InternalSolanaNetworkConfig;
     private provider: anchor.AnchorProvider;
     private connection : anchor.web3.Connection;

@@ -5,7 +5,7 @@ import { PairCheckerModule } from "./modules/pairChecker/PairCheckerModule";
 import { PushPairModule } from "./modules/pushPair/PushPairModule";
 import EvmNetwork from "./networks/evm/EvmNetwork";
 import { NearNetwork } from "./networks/near/NearNetwork";
-
-export const AVAILABLE_NETWORKS = [EvmNetwork, NearNetwork];
+import SolanaNetwork from "./networks/solana/SolanaNetwork";
+export const AVAILABLE_NETWORKS = [EvmNetwork, NearNetwork, SolanaNetwork];
 export const AVAILABLE_MODULES = [LayerZeroModule, PushPairModule, BalanceCheckerModule, PairCheckerModule];
 export const AVAILABLE_JOBS = [FetchJob];
