@@ -5,6 +5,8 @@ export interface PushPairDataRequest extends DataRequest {
     extraInfo: {
         pair: string;
         decimals: number;
+        deviationPercentage: number;
+        minimumUpdateInterval: number;
     }
 }
 

@@ -5,16 +5,22 @@ import { FetchJob } from "../../jobs/fetch/FetchJob";
 import { Module } from "../../models/Module";
 import { OutcomeType } from "../../models/Outcome";
 import { PushPairDataRequestBatch, PushPairResolvedDataRequest } from "./models/PushPairDataRequest";
-import { createBatchFromPairs, createEvmFactory2TransmitTransaction, createEvmFactoryTransmitTransaction, createResolvePairRequest } from "./services/PushPairRequestService";
+import { createBatchFromPairs, createEvmFactory2TransmitTransaction, createEvmFactoryTransmitTransaction, createResolvePairRequest, shouldPricePairUpdate } from "./services/PushPairRequestService";
 import { createPairIfNeeded } from "./services/PushPairCreationService";
 import { createSafeAppConfigString } from "../../services/AppConfigUtils";
-import { fetchEvmLastUpdate, fetchNearLastUpdate } from './services/FetchLastUpdateService';
+import { fetchEvmLastUpdate, fetchLatestPrice, fetchNearLastUpdate } from './services/FetchLastUpdateService';
 import { parsePushPairConfig, PushPairConfig, PushPairInternalConfig } from "./models/PushPairConfig";
+import Big from "big.js";
 
 export class PushPairModule extends Module {
     static type = "PushPairModule";
     private internalConfig: PushPairInternalConfig;
     private batch: PushPairDataRequestBatch;
+
+    // internalId => price
+    // We should only update the mapping when we push the pair on chain
+    // Otherwise we might never update the price
+    private prices: Map<string, Big> = new Map();
 
     constructor(moduleConfig: PushPairConfig, appConfig: AppConfig) {
         super(PushPairModule.type, moduleConfig, appConfig);
@@ -41,8 +47,9 @@ export class PushPairModule extends Module {
 
     private async processPairs() {
         try {
+            const lastUpdate = await this.fetchLastUpdate();
             // Fetch elapsed time (in milliseconds) since last pair(s) update
-            const timeSinceUpdate = Date.now() - await this.fetchLastUpdate();
+            const timeSinceUpdate = Date.now() - lastUpdate;
 
             let remainingInterval;
             if (timeSinceUpdate < this.internalConfig.interval) {
@@ -70,6 +77,14 @@ export class PushPairModule extends Module {
                     return null;
                 }
 
+                // When the prices don't deviate too much we don't need to update the price pair
+                if(!shouldPricePairUpdate(unresolvedRequest, lastUpdate, new Big(outcome.answer), this.prices.get(unresolvedRequest.internalId))) {
+                    logger.debug(`[${this.id}] ${unresolvedRequest.internalId} Price ${outcome.answer} doesn't deviate ${unresolvedRequest.extraInfo.deviationPercentage}% from ${this.prices.get(unresolvedRequest.internalId)}`);
+                    remainingInterval = this.internalConfig.interval;
+                    return null;
+                }
+
+                this.prices.set(unresolvedRequest.internalId, new Big(outcome.answer));
                 return createResolvePairRequest(outcome, unresolvedRequest, this.internalConfig);
             }));
 
@@ -119,6 +134,13 @@ export class PushPairModule extends Module {
                 return createPairIfNeeded(pair, this.internalConfig, this.network);
             }));
             logger.info(`[${this.id}] Done creating pairs`);
+
+            logger.info(`[${this.id}] Fetching latest prices`);
+            await Promise.all(this.batch.requests.map(async (request) => {
+                const latestPrice = await fetchLatestPrice(this.internalConfig, request, this.network);
+                this.prices.set(request.internalId, latestPrice);
+            }));
+            logger.info(`[${this.id}] Done fetching latest prices`);
 
             logger.info(`[${this.id}] Pre-submitting pairs with latest info`);
             await this.processPairs();
