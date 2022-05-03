@@ -5,6 +5,9 @@ import FluxPriceFeedFactory2 from '../FluxPriceFeedFactory2.json';
 import { NearNetwork } from "../../../networks/near/NearNetwork";
 import { PushPairInternalConfig } from "../models/PushPairConfig";
 import { computeFactoryPairId } from "./utils";
+import { PushPairDataRequest } from '../models/PushPairDataRequest';
+import { Network } from '../../../models/Network';
+import Big from 'big.js';
 
 export async function fetchEvmLastUpdate(config: PushPairInternalConfig, network: EvmNetwork) {
     let timestamp;
@@ -56,4 +59,58 @@ export async function fetchNearLastUpdate(config: PushPairInternalConfig, networ
 
     // Convert contract timestamp to milliseconds
     return Math.floor(entry.last_update / 1000000);
+}
+
+export async function fetchLatestPrice(config: PushPairInternalConfig, pair: PushPairDataRequest, network: Network): Promise<Big> {
+    if (network.type === 'evm') {
+        if (config.pairsType === 'factory') {
+            const result = (await network.view({
+                method: 'valueFor',
+                address: config.contractAddress,
+                amount: '0',
+                params: {
+                    id: computeFactoryPairId(pair.extraInfo.pair, pair.extraInfo.decimals)
+                },
+                abi: FluxPriceFeedFactory.abi,
+            }))[0];
+
+            return new Big(result.toString());
+        } else if (config.pairsType === 'factory2') {
+            const result = (await network.view({
+                method: 'valueFor',
+                address: config.contractAddress,
+                amount: '0',
+                params: {
+                    id: computeFactoryPairId(pair.extraInfo.pair, pair.extraInfo.decimals, (network as EvmNetwork).getWalletPublicAddress()),
+                },
+                abi: FluxPriceFeedFactory2.abi,
+            }))[0];
+
+            return new Big(result.toString());
+        } else if (config.pairsType === 'single') {
+            const result = await network.view({
+                method: 'latestAnswer',
+                address: config.contractAddress,
+                amount: '0',
+                params: {},
+                abi: FluxPriceFeed.abi,
+            });
+
+            return new Big(result.toString());
+        }
+    } else if (network.type === 'near') {
+        const result = await network.view({
+            method: 'get_entry',
+            address: config.contractAddress,
+            amount: '0',
+            params: {
+                provider: (network as NearNetwork).internalConfig?.account.accountId,
+                pair: pair.extraInfo.pair,
+            },
+        });
+
+        return new Big(result.price);
+    }
+
+    throw new Error('Network not found');
 }

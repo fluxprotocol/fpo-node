@@ -7,7 +7,7 @@ import { FetchJob } from "../../../jobs/fetch/FetchJob";
 import { Network } from "../../../models/Network";
 import { OutcomeAnswer, OutcomeType } from "../../../models/Outcome";
 import { PushPairDataRequest, PushPairDataRequestBatch, PushPairResolvedDataRequest } from "../models/PushPairDataRequest";
-import { PushPairInternalConfig } from '../models/PushPairConfig';
+import { Pair, PushPairInternalConfig } from '../models/PushPairConfig';
 import { createDataRequestBatch } from "../../../models/DataRequestBatch";
 import { ethers } from "ethers";
 
@@ -25,6 +25,8 @@ export function createBatchFromPairs(config: PushPairInternalConfig, targetNetwo
             extraInfo: {
                 pair: pairInfo.pair,
                 decimals: pairInfo.decimals,
+                deviationPercentage: config.deviationPercentage,
+                minimumUpdateInterval: config.minimumUpdateInterval,
             },
             internalId: `${targetNetwork.id}/p${pairInfo.pair}-d${pairInfo.decimals}-i${index}`,
             originNetwork: targetNetwork,
@@ -216,4 +218,27 @@ export function createEvmFactory2TransmitTransaction(config: PushPairInternalCon
             params,
         },
     };
+}
+
+export function shouldPricePairUpdate(pair: PushPairDataRequest, lastUpdate: number, newPrice: Big, oldPrice?: Big): boolean {
+    // This is probably the first time we are pushing
+    if (!oldPrice) {
+        return true;
+    }
+
+    const timeSinceUpdate = Date.now() - lastUpdate;
+
+    // There hasn't been an update in a while, we should just update
+    if (timeSinceUpdate >= pair.extraInfo.minimumUpdateInterval) {
+        return true;
+    }
+
+    const valueChange = newPrice.minus(oldPrice);
+    const percentageChange = valueChange.div(oldPrice).times(100);
+
+    if (percentageChange.lt(0)) {
+        return percentageChange.lte(-pair.extraInfo.deviationPercentage);
+    }
+
+    return percentageChange.gte(pair.extraInfo.deviationPercentage);
 }
