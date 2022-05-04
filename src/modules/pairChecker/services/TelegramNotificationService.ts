@@ -1,6 +1,7 @@
 import { Pair } from "../models/PairCheckerModuleConfig";
 import { TELEGRAM_BOT_API, TELEGRAM_ALERTS_CHAT_ID, TELEGRAM_STATS_CHAT_ID } from "../../../config";
 import { prettySeconds } from "../utils";
+import logger from "../../../services/LoggerService";
 
 export async function notifyTelegram(reports: { pair: Pair; diff: number; updated: boolean; }[], groupName: string, forceNotification?: boolean) {
     // Sort reports by last update
@@ -56,18 +57,24 @@ export async function notifyTelegram(reports: { pair: Pair; diff: number; update
     }
 }
 
-// TODO: Check if response is not 200 OK
 export async function sendTelegramMessage(url: string, chatId: string, text: string, disable_notification?: boolean) {
-    return await fetch(`${url}/sendMessage`, {
-        method: "POST",
-        body: JSON.stringify({
-            chat_id: chatId,
-            text,
-            parse_mode: "Markdown",
-            disable_notification
-        }),
-        headers: {
-            'Content-Type': 'application/json'
-        },
-    });
+    try {
+        await fetch(`${url}/sendMessage`, {
+            method: "POST",
+            body: JSON.stringify({
+                chat_id: chatId,
+                text,
+                parse_mode: "Markdown",
+                disable_notification
+            }),
+            headers: {
+                'Content-Type': 'application/json'
+            },
+        });
+    } catch (error) {
+        logger.error(`[TelegramNotification] Unknown error`, {
+            fingerprint: 'telegram-unknown',
+            error,
+        });
+    }
 }
