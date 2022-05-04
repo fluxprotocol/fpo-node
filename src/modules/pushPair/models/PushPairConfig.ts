@@ -42,8 +42,6 @@ export function parsePushPairConfig(config: PushPairConfig): PushPairInternalCon
     if (typeof config.interval === 'undefined' || typeof config.interval !== 'number') throw new Error(`[PushPairModule] "interval" is required and must be a number`);
     if (typeof config.deviationPercentage !== 'undefined' && typeof config.deviationPercentage !== 'number') throw new Error(`[PushPairModule] "deviationPercentage" should be a number`);
     if (typeof config.minimumUpdateInterval !== 'undefined' && typeof config.minimumUpdateInterval !== 'number') throw new Error(`[PushPairModule] "minimumUpdateInterval" should be a number`);
-
-
     if (!Array.isArray(config.pairs)) throw new Error(`[PushPairModule] "pairs" is required and must be an array`);
 
     config.pairs.forEach((pair: Partial<Pair>) => {

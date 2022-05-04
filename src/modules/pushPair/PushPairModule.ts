@@ -78,12 +78,14 @@ export class PushPairModule extends Module {
                 }
 
                 // When the prices don't deviate too much we don't need to update the price pair
-                if(!shouldPricePairUpdate(unresolvedRequest, lastUpdate, new Big(outcome.answer), this.prices.get(unresolvedRequest.internalId))) {
+                if (!shouldPricePairUpdate(unresolvedRequest, lastUpdate, new Big(outcome.answer), this.prices.get(unresolvedRequest.internalId))) {
                     logger.debug(`[${this.id}] ${unresolvedRequest.internalId} Price ${outcome.answer} doesn't deviate ${unresolvedRequest.extraInfo.deviationPercentage}% from ${this.prices.get(unresolvedRequest.internalId)}`);
                     remainingInterval = this.internalConfig.interval;
                     return null;
                 }
 
+                // NOTICE: Limitation here is that we assume that the price update transaction may fail
+                // we do not know whether or not the transaction failed
                 this.prices.set(unresolvedRequest.internalId, new Big(outcome.answer));
                 return createResolvePairRequest(outcome, unresolvedRequest, this.internalConfig);
             }));
