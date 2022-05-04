@@ -73,7 +73,27 @@ export class Network extends EventEmitter implements INetwork {
         throw new Error(`${this.id} Not implemented getBalance`);
     }
 
+    // Solana factory fns
+    // async initialize(txParams: TxCallParams): Promise<any> {
+    //     throw new Error(`${this.id} Not implemented initialize`);
+    // }
+    // // async createFeed(txParams: TxCallParams): Promise<any> {
+    // //     throw new Error(`${this.id} Not implemented createFeed`);
+    // // }
+    // async createFeed(idl: any, programId: string, description: string, price: number ): Promise<any> {
+    //     throw new Error(`${this.id} Not implemented createFeed`);
+    // }
+    async updateFeed(txParams: TxCallParams): Promise<any> {
+        throw new Error(`${this.id} Not implemented updateFeed`);
+    }
+    // async updateFeed(idl: any, programId: string, price: number ): Promise<any>  {
+    //     throw new Error(`${this.id} Not implemented updateFeed`);
+    // }
+    
+
     addRequestsToQueue(batch: DataRequestBatchResolved): void {
         this.queue.add(batch);
     }
+
+    
 }

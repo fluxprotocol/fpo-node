@@ -8,8 +8,9 @@ import { PushPairDataRequestBatch, PushPairResolvedDataRequest } from "./models/
 import { createBatchFromPairs, createEvmFactory2TransmitTransaction, createEvmFactoryTransmitTransaction, createResolvePairRequest } from "./services/PushPairRequestService";
 import { createPairIfNeeded } from "./services/PushPairCreationService";
 import { createSafeAppConfigString } from "../../services/AppConfigUtils";
-import { fetchEvmLastUpdate, fetchNearLastUpdate } from './services/FetchLastUpdateService';
+import { fetchEvmLastUpdate, fetchNearLastUpdate, fetchSolanaLastUpdate } from './services/FetchLastUpdateService';
 import { parsePushPairConfig, PushPairConfig, PushPairInternalConfig } from "./models/PushPairConfig";
+import SolanaNetwork from "../../networks/solana/SolanaNetwork";
 
 export class PushPairModule extends Module {
     static type = "PushPairModule";
@@ -31,6 +32,11 @@ export class PushPairModule extends Module {
         }
         else if (this.network.type === 'evm') {
             lastUpdate = await fetchEvmLastUpdate(this.internalConfig, this.network as EvmNetwork);
+        }  
+        else if (this.network.type === 'solana') {
+            console.log("FETCHING SOLANA LAST UPDATE")
+            lastUpdate = await fetchSolanaLastUpdate(this.internalConfig, this.network as SolanaNetwork);
+            console.log("SOLANA LAST UPDATE", lastUpdate)
         }
         else {
             throw new Error(`Failed to fetch last update for network ${this.network.type} and pairs type ${this.internalConfig.pairsType}`);

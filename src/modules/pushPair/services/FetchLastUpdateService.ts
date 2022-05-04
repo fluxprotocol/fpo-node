@@ -5,7 +5,12 @@ import FluxPriceFeedFactory2 from '../FluxPriceFeedFactory2.json';
 import { NearNetwork } from "../../../networks/near/NearNetwork";
 import { PushPairInternalConfig } from "../models/PushPairConfig";
 import { computeFactoryPairId } from "./utils";
-
+import SolanaNetwork from '../../../networks/solana/SolanaNetwork';
+const idl = JSON.parse(
+    require("fs").readFileSync(
+      require("path").resolve(__dirname, '../SolanaFactory.json'), "utf8"
+    )
+  );
 export async function fetchEvmLastUpdate(config: PushPairInternalConfig, network: EvmNetwork) {
     let timestamp;
     if (config.pairsType === 'single') {
@@ -56,4 +61,22 @@ export async function fetchNearLastUpdate(config: PushPairInternalConfig, networ
 
     // Convert contract timestamp to milliseconds
     return Math.floor(entry.last_update / 1000000);
+}
+
+export async function fetchSolanaLastUpdate(config: PushPairInternalConfig, network: SolanaNetwork) {
+    const entry = await network.view({
+        method: 'get_entry',
+        address: config.contractAddress,
+        amount: '0',
+        params: {
+            // provider: network.internalConfig?.account.accountId,
+
+            pair: config.pairs[0].pair,
+        },
+        abi: idl,
+    });
+    console.log("SOLANA ENTRYYYY", entry)
+    // Convert contract timestamp to milliseconds
+    
+    return Math.floor(entry / 1000000);
 }

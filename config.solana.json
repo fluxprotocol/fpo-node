@@ -3,6 +3,7 @@
         {
             "type": "solana",
             "privateKeyEnvKey": "SOL_PRIVATE_KEY",
+            "networkId": 122,
             "rpc": "https://api.devnet.solana.com",
             "wss":"wss://api.devnet.solana.com/"
         }
@@ -10,6 +11,9 @@
     "modules": [
         {
             "contractAddress": "9dCoMgAE3xhNEhgpMNpGjdh5sLhs5F84RkvWVXfJwt4u",
+            "pairsType": "factory",
+            "type": "PushPairModule",
+            "networkId": 122,
             "pairs": [
                 {
                     "pair": "ETH/USD_SOME_TEST",
@@ -22,8 +26,7 @@
                     ]
                 }
             ],
-            "interval": 60000,
-            "type": "PushPairModule"
+            "interval": 60000
         }
     ]
 }

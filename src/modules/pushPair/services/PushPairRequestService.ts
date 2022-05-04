@@ -71,6 +71,17 @@ export function createResolvePairRequest(outcome: OutcomeAnswer, request: PushPa
                 price: outcome.answer,
             },
         };
+    }
+    else if (request.targetNetwork.type === 'solana') {
+        txCallParams = {
+            ...txCallParams,
+            amount: '0',
+            method: 'push_data',
+            params: {
+                pair: request.extraInfo.pair,
+                price: outcome.answer,
+            },
+        };
     } else {
         throw new Error(`Network type is not supported for PushPairModule`);
     }

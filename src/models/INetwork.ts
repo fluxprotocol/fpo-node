@@ -35,4 +35,11 @@ export interface INetwork extends EventEmitter {
 
     getBalance(accountId: string): Promise<Big | undefined>;
 
+    // Solana factory fns
+    // initialize(txParams: TxCallParams): Promise<any>;
+    // createFeed(txParams: TxCallParams): Promise<any>;
+    // createFeed(idl: any, programId: string, description: string, price: number ): Promise<any>;
+    updateFeed(txParams: TxCallParams): Promise<any>;
+    // updateFeed(idl: any, programId: string, price: number ): Promise<any> ;
+    
 }

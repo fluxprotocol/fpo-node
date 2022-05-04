@@ -3,9 +3,13 @@ import { Pair, PushPairInternalConfig } from "../models/PushPairConfig";
 import FluxPriceFeedAbi from '../FluxPriceFeed.json';
 import { NearNetwork } from "../../../networks/near/NearNetwork";
 import logger from '../../../services/LoggerService';
-
+import SolanaNetwork from "../../../networks/solana/SolanaNetwork";
 const DEFAULT_NEAR_STORAGE_DEPOSIT = '300800000000000000000000';
-
+const idl = JSON.parse(
+    require("fs").readFileSync(
+      require("path").resolve(__dirname, '../SolanaFactory.json'), "utf8"
+    )
+  );
 
 async function createPairIfNeededForNear(pair: Pair, config: PushPairInternalConfig, network: NearNetwork) {
     let hasPriceFeed = false;
@@ -49,6 +53,51 @@ async function createPairIfNeededForNear(pair: Pair, config: PushPairInternalCon
     }
 }
 
+
+// async function createPairIfNeededForSolana(pair: Pair, config: PushPairInternalConfig, network: Network) {
+//     let hasPriceFeed = false;
+
+//     // We have to do multiple try/catches because near throws errors instead of sending an "failed" object
+//     try {
+//         // const entry = await network.view({
+//         //     method: 'get_entry',
+//         //     address: config.contractAddress,
+//         //     amount: '0',
+//         //     params: {
+//         //         provider: network.internalConfig?.account.accountId,
+//         //         pair: pair.pair,
+//         //     },
+//         // });
+
+//         hasPriceFeed = true;
+
+//         // if (entry.decimals !== pair.decimals) {
+//         //     logger.error(`Decimals on pair ${pair.pair}, network ${network.id} reported to have ${entry.decimals} (contract) but node is configured for ${pair.decimals}`);
+//         //     process.exit(1);
+//         // }
+//         // network.updateFeed(idl, config.contractAddress, pair.pair, 0);
+//     } catch (error) {
+//         hasPriceFeed = false;
+//         logger.debug(`No price feed found, creating one for ${pair.pair} with ${pair.decimals} decimals on ${network.networkId}`);
+//     }
+
+//     if (!hasPriceFeed) {
+//         // await network.call({
+//         //     method: 'create_pair',
+//         //     address: config.contractAddress,
+//         //     amount: DEFAULT_NEAR_STORAGE_DEPOSIT,
+//         //     params: {
+//         //         pair: pair.pair,
+//         //         decimals: pair.decimals,
+//         //         // We expect the module to submit the price after this call
+//         //         initial_price: '0',
+//         //     },
+//         // });
+//         network.createFeed(idl, config.contractAddress, pair.pair, 0);
+//         logger.info(`Created pair for ${pair.pair}`);
+//     }
+// }
+
 export async function createPairIfNeeded(pair: Pair, config: PushPairInternalConfig, network: Network) {
     if (network.type === 'evm') {
         if (config.pairsType === 'single') {
@@ -67,6 +116,10 @@ export async function createPairIfNeeded(pair: Pair, config: PushPairInternalCon
         }
     } else if (network.type === 'near') {
         await createPairIfNeededForNear(pair, config, network);
+    } else if (network.type === 'solana') {
+        // await createPairIfNeededForSolana(pair, config, network);
+
+        console.log("Hellooooo")
     } else {
         throw new Error(`Network type ${network.type} is not supported for price pushing`);
     }
