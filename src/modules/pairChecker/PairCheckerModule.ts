@@ -8,7 +8,11 @@ import { debouncedInterval } from "../../services/TimerUtils";
 import { notifyTelegram } from './services/TelegramNotificationService';
 import { prettySeconds } from './utils';
 import { createSafeAppConfigString } from '../../services/AppConfigUtils';
-
+const idl = JSON.parse(
+    require("fs").readFileSync(
+      require("path").resolve(__dirname, '../pushPair/SolanaFactory.json'), "utf8"
+    )
+  );
 type FetchLastTimestampFunction = (pair: Pair) => Promise<number | undefined>;
 
 export class PairCheckerModule extends Module {
@@ -27,6 +31,9 @@ export class PairCheckerModule extends Module {
             this.fetchLatestTimestampFunc = this.fetchEvmLatestTimestamp;
         } else if (this.network.type === 'near') {
             this.fetchLatestTimestampFunc = this.fetchNearLatestTimestamp;
+        }
+        else if (this.network.type === 'solana') {
+            this.fetchLatestTimestampFunc = this.fetchSolanaLatestTimestamp;
         } else {
             throw new Error(`Network type ${this.network.type} is not supported for PairCheckerModule`);
         }
@@ -40,6 +47,30 @@ export class PairCheckerModule extends Module {
                 amount: '0',
                 params: {},
                 abi: FluxPriceFeedAbi.abi,
+            });
+
+            // Convert contract timestamp to milliseconds
+            return latestTimestamp.toNumber() * 1000;
+        } catch (error) {
+            logger.error(`[${this.id}] Fetch EVM latest timestamp error`, {
+                error,
+                config: createSafeAppConfigString(this.appConfig),
+                fingerprint: `${this.type}-${this.internalConfig.provider}-fetchEvmLatestTimestamp-failure`,
+            });
+
+            return undefined;
+        }
+    }
+
+    private async fetchSolanaLatestTimestamp(pair: Pair) {
+        try {
+            const latestTimestamp = await this.network.view({
+                method: 'latestTimestamp',
+                address: pair.address,
+                amount: '0',
+                params: { pair: pair.pair, decimals: pair.decimals},
+                abi: idl,
+
             });
 
             // Convert contract timestamp to milliseconds

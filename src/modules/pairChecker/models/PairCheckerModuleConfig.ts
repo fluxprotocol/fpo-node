@@ -5,6 +5,7 @@ export interface Pair {
     pair: string;
     provider?: string;
     threshold?: number;
+    decimals?:number; ////////
 }
 
 export interface PairCheckerModuleConfig extends ModuleConfig {

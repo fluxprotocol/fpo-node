@@ -62,6 +62,10 @@
           "type": "string"
         },
         {
+          "name": "decimal",
+          "type": "u8"
+        },
+        {
           "name": "price",
           "type": "string"
         }
@@ -129,12 +133,16 @@
             "type": "u8"
           },
           {
-            "name": "entry",
+            "name": "index",
             "type": "u8"
           },
           {
             "name": "description",
             "type": "string"
+          },
+          {
+            "name": "decimal",
+            "type": "u8"
           },
           {
             "name": "price",
@@ -147,8 +155,5 @@
         ]
       }
     }
-  ],
-  "metadata": {
-    "address": "9dCoMgAE3xhNEhgpMNpGjdh5sLhs5F84RkvWVXfJwt4u"
-  }
+  ]
 }

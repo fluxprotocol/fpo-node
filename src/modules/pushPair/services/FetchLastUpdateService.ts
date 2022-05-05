@@ -70,8 +70,8 @@ export async function fetchSolanaLastUpdate(config: PushPairInternalConfig, netw
         amount: '0',
         params: {
             // provider: network.internalConfig?.account.accountId,
-
             pair: config.pairs[0].pair,
+            decimals: config.pairs[0].decimals
         },
         abi: idl,
     });

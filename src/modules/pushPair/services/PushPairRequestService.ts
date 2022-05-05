@@ -10,7 +10,11 @@ import { PushPairDataRequest, PushPairDataRequestBatch, PushPairResolvedDataRequ
 import { PushPairInternalConfig } from '../models/PushPairConfig';
 import { createDataRequestBatch } from "../../../models/DataRequestBatch";
 import { ethers } from "ethers";
-
+const idl = JSON.parse(
+    require("fs").readFileSync(
+      require("path").resolve(__dirname, '../SolanaFactory.json'), "utf8"
+    )
+  );
 export function createBatchFromPairs(config: PushPairInternalConfig, targetNetwork: Network): PushPairDataRequestBatch {
     const requests: PushPairDataRequest[] = config.pairs.map((pairInfo, index) => {
 
@@ -79,8 +83,10 @@ export function createResolvePairRequest(outcome: OutcomeAnswer, request: PushPa
             method: 'push_data',
             params: {
                 pair: request.extraInfo.pair,
+                decimals: request.extraInfo.decimals,
                 price: outcome.answer,
             },
+            abi:idl
         };
     } else {
         throw new Error(`Network type is not supported for PushPairModule`);

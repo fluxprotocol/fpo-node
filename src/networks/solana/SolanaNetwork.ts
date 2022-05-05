@@ -74,7 +74,7 @@ export default class SolanaNetwork extends Network {
         console.log("providerAccount ", providerAccount.toBase58());
         console.log("providerAccountBump ", providerAccountBump);
     
-        await helpers.requestAirdrop(this.connection, this.provider.wallet.publicKey);
+        // await helpers.requestAirdrop(this.connection, this.provider.wallet.publicKey);
     
 
         const provider_state_initial = await provider_program.account.provider.fetch(providerAccount);
@@ -82,11 +82,16 @@ export default class SolanaNetwork extends Network {
         console.log("provider_state_initial", provider_state_initial)
 
         console.log("priceFeedIndex", priceFeedIndex)
+        console.log("txParams.params.pair", txParams.params.pair)
+        console.log("txParams.params.decimals", txParams.params.decimals)
+
         const [priceFeedAccount, priceFeedAccountBump] = await anchor.web3.PublicKey.findProgramAddress(
             [
                 Buffer.from("pricefeed"),
                 providerAccount.toBuffer(),
-                new anchor.BN(priceFeedIndex - 1).toArrayLike(Buffer),
+                txParams.params.pair,
+                new anchor.BN(txParams.params.decimals).toArrayLike(Buffer)
+                
             ],
             provider_program.programId
         );
@@ -99,35 +104,87 @@ export default class SolanaNetwork extends Network {
         return (Number(priceFeedState.lastUpdate));
     }
 
-    // async onQueueBatch(batch: DataRequestBatchResolved): Promise<void> {
-    //     try {
-    //         if (!this.internalConfig) throw new Error(`[${this.id}] Config is not loaded`);
-    //         const maxGas = new anchor.BN(this.internalConfig.maxGas);
+    
+    async onQueueBatch(batch: DataRequestBatchResolved): Promise<void> {
+        for await (const request of batch.requests) {
+            try {
+                if (!request.txCallParams.abi) {
+                    logger.warn(`[${this.id}] Tx ${request.internalId} was not processed due to missing ABI`);
+                    continue; 
+                }
 
-    //         const actions = batch.requests.map((request) => {
-    //             return transactions.functionCall(request.txCallParams.method, {
-    //                 ...request.txCallParams.params,
-    //             }, maxGas.div(new BN(batch.requests.length)), new BN(request.txCallParams.amount));
-    //         });
+                // const contract = new Contract(request.txCallParams.address, request.txCallParams.abi, this.wallet);
+                const provider_program = new anchor.Program(request.txCallParams.abi, request.txCallParams.address, this.provider);
 
-    //         // Near blocks access to actions that can batch... Yet they document the method...
-    //         // @ts-ignore
-    //         const txOutcome = await this.internalConfig.account.signAndSendTransaction({
-    //             receiverId: batch.targetAddress,
-    //             actions,
-    //         });
+                const [providerAccount, providerAccountBump] = await anchor.web3.PublicKey.findProgramAddress(
+                    [Buffer.from("provider"), this.provider.wallet.publicKey.toBuffer()],
+                    provider_program.programId
+                );
+                    
+                console.log("providerAccount ", providerAccount.toBase58());
+                console.log("providerAccountBump ", providerAccountBump);
+            
+                // await helpers.requestAirdrop(this.connection, this.provider.wallet.publicKey);
+                console.log("ONQUEUEBATCH txParams.params.pair", request.txCallParams.params.pair)
+                console.log("ONQUEUEBATCH txParams.params.decimals", request.txCallParams.params.decimals)
+        
+                const provider_state_initial = await provider_program.account.provider.fetch(providerAccount);
+                const priceFeedIndex = provider_state_initial.feedsCount;
+                const [priceFeedAccount, priceFeedAccountBump] = await anchor.web3.PublicKey.findProgramAddress(
+                    [
+                        Buffer.from("pricefeed"),
+                        providerAccount.toBuffer(),
+                        // new anchor.BN(priceFeedIndex - 1).toArrayLike(Buffer),
+                        request.txCallParams.params.pair,
+                        new anchor.BN(request.txCallParams.params.decimals).toArrayLike(Buffer)
+                    ],
+                    provider_program.programId
+                );
+        
+               
+                await provider_program.methods.updateFeed(request.txCallParams.params.price).accounts( {
+                    providerAccount: providerAccount,
+                    feedAccount: priceFeedAccount,
+                    authority: this.provider.wallet.publicKey,
+                }).rpc();
+        
+                // if (!contract[request.txCallParams.method]) {
+                //     logger.warn(`[${this.id}] Tx ${request.internalId} was not processed due to missing method ${request.txCallParams.method}`);
+                //     continue;
+                // }
 
-    //         if (isTransactionFailure(txOutcome)) {
-    //             logger.error(`[${this.id}] Batch could not be completed`, {
-    //                 txOutcome: JSON.stringify(txOutcome),
-    //             });
-    //         }
-    //     } catch (error) {
-    //         logger.error(`[${this.id}] On queue batch unknown error`, {
-    //             error
-    //         });
-    //     }
-    // }
+                // const args = Object.values(request.txCallParams.params);
+                // await contract[request.txCallParams.method](...args);
+
+            } catch (error: any) {
+                // Try to check if SERVER ERROR was because a node already pushed the same update
+                //
+                // Error messages (i.e. `error.body.error.message`) differ depending on the network.
+                //  - Aurora Testnet: `ERR_INCORRECT_NONCE`
+                //  - Goerli: `already known`
+                if (error.code === 'SERVER_ERROR' && error.body) {
+                    try {
+                        const body = JSON.parse(error.body);
+                        if (body.error && body.error.code && body.error.code === -32000 && body.error.message
+                            && (body.error.message === 'ERR_INCORRECT_NONCE' || body.error.message === 'already known')
+                        ) {
+                            logger.debug(`[${this.id}-onQueueBatch] [${request.internalId}] Request seems to be already pushed (${body.error.message})`);
+
+                            continue;
+                        }
+                    } catch (error) {
+                        // Do nothing as error will be logged in next lines
+                    }
+                }
+
+                logger.error(`[${this.id}-onQueueBatch] [${request.internalId}] On queue batch unknown error`, {
+                    error,
+                    config: this.networkConfig,
+                    fingerprint: `${this.type}-${this.networkId}-onQueueBatch-unknown`,
+                });
+            }
+        }
+    }
 
 
     // async initialize(txParams: TxCallParams): Promise<any> {
@@ -231,41 +288,41 @@ export default class SolanaNetwork extends Network {
         
     // }
    
-    async updateFeed(txParams: TxCallParams): Promise<any> {
-        // IDL
-        if (!txParams.abi) throw new Error(`[${this.id}] ABI is required for tx ${JSON.stringify(txParams)}`);
+    // async updateFeed(txParams: TxCallParams): Promise<any> {
+    //     // IDL
+    //     if (!txParams.abi) throw new Error(`[${this.id}] ABI is required for tx ${JSON.stringify(txParams)}`);
         
-        const provider_program = new anchor.Program(txParams.abi, txParams.address, this.provider);
-        const [providerAccount, providerAccountBump] = await anchor.web3.PublicKey.findProgramAddress(
-            [Buffer.from("provider"), this.provider.wallet.publicKey.toBuffer()],
-            provider_program.programId
-        );
+    //     const provider_program = new anchor.Program(txParams.abi, txParams.address, this.provider);
+    //     const [providerAccount, providerAccountBump] = await anchor.web3.PublicKey.findProgramAddress(
+    //         [Buffer.from("provider"), this.provider.wallet.publicKey.toBuffer()],
+    //         provider_program.programId
+    //     );
             
-        console.log("providerAccount ", providerAccount.toBase58());
-        console.log("providerAccountBump ", providerAccountBump);
+    //     console.log("providerAccount ", providerAccount.toBase58());
+    //     console.log("providerAccountBump ", providerAccountBump);
     
-        await helpers.requestAirdrop(this.connection, this.provider.wallet.publicKey);
+    //     await helpers.requestAirdrop(this.connection, this.provider.wallet.publicKey);
     
 
-        const provider_state_initial = await provider_program.account.provider.fetch(providerAccount);
-        const priceFeedIndex = provider_state_initial.feedsCount;
-        const [priceFeedAccount, priceFeedAccountBump] = await anchor.web3.PublicKey.findProgramAddress(
-            [
-                Buffer.from("pricefeed"),
-                providerAccount.toBuffer(),
-                new anchor.BN(priceFeedIndex).toArrayLike(Buffer),
-            ],
-            provider_program.programId
-        );
+    //     const provider_state_initial = await provider_program.account.provider.fetch(providerAccount);
+    //     const priceFeedIndex = provider_state_initial.feedsCount;
+    //     const [priceFeedAccount, priceFeedAccountBump] = await anchor.web3.PublicKey.findProgramAddress(
+    //         [
+    //             Buffer.from("pricefeed"),
+    //             providerAccount.toBuffer(),
+    //             new anchor.BN(priceFeedIndex).toArrayLike(Buffer),
+    //         ],
+    //         provider_program.programId
+    //     );
 
        
-        await provider_program.methods.updateFeed(txParams.params.price).accounts( {
-            providerAccount: providerAccount,
-            feedAccount: priceFeedAccount,
-            authority: this.provider.wallet.publicKey,
-        }).rpc();
+    //     await provider_program.methods.updateFeed(txParams.params.price).accounts( {
+    //         providerAccount: providerAccount,
+    //         feedAccount: priceFeedAccount,
+    //         authority: this.provider.wallet.publicKey,
+    //     }).rpc();
 
-    }
+    // }
    
     // async updateFeed(idl: any, programId: string, price: number ): Promise<any> {
     //     // IDL

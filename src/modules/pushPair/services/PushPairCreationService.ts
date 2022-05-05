@@ -5,11 +5,11 @@ import { NearNetwork } from "../../../networks/near/NearNetwork";
 import logger from '../../../services/LoggerService';
 import SolanaNetwork from "../../../networks/solana/SolanaNetwork";
 const DEFAULT_NEAR_STORAGE_DEPOSIT = '300800000000000000000000';
-const idl = JSON.parse(
-    require("fs").readFileSync(
-      require("path").resolve(__dirname, '../SolanaFactory.json'), "utf8"
-    )
-  );
+// const idl = JSON.parse(
+//     require("fs").readFileSync(
+//       require("path").resolve(__dirname, '../SolanaFactory.json'), "utf8"
+//     )
+//   );
 
 async function createPairIfNeededForNear(pair: Pair, config: PushPairInternalConfig, network: NearNetwork) {
     let hasPriceFeed = false;
@@ -119,7 +119,7 @@ export async function createPairIfNeeded(pair: Pair, config: PushPairInternalCon
     } else if (network.type === 'solana') {
         // await createPairIfNeededForSolana(pair, config, network);
 
-        console.log("Hellooooo")
+        console.log("Assuming solana factory already initialized and feed already created")
     } else {
         throw new Error(`Network type ${network.type} is not supported for price pushing`);
     }
