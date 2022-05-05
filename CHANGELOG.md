@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.2.1](https://github.com/fluxprotocol/fpo-node/compare/v1.2.0...v1.2.1) (2022-05-05)
+
+
+### Bug Fixes
+
+* **telegram:** Fix issue where a telegram http error could silently crash the node ([96eef48](https://github.com/fluxprotocol/fpo-node/commit/96eef4833a8c79bb90a57adab73ef22dc6286a6c))
+
 ## [1.2.0](https://github.com/fluxprotocol/fpo-node/compare/v1.1.0...v1.2.0) (2022-04-19)
 
 
