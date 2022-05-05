@@ -11,6 +11,9 @@ COPY src/ src/
 # Install curl for checking container health with `curl`
 RUN apk --no-cache add curl
 
+# Install tools for node-gyp (required by MacOS)
+RUN apk --no-cache add g++ gcc libgcc libstdc++ linux-headers make python3
+
 RUN yarn
 RUN yarn build
 

@@ -222,7 +222,7 @@ export function createEvmFactory2TransmitTransaction(config: PushPairInternalCon
 
 export function shouldPricePairUpdate(pair: PushPairDataRequest, lastUpdate: number, newPrice: Big, oldPrice?: Big): boolean {
     // This is probably the first time we are pushing
-    if (!oldPrice) {
+    if (!oldPrice || oldPrice.eq(0)) {
         return true;
     }
 

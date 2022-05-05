@@ -22,7 +22,7 @@ $ git push --follow-tags origin main
 Build docker image (tag `latest`):
 
 ```console
-$ docker build . -t fluxprotocol/fpo-node
+$ docker build . -t fluxprotocol/fpo-node --platform=linux/amd64
 ````
 
 Tag docker image with the current version (`X.Y.Z`):
