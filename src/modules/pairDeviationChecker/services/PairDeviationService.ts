@@ -10,6 +10,7 @@ export enum PricePairUpdateReason {
 export interface PricePairUpdateReasonReport {
     shouldUpdate: boolean;
     reason: PricePairUpdateReason;
+    deviation?: number;
 }
 
 export function shouldPricePairUpdate(pair: PairDeviationDataRequest, lastUpdate: number, newPrice: Big, oldPrice?: Big): PricePairUpdateReasonReport {
@@ -38,11 +39,13 @@ export function shouldPricePairUpdate(pair: PairDeviationDataRequest, lastUpdate
         return {
             shouldUpdate: percentageChange.lte(-pair.extraInfo.deviationPercentage),
             reason: PricePairUpdateReason.PRICE_DEVIATION,
+            deviation: percentageChange.toNumber(),
         };
     }
 
     return {
         shouldUpdate: percentageChange.gte(pair.extraInfo.deviationPercentage),
         reason: PricePairUpdateReason.PRICE_DEVIATION,
+        deviation: percentageChange.toNumber(),
     }
 }
