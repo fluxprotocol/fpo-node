@@ -86,6 +86,10 @@ export class PairDeviationCheckerModule extends Module {
                 const shouldUpdateReport = shouldPricePairUpdate(dataRequest, latestTimestamp, new Big(executeOutcome.answer), this.prices.get(dataRequest.internalId));
 
                 if (shouldUpdateReport.shouldUpdate) {
+                    logger.error(`[${this.id}] ${dataRequest.extraInfo.pair} should update because of ${shouldUpdateReport.reason}`, {
+                        fingerprint: `${this.id}-should-update`,
+                    });
+
                     return {
                         pair: dataRequest,
                         updated: false,
@@ -95,6 +99,8 @@ export class PairDeviationCheckerModule extends Module {
                 }
 
                 this.prices.set(dataRequest.internalId, new Big(executeOutcome.answer));
+
+                logger.info(`[${this.id}] ${dataRequest.extraInfo.pair} has been recently updated`);
 
                 return {
                     pair: dataRequest,
