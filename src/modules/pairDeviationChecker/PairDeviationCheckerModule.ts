@@ -86,14 +86,15 @@ export class PairDeviationCheckerModule extends Module {
                 const shouldUpdateReport = shouldPricePairUpdate(dataRequest, latestTimestamp, new Big(executeOutcome.answer), this.prices.get(dataRequest.internalId));
 
                 if (shouldUpdateReport.shouldUpdate) {
-                    logger.error(`[${this.id}] ${dataRequest.extraInfo.pair} should update because of ${shouldUpdateReport.reason}`, {
+                    const reasonMsg = `${shouldUpdateReport.reason}${shouldUpdateReport.deviation ? ' (' + shouldUpdateReport.deviation.toFixed(2) + '%)' : ''}`;
+                    logger.error(`[${this.id}] ${dataRequest.extraInfo.pair} should update because of ${reasonMsg}`, {
                         fingerprint: `${this.id}-should-update`,
                     });
 
                     return {
                         pair: dataRequest,
                         updated: false,
-                        message: shouldUpdateReport.reason,
+                        message: reasonMsg,
                         diff: timestampDiff / 1000,
                     };
                 }
