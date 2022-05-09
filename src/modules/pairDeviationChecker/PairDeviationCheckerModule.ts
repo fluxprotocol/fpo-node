@@ -67,6 +67,8 @@ export class PairDeviationCheckerModule extends Module {
                     }
                 }
 
+                // Make sure we are synchronised on the latest price data
+                this.prices.set(dataRequest.internalId, latestPrice);
                 const executeOutcome = await this.fetchJob.executeRequest(dataRequest);
 
                 if (executeOutcome.type === OutcomeType.Invalid) {
@@ -100,7 +102,6 @@ export class PairDeviationCheckerModule extends Module {
                     };
                 }
 
-                this.prices.set(dataRequest.internalId, new Big(executeOutcome.answer));
                 logger.info(`[${this.id}] ${dataRequest.extraInfo.pair} has been recently updated (${prettySeconds(Math.floor(timestampDiff / 1000), true)} ago)`);
 
                 return {
