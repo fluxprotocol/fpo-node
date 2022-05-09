@@ -7,7 +7,7 @@ import { FetchJob } from "../../../jobs/fetch/FetchJob";
 import { Network } from "../../../models/Network";
 import { OutcomeAnswer, OutcomeType } from "../../../models/Outcome";
 import { PushPairDataRequest, PushPairDataRequestBatch, PushPairResolvedDataRequest } from "../models/PushPairDataRequest";
-import { PushPairInternalConfig } from '../models/PushPairConfig';
+import { Pair, PushPairInternalConfig } from '../models/PushPairConfig';
 import { createDataRequestBatch } from "../../../models/DataRequestBatch";
 import { ethers } from "ethers";
 
@@ -25,6 +25,8 @@ export function createBatchFromPairs(config: PushPairInternalConfig, targetNetwo
             extraInfo: {
                 pair: pairInfo.pair,
                 decimals: pairInfo.decimals,
+                deviationPercentage: config.deviationPercentage,
+                minimumUpdateInterval: config.minimumUpdateInterval,
             },
             internalId: `${targetNetwork.id}/p${pairInfo.pair}-d${pairInfo.decimals}-i${index}`,
             originNetwork: targetNetwork,
@@ -216,4 +218,41 @@ export function createEvmFactory2TransmitTransaction(config: PushPairInternalCon
             params,
         },
     };
+}
+
+export function shouldPricePairUpdate(pair: PushPairDataRequest, lastUpdate: number, newPrice: Big, oldPrice?: Big): boolean {
+    // This is probably the first time we are pushing
+    if (!oldPrice || oldPrice.eq(0)) {
+        logger.debug(`[PushPairModule] ${pair.extraInfo.pair} there is no old price, pushing a new one`);
+        return true;
+    }
+
+    const timeSinceUpdate = Date.now() - lastUpdate;
+
+    // There hasn't been an update in a while, we should just update
+    if (timeSinceUpdate >= pair.extraInfo.minimumUpdateInterval) {
+        logger.debug(`[PushPairModule] ${pair.extraInfo.pair} needs update because last update was ${timeSinceUpdate}ms ago (minimum ${pair.extraInfo.minimumUpdateInterval}ms)`);
+        return true;
+    }
+
+    const valueChange = newPrice.minus(oldPrice);
+    const percentageChange = valueChange.div(oldPrice).times(100);
+
+    if (percentageChange.lt(0)) {
+        const shouldUpdate = percentageChange.lte(-pair.extraInfo.deviationPercentage);
+
+        if (shouldUpdate) {
+            logger.debug(`[PushPairModule] ${pair.extraInfo.pair} needs update because deviation of ${percentageChange.toString()} (max -${pair.extraInfo.deviationPercentage}%)`);
+        }
+
+        return shouldUpdate;
+    }
+
+    const shouldUpdate = percentageChange.gte(pair.extraInfo.deviationPercentage);
+
+    if (shouldUpdate) {
+        logger.debug(`[PushPairModule] ${pair.extraInfo.pair} needs update because deviation of ${percentageChange.toString()} (max ${pair.extraInfo.deviationPercentage}%)`);
+    }
+
+    return shouldUpdate;
 }

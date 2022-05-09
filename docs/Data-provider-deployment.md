@@ -1,4 +1,4 @@
-# Flux data feed deployment (EVM  networks)
+# Flux data feed deployment (EVM networks)
 
 ## 1. Smart contracts
 
@@ -15,7 +15,8 @@ Configure the environment variables required to deploy the smart contracts:
 
 - `INFURA_API_KEY`, to send transactions to the network
 - `MNEMONIC`, to sign the transactions (by default the validator address will be set to the one used here),
-- `ETHERSCAN_API_KEY`, to verify the deployed smart contracts
+- `ETHERSCAN_API_KEY`, to verify deployed smart contracts on Etherscan block explorers.
+- `AURORASCAN_API_KEY`, to verify deployed smart contracts on Aurorascan block explorers.
 
 Those variables can be defined in the file `.env` or directly in the CLI:
 
@@ -23,15 +24,16 @@ Those variables can be defined in the file `.env` or directly in the CLI:
 INFURA_API_KEY=
 MNEMONIC=
 ETHERSCAN_API_KEY=
+AURORASCAN_API_KEY=
 ```
 
-Deploy FluxPriceFeedFactory smart contract to the specified network by using the flag `--network`:
+Deploy and verify the FluxPriceFeedFactory smart contract to the specified network by using the flag `--network`:
 
 ```bash
-$ npx hardhat deploy:FluxPriceFeedFactory --network aurora-testnet
+$ npx hardhat deploy:FluxPriceFeedFactory --network aurora-testnet --verify
 
-validator =  0x0A0a0cC87A87f2f00697e303d110821eB7E5e595
-FluxPriceFeedFactory deployed to:  0x4041345E2900D83a7498b94743292606E7564B0A
+FluxPriceFeedFactory deployed to:  0x6532DF1D38B4014769585278E4A18921F969d7E1
+Verifying contract, can take some time...
 ```
 
 ### Alternative: deploy single price feed contracts
@@ -45,19 +47,25 @@ $ npx hardhat deploy:FluxPriceFeed --decimals 8 --description "ETH/USD" --networ
 FluxPriceFeed deployed to:  0xFC92AA30458f54fC8d6695D089E19bD0ab5a4b19
 ```
 
-In case the validator address should be different from the one used for deploying the contracts, the `--validator`
-flag could be used. For example:
-
-```bash
-$ npx hardhat deploy:FluxPriceFeedFactory --validator 0x0A0a0cC87A87f2f00697e303d110821eB7E5e595 --network aurora-testnet
-
-validator =  0x0A0a0cC87A87f2f00697e303d110821eB7E5e595
-FluxPriceFeedFactory deployed to:  0x4018fb3d026fb376a99fE56ad6C25f0819263ee1
-```
-
 ### Contract verification
 
-It is recommended to verify the deployed smart contracts.
+It is recommended to verify all the deployed smart contracts. If the `--verify` flag was not used while deploying the `FluxPriceFeedFactory` contract, it can be verified as follows:
+
+```bash
+$ npx hardhat verify 0x6dD4Fe82d43D6e671EA1bEE59a94E74a718E3684 --network goerli
+```
+
+The factory contract will automatically deploy new price feed contracts, but they need to be manually verified. To
+retrieve the individual `FluxPriceFeed` addresses from the factory contract, the following hardhat task can be used:
+
+```bash
+$ npx hardhat fetchFactoryPricePairAddress --contract 0x6dD4Fe82d43D6e671EA1bEE59a94E74a718E3684 --pricepairs "Price-ETH/USD-8" --network goerli
+
+Oracles Addresses:  [ '0x054aB0455cD1865cBC5fC470e76E872F8DF8E881' ]
+```
+
+NOTE: On Aurora, the contracts by the factory seem not to have a bytecode in the Aurora explorer, which makes impossible
+their verification.
 
 `FluxPriceFeed` contract verification:
 
@@ -74,24 +82,6 @@ for verification on the block explorer. Waiting for verification result...
 Successfully verified contract FluxPriceFeed on Etherscan.
 https://goerli.etherscan.io/address/0x0435465F09362ed1D1994Bb9E76b56B22D640067#code
 ```
-
-Unfortunately, `FluxPriceFeedFactory` contract verification does not work at the moment:
-
-```bash
-$ npx hardhat verify 0x6dD4Fe82d43D6e671EA1bEE59a94E74a718E3684 0x0A0a0cC87A87f2f00697e303d110821eB7E5e595 --network goerli
-```
-
-However, all `FluxPriceFeed` contracts automatically deployed by the factory contract can be verified. To retrieve
-the `FluxPriceFeed` address from the factory contract, the following hardhat task can be used:
-
-```bash
-$ npx hardhat fetchFactoryPricePairAddress --contract 0x6dD4Fe82d43D6e671EA1bEE59a94E74a718E3684 --pricepairs "Price-ETH/USD-8" --network goerli
-
-Oracles Addresses:  [ '0x054aB0455cD1865cBC5fC470e76E872F8DF8E881' ]
-```
-
-NOTE: On Aurora, the contracts by the factory seem not to have a bytecode in the Aurora explorer, which makes impossible
-their verification.
 
 ## 2. FPO node
 
@@ -163,7 +153,6 @@ $ docker run -d \
     --name fpo-node \
     --env-file $PWD/.env \
     --volume $PWD/config.json:/usr/src/app/config.json \
-    --volume ~/.near-credentials:/usr/src/app/.near-credentials \
     --restart always \
     fluxprotocol/fpo-node
 ```
@@ -207,7 +196,6 @@ $ docker-compose up -d
 
 Alternatively, a `fpo-node` can be run directly from the source code.
 
-
 Install the code repository:
 
 ```bash
@@ -220,10 +208,11 @@ Before starting running the `fpo-node` make sure that all required configuration
 variables and the JSON config file.
 
 Run the `fpo-node`:
+
 ```bash
 yarn start
 ```
 
-
 [fpo-node]: https://github.com/fluxprotocol/fpo-node
+
 [fpo-evm]: https://github.com/fluxprotocol/fpo-evm

@@ -1,9 +1,9 @@
-import { Pair } from "../models/PairCheckerModuleConfig";
 import { TELEGRAM_BOT_API, TELEGRAM_ALERTS_CHAT_ID, TELEGRAM_STATS_CHAT_ID } from "../../../config";
 import { prettySeconds } from "../utils";
+import { PairDeviationReport } from "../models/PairDeviationReport";
 import logger from "../../../services/LoggerService";
 
-export async function notifyTelegram(reports: { pair: Pair; diff: number; updated: boolean; }[], groupName: string, forceNotification?: boolean) {
+export async function notifyTelegram(reports: PairDeviationReport[], groupName: string, forceNotification: boolean) {
     // Sort reports by last update
     reports = reports.sort(function (a, b) { return a.diff - b.diff; });
 
@@ -25,8 +25,8 @@ export async function notifyTelegram(reports: { pair: Pair; diff: number; update
         }
         // Last update per pair
         for (var i = 0; i < reports.length; i++) {
-            const statMessage = `${reports[i].diff != -1 ? `updated ${prettySeconds(reports[i].diff, true)} ago` : `check failed`}`;
-            stats += `\t ${reports[i].updated ? '✓' : '⨯'} [[${reports[i].pair.pair}]] ${statMessage}\n`;
+            const statMessage = `${reports[i].diff != -1 ? `${prettySeconds(reports[i].diff, true)} ago` : `check failed`}`;
+            stats += escapeMessage(`\t ${reports[i].updated ? '✓' : '⨯'} [${reports[i].pair.extraInfo.pair}] ${statMessage} ${reports[i].message ?? ''}\n`);
         }
 
         messages.push(stats);
@@ -36,7 +36,7 @@ export async function notifyTelegram(reports: { pair: Pair; diff: number; update
     if (sendAlert) {
         let alerts = `🔍 *[${groupName}] Not updated addresses:* \n\n`;
         for (var i = 0; i < notUpdatedReports.length; i++) {
-            alerts += `\t*[${notUpdatedReports[i].pair.pair}]* ${notUpdatedReports[i].pair.address}\n`;
+            alerts += `\t*[${notUpdatedReports[i].pair.extraInfo.pair}]* ${notUpdatedReports[i].pair.extraInfo.address}\n`;
         }
 
         messages.push(alerts);
@@ -57,7 +57,15 @@ export async function notifyTelegram(reports: { pair: Pair; diff: number; update
     }
 }
 
-export async function sendTelegramMessage(url: string, chatId: string, text: string, disable_notification?: boolean) {
+function escapeMessage(message: string): string {
+    return message
+        .replace(/_/g, "\\_")
+        .replace(/\*/g, "\\*")
+        .replace(/\[/g, "\\[")
+        .replace(/`/g, "\\`");
+}
+
+async function sendTelegramMessage(url: string, chatId: string, text: string, disable_notification?: boolean) {
     try {
         await fetch(`${url}/sendMessage`, {
             method: "POST",
@@ -73,8 +81,8 @@ export async function sendTelegramMessage(url: string, chatId: string, text: str
         });
     } catch (error) {
         logger.error(`[TelegramNotification] Unknown error`, {
-            fingerprint: 'telegram-unknown',
             error,
+            fingerprint: `PairDeviationChecker-telegram-unknown`,
         });
     }
 }

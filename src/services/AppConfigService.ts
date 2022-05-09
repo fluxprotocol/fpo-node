@@ -40,6 +40,8 @@ export async function parseAppConfig(): Promise<AppConfig> {
         return new network(parsedNetworkConfig);
     });
 
+    appConfig.jobs = AVAILABLE_JOBS.map(job => new job(appConfig));
+
     if (!config.modules || !Array.isArray(config.modules)) throw new Error(`at least 1 item in "modules" is required and it must be an array`);
 
     appConfig.modules = config.modules.map((moduleConfig) => {
@@ -51,7 +53,7 @@ export async function parseAppConfig(): Promise<AppConfig> {
         return new module(parsedModuleConfig, appConfig);
     });
 
-    appConfig.jobs = AVAILABLE_JOBS.map(job => new job(appConfig));
+
 
     return appConfig;
 }
