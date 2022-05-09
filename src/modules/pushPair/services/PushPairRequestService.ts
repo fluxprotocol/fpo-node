@@ -223,6 +223,7 @@ export function createEvmFactory2TransmitTransaction(config: PushPairInternalCon
 export function shouldPricePairUpdate(pair: PushPairDataRequest, lastUpdate: number, newPrice: Big, oldPrice?: Big): boolean {
     // This is probably the first time we are pushing
     if (!oldPrice || oldPrice.eq(0)) {
+        logger.debug(`[PushPairModule] ${pair.extraInfo.pair} there is no old price, pushing a new one`);
         return true;
     }
 
@@ -230,6 +231,7 @@ export function shouldPricePairUpdate(pair: PushPairDataRequest, lastUpdate: num
 
     // There hasn't been an update in a while, we should just update
     if (timeSinceUpdate >= pair.extraInfo.minimumUpdateInterval) {
+        logger.debug(`[PushPairModule] ${pair.extraInfo.pair} needs update because last update was ${timeSinceUpdate}ms ago (minimum ${pair.extraInfo.minimumUpdateInterval}ms)`);
         return true;
     }
 
@@ -237,8 +239,20 @@ export function shouldPricePairUpdate(pair: PushPairDataRequest, lastUpdate: num
     const percentageChange = valueChange.div(oldPrice).times(100);
 
     if (percentageChange.lt(0)) {
-        return percentageChange.lte(-pair.extraInfo.deviationPercentage);
+        const shouldUpdate = percentageChange.lte(-pair.extraInfo.deviationPercentage);
+
+        if (shouldUpdate) {
+            logger.debug(`[PushPairModule] ${pair.extraInfo.pair} needs update because deviation of ${percentageChange.toString()} (max -${pair.extraInfo.deviationPercentage}%)`);
+        }
+
+        return shouldUpdate;
     }
 
-    return percentageChange.gte(pair.extraInfo.deviationPercentage);
+    const shouldUpdate = percentageChange.gte(pair.extraInfo.deviationPercentage);
+
+    if (shouldUpdate) {
+        logger.debug(`[PushPairModule] ${pair.extraInfo.pair} needs update because deviation of ${percentageChange.toString()} (max ${pair.extraInfo.deviationPercentage}%)`);
+    }
+
+    return shouldUpdate;
 }

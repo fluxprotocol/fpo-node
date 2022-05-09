@@ -46,7 +46,6 @@ export async function notifyTelegramOfBalanceReports(network: Network, reports: 
     }
 }
 
-// TODO: Check if response is not 200 OK
 export async function sendTelegramMessage(url: string, chatId: string, text: string, disable_notification?: boolean) {
     try {
          await fetch(`${url}/sendMessage`, {

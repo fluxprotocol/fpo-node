@@ -8,23 +8,33 @@ import { Network } from '../../../models/Network';
 import { PushPairDataRequest } from '../models/PushPairDataRequest';
 import { PushPairInternalConfig } from "../models/PushPairConfig";
 import { computeFactoryPairId } from "./utils";
+import { BigNumber } from 'ethers';
 
-export async function fetchEvmLastUpdate(config: PushPairInternalConfig, network: EvmNetwork) {
-    let timestamp;
+interface TimestampUpdateReport {
+    oldestTimestamp: number;
+    timestamps: number[];
+}
+
+export async function fetchEvmLastUpdate(config: PushPairInternalConfig, network: EvmNetwork): Promise<TimestampUpdateReport> {
+    let lastUpdated: BigNumber;
+    let allPairTimestamps: number[];
 
     if (config.pairsType === 'single') {
-        timestamp = await network.view({
+        lastUpdated = await network.view({
             method: 'latestTimestamp',
             address: config.contractAddress,
             amount: '0',
             params: {},
             abi: FluxPriceFeed.abi,
         });
+
+        allPairTimestamps = [lastUpdated.mul(1000).toNumber()];
     } else if (config.pairsType === 'factory') {
-        let pairTimestamps: Big[] = [];
+        let pairTimestamps: BigNumber[] = [];
+
         for await (let pair of config.pairs) {
             // Contract returns [answer, updatedAt, statusCode]
-            const pairTimestamp = (await network.view({
+            const pairTimestamp: BigNumber = (await network.view({
                 method: 'valueFor',
                 address: config.contractAddress,
                 amount: '0',
@@ -37,12 +47,14 @@ export async function fetchEvmLastUpdate(config: PushPairInternalConfig, network
             pairTimestamps.push(pairTimestamp);
         }
 
-        timestamp = pairTimestamps.reduce((prev, next) => prev.gt(next) ? next : prev);
+        lastUpdated = pairTimestamps.reduce((prev, next) => prev.gt(next) ? next : prev);
+        allPairTimestamps = pairTimestamps.map(t => t.mul(1000).toNumber());
     } else { // factory2
-        let pairTimestamps: Big[] = [];
+        let pairTimestamps: BigNumber[] = [];
+
         for await (let pair of config.pairs) {
             // Contract returns [answer, updatedAt, statusCode]
-            const pairTimestamp = (await network.view({
+            const pairTimestamp: BigNumber = (await network.view({
                 method: 'valueFor',
                 address: config.contractAddress,
                 amount: '0',
@@ -55,14 +67,17 @@ export async function fetchEvmLastUpdate(config: PushPairInternalConfig, network
             pairTimestamps.push(pairTimestamp);
         }
 
-        timestamp = pairTimestamps.reduce((prev, next) => prev.gt(next) ? next : prev);
+        lastUpdated = pairTimestamps.reduce((prev, next) => prev.gt(next) ? next : prev);
+        allPairTimestamps = pairTimestamps.map(t => t.mul(1000).toNumber());
     }
 
-    // Convert contract timestamp to milliseconds
-    return timestamp.toNumber() * 1000;
+    return {
+        oldestTimestamp: lastUpdated.mul(1000).toNumber(),
+        timestamps: allPairTimestamps,
+    };
 }
 
-export async function fetchNearLastUpdate(config: PushPairInternalConfig, network: NearNetwork) {
+export async function fetchNearLastUpdate(config: PushPairInternalConfig, network: NearNetwork): Promise<TimestampUpdateReport> {
     let pairTimestamps: number[] = [];
     for await (let pair of config.pairs) {
         const entry = await network.view({
@@ -71,7 +86,7 @@ export async function fetchNearLastUpdate(config: PushPairInternalConfig, networ
             amount: '0',
             params: {
                 provider: network.internalConfig?.account.accountId,
-                pair: config.pairs[0].pair,
+                pair: pair.pair,
             },
         });
 
@@ -81,7 +96,10 @@ export async function fetchNearLastUpdate(config: PushPairInternalConfig, networ
 
     const timestamp = pairTimestamps.reduce((prev, next) => prev > next ? next : prev);
 
-    return timestamp;
+    return {
+        oldestTimestamp: timestamp,
+        timestamps: pairTimestamps,
+    };
 }
 
 export async function fetchLatestPrice(config: PushPairInternalConfig, pair: PushPairDataRequest, network: Network): Promise<Big> {

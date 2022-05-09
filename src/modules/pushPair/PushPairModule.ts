@@ -48,14 +48,12 @@ export class PushPairModule extends Module {
 
     private async processPairs() {
         try {
-            // TODO: lastUpdates = fetchLastUpdate() should return an array of pair last updates
-            // TODO: lastUpdate = oldest pair last update
-            const lastUpdate = await this.fetchLastUpdate();
+            const timestampUpdateReport = await this.fetchLastUpdate();
             // Fetch elapsed time (in milliseconds) since last pair(s) update
-            const timeSinceUpdate = Date.now() - lastUpdate;
+            const timeSinceUpdate = Date.now() - timestampUpdateReport.oldestTimestamp;
             logger.debug(`[${this.id}] Oldest pair update: ${prettySeconds(Math.floor(timeSinceUpdate / 1000))} ago`);
 
-            let remainingInterval;
+            let remainingInterval: number;
             if (timeSinceUpdate < this.internalConfig.interval) {
                 remainingInterval = this.internalConfig.interval - timeSinceUpdate;
                 logger.debug(`[${this.id}] Target update interval not yet reached. Delaying update ${Math.floor(remainingInterval / 1000)}s ...`);
@@ -70,7 +68,7 @@ export class PushPairModule extends Module {
             const job = this.appConfig.jobs.find(job => job.type === FetchJob.type);
             if (!job) throw new Error(`No job found with id ${FetchJob.type}`);
 
-            const resolvedRequests = await Promise.all(this.batch.requests.map(async (unresolvedRequest) => {
+            const resolvedRequests = await Promise.all(this.batch.requests.map(async (unresolvedRequest, index) => {
                 const outcome = await job.executeRequest(unresolvedRequest);
 
                 if (outcome.type === OutcomeType.Invalid) {
@@ -82,8 +80,7 @@ export class PushPairModule extends Module {
                 }
 
                 // When the prices don't deviate too much we don't need to update the price pair
-                // TODO: shouldPricePairUpdate should use `lastUpdates[index]`
-                if (!shouldPricePairUpdate(unresolvedRequest, lastUpdate, new Big(outcome.answer), this.prices.get(unresolvedRequest.internalId))) {
+                if (!shouldPricePairUpdate(unresolvedRequest, timestampUpdateReport.timestamps[index], new Big(outcome.answer), this.prices.get(unresolvedRequest.internalId))) {
                     logger.debug(`[${this.id}] ${unresolvedRequest.internalId} Price ${outcome.answer} doesn't deviate ${unresolvedRequest.extraInfo.deviationPercentage}% from ${this.prices.get(unresolvedRequest.internalId)}`);
                     remainingInterval = this.internalConfig.interval;
                     return null;
@@ -98,7 +95,7 @@ export class PushPairModule extends Module {
             let requests: PushPairResolvedDataRequest[] = resolvedRequests.filter(r => r !== null) as PushPairResolvedDataRequest[];
 
             if (requests.length === 0) {
-                logger.warn(`[${this.id}] No requests where left to submit on-chain`, {
+                logger.info(`[${this.id}] No requests where left to submit on-chain`, {
                     config: createSafeAppConfigString(this.appConfig),
                 });
 
