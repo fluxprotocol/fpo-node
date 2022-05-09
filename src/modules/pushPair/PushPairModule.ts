@@ -1,3 +1,4 @@
+import Big from "big.js";
 import EvmNetwork from "../../networks/evm/EvmNetwork";
 import logger from "../../services/LoggerService";
 import { AppConfig } from "../../models/AppConfig";
@@ -10,7 +11,7 @@ import { createPairIfNeeded } from "./services/PushPairCreationService";
 import { createSafeAppConfigString } from "../../services/AppConfigUtils";
 import { fetchEvmLastUpdate, fetchLatestPrice, fetchNearLastUpdate } from './services/FetchLastUpdateService';
 import { parsePushPairConfig, PushPairConfig, PushPairInternalConfig } from "./models/PushPairConfig";
-import Big from "big.js";
+import { prettySeconds } from "../pairChecker/utils";
 
 export class PushPairModule extends Module {
     static type = "PushPairModule";
@@ -47,9 +48,12 @@ export class PushPairModule extends Module {
 
     private async processPairs() {
         try {
+            // TODO: lastUpdates = fetchLastUpdate() should return an array of pair last updates
+            // TODO: lastUpdate = oldest pair last update
             const lastUpdate = await this.fetchLastUpdate();
             // Fetch elapsed time (in milliseconds) since last pair(s) update
             const timeSinceUpdate = Date.now() - lastUpdate;
+            logger.debug(`[${this.id}] Oldest pair update: ${prettySeconds(Math.floor(timeSinceUpdate / 1000))} ago`);
 
             let remainingInterval;
             if (timeSinceUpdate < this.internalConfig.interval) {
@@ -78,6 +82,7 @@ export class PushPairModule extends Module {
                 }
 
                 // When the prices don't deviate too much we don't need to update the price pair
+                // TODO: shouldPricePairUpdate should use `lastUpdates[index]`
                 if (!shouldPricePairUpdate(unresolvedRequest, lastUpdate, new Big(outcome.answer), this.prices.get(unresolvedRequest.internalId))) {
                     logger.debug(`[${this.id}] ${unresolvedRequest.internalId} Price ${outcome.answer} doesn't deviate ${unresolvedRequest.extraInfo.deviationPercentage}% from ${this.prices.get(unresolvedRequest.internalId)}`);
                     remainingInterval = this.internalConfig.interval;

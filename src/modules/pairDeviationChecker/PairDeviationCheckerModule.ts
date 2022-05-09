@@ -1,19 +1,20 @@
 import Big from "big.js";
+import logger from "../../services/LoggerService";
+import { AppConfig } from "../../models/AppConfig";
 import { ENABLE_TELEGRAM_NOTIFICATIONS, TELEGRAM_ALERTS_CHAT_ID, TELEGRAM_BOT_API, TELEGRAM_STATS_CHAT_ID } from "../../config";
 import { FetchJob } from "../../jobs/fetch/FetchJob";
-import { AppConfig } from "../../models/AppConfig";
 import { IJob } from "../../models/IJob";
+import { InternalPairDeviationCheckerModuleConfig, PairDeviationCheckerModuleConfig, parsePairDeviationCheckerModuleConfig } from "./models/PairDeviationCheckerModuleConfig";
 import { Module } from "../../models/Module";
 import { OutcomeType } from "../../models/Outcome";
-import { createSafeAppConfigString } from "../../services/AppConfigUtils";
-import logger from "../../services/LoggerService";
-import { debouncedInterval } from "../../services/TimerUtils";
-import { InternalPairDeviationCheckerModuleConfig, PairDeviationCheckerModuleConfig, parsePairDeviationCheckerModuleConfig } from "./models/PairDeviationCheckerModuleConfig";
-import { createRequestsFromPairs, PairDeviationDataRequest } from "./models/PairDeviationDataRequest";
 import { PairDeviationReport } from "./models/PairDeviationReport";
+import { createRequestsFromPairs, PairDeviationDataRequest } from "./models/PairDeviationDataRequest";
+import { createSafeAppConfigString } from "../../services/AppConfigUtils";
+import { debouncedInterval } from "../../services/TimerUtils";
 import { fetchLatestPrice, fetchLatestTimestamp } from "./services/FetchLastUpdateService";
-import { shouldPricePairUpdate } from "./services/PairDeviationService";
 import { notifyTelegram } from "./services/TelegramNotificationService";
+import { prettySeconds } from "./utils";
+import { shouldPricePairUpdate } from "./services/PairDeviationService";
 
 export class PairDeviationCheckerModule extends Module {
     static type = "PairDeviationCheckerModule";
@@ -100,8 +101,7 @@ export class PairDeviationCheckerModule extends Module {
                 }
 
                 this.prices.set(dataRequest.internalId, new Big(executeOutcome.answer));
-
-                logger.info(`[${this.id}] ${dataRequest.extraInfo.pair} has been recently updated`);
+                logger.info(`[${this.id}] ${dataRequest.extraInfo.pair} has been recently updated (${prettySeconds(Math.floor(timestampDiff / 1000), true)} ago)`);
 
                 return {
                     pair: dataRequest,
