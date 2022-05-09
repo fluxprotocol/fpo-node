@@ -1,16 +1,17 @@
+import Big from 'big.js';
 import EvmNetwork from '../../../networks/evm/EvmNetwork';
 import FluxPriceFeed from '../FluxPriceFeed.json';
 import FluxPriceFeedFactory from '../FluxPriceFeedFactory.json';
 import FluxPriceFeedFactory2 from '../FluxPriceFeedFactory2.json';
 import { NearNetwork } from "../../../networks/near/NearNetwork";
+import { Network } from '../../../models/Network';
+import { PushPairDataRequest } from '../models/PushPairDataRequest';
 import { PushPairInternalConfig } from "../models/PushPairConfig";
 import { computeFactoryPairId } from "./utils";
-import { PushPairDataRequest } from '../models/PushPairDataRequest';
-import { Network } from '../../../models/Network';
-import Big from 'big.js';
 
 export async function fetchEvmLastUpdate(config: PushPairInternalConfig, network: EvmNetwork) {
     let timestamp;
+
     if (config.pairsType === 'single') {
         timestamp = await network.view({
             method: 'latestTimestamp',
@@ -20,26 +21,41 @@ export async function fetchEvmLastUpdate(config: PushPairInternalConfig, network
             abi: FluxPriceFeed.abi,
         });
     } else if (config.pairsType === 'factory') {
-        // Contract returns [answer, updatedAt, statusCode]
-        timestamp = (await network.view({
-            method: 'valueFor',
-            address: config.contractAddress,
-            amount: '0',
-            params: {
-                id: computeFactoryPairId(config.pairs[0].pair, config.pairs[0].decimals)
-            },
-            abi: FluxPriceFeedFactory.abi,
-        }))[1];
+        let pairTimestamps: Big[] = [];
+        for await (let pair of config.pairs) {
+            // Contract returns [answer, updatedAt, statusCode]
+            const pairTimestamp = (await network.view({
+                method: 'valueFor',
+                address: config.contractAddress,
+                amount: '0',
+                params: {
+                    id: computeFactoryPairId(pair.pair, pair.decimals)
+                },
+                abi: FluxPriceFeedFactory.abi,
+            }))[1];
+
+            pairTimestamps.push(pairTimestamp);
+        }
+
+        timestamp = pairTimestamps.reduce((prev, next) => prev.gt(next) ? next : prev);
     } else { // factory2
-        timestamp = (await network.view({
-            method: 'valueFor',
-            address: config.contractAddress,
-            amount: '0',
-            params: {
-                id: computeFactoryPairId(config.pairs[0].pair, config.pairs[0].decimals, network.getWalletPublicAddress()),
-            },
-            abi: FluxPriceFeedFactory2.abi,
-        }))[1];
+        let pairTimestamps: Big[] = [];
+        for await (let pair of config.pairs) {
+            // Contract returns [answer, updatedAt, statusCode]
+            const pairTimestamp = (await network.view({
+                method: 'valueFor',
+                address: config.contractAddress,
+                amount: '0',
+                params: {
+                    id: computeFactoryPairId(pair.pair, pair.decimals, network.getWalletPublicAddress()),
+                },
+                abi: FluxPriceFeedFactory2.abi,
+            }))[1];
+
+            pairTimestamps.push(pairTimestamp);
+        }
+
+        timestamp = pairTimestamps.reduce((prev, next) => prev.gt(next) ? next : prev);
     }
 
     // Convert contract timestamp to milliseconds
@@ -47,18 +63,25 @@ export async function fetchEvmLastUpdate(config: PushPairInternalConfig, network
 }
 
 export async function fetchNearLastUpdate(config: PushPairInternalConfig, network: NearNetwork) {
-    const entry = await network.view({
-        method: 'get_entry',
-        address: config.contractAddress,
-        amount: '0',
-        params: {
-            provider: network.internalConfig?.account.accountId,
-            pair: config.pairs[0].pair,
-        },
-    });
+    let pairTimestamps: number[] = [];
+    for await (let pair of config.pairs) {
+        const entry = await network.view({
+            method: 'get_entry',
+            address: config.contractAddress,
+            amount: '0',
+            params: {
+                provider: network.internalConfig?.account.accountId,
+                pair: config.pairs[0].pair,
+            },
+        });
 
-    // Convert contract timestamp to milliseconds
-    return Math.floor(entry.last_update / 1000000);
+        // Convert contract timestamp to milliseconds
+        pairTimestamps.push(Math.floor(entry.last_update / 1000000));
+    }
+
+    const timestamp = pairTimestamps.reduce((prev, next) => prev > next ? next : prev);
+
+    return timestamp;
 }
 
 export async function fetchLatestPrice(config: PushPairInternalConfig, pair: PushPairDataRequest, network: Network): Promise<Big> {
