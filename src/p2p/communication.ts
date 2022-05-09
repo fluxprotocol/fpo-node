@@ -78,6 +78,13 @@ export default class Communicator {
 		return attempt(this, undefined, async (node: Libp2p) => {
 			await node.start();
 
+			// TODO: Not sure if trying to connect to peers on startup would have adverse affects?
+			// we could always just call retry... but we don't know when the other nodes started...
+			// idk if we would want to wait for to be connected to all given peers in the list or
+			// maybe if they get put in the retry list remove them from the peers list for now
+			// that would allow us to operate over the currently connected peers...
+			// but if a peer suddenly connected mid aggregate operation then one of those peers
+			// has the incorrect number of peers
 			for (const peer of this._peers) {
 				if (!await this.connect(new Multiaddr(peer))) {
 					this._retry.add(peer);
@@ -170,6 +177,15 @@ export default class Communicator {
 		});
 	}
 
+	// TODO: This would probably make it easier, but libp2p js has no docs on this.
+	async fetch(protocol: string, received: any[]): Promise<void> {
+		await attempt(this, null, async (node: Libp2p) => {
+			for (const peer of this._peers) {
+				let result = node.fetch(new Multiaddr(peer), protocol);
+			}
+		});
+	}
+
 	async send(protocol: string, data: Uint8Array[]): Promise<void> {
 		attempt(this, null, async () => {
 			for (const connection of this._connections) {
@@ -178,6 +194,7 @@ export default class Communicator {
 			}
 		});
 	}
+	
 
 	async save_peers(): Promise<void> {
 		let peers = Array.from(this._peers).sort();

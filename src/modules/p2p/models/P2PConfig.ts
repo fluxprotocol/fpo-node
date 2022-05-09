@@ -23,12 +23,16 @@ export interface P2PInternalConfig extends ModuleConfig {
     contractAddress: string;
 	pairs: Pair[];
     interval: number;
+	deviationPercentage: number;
+	minimumUpdateInterval: number;
 }
 
 export interface P2PConfig extends ModuleConfig {
     contractAddress?: P2PInternalConfig['contractAddress'];
     interval?: P2PInternalConfig['interval'];
 	pairs?: P2PInternalConfig['pairs'];
+	deviationPercentage?: P2PInternalConfig['deviationPercentage'];
+	minimumUpdateInterval?: P2PInternalConfig['minimumUpdateInterval'];
 }
 
 export function parseP2PConfig(config: P2PConfig): P2PInternalConfig {
@@ -37,19 +41,22 @@ export function parseP2PConfig(config: P2PConfig): P2PInternalConfig {
 	if (!Array.isArray(config.pairs)) throw new Error(`[P2PModule] "pairs" is required and must be an array`);
 
 	config.pairs.forEach((pair: Partial<Pair>) => {
-		if (typeof pair.pair === 'undefined' || typeof pair.pair !== 'string') throw new Error(`[PushPairModule] "pair" is required for each item in "pairs"`);
-		if (typeof pair.decimals === 'undefined' || typeof pair.decimals !== 'number') throw new Error(`[PushPairModule] "decimals" is required for each item in "pairs"`);
-		if (!Array.isArray(pair.sources)) throw new Error(`[PushPairModule] "sources" is required for each item in "pairs"`);
+		if (typeof pair.pair === 'undefined' || typeof pair.pair !== 'string') throw new Error(`[P2PModule] "pair" is required for each item in "pairs"`);
+		if (typeof pair.decimals === 'undefined' || typeof pair.decimals !== 'number') throw new Error(`[P2PModule] "decimals" is required for each item in "pairs"`);
+		if (!Array.isArray(pair.sources)) throw new Error(`[P2PModule] "sources" is required for each item in "pairs"`);
 
 		pair.sources.forEach((source: Partial<Source>) => {
-			if (typeof source.source_path === 'undefined' || typeof source.source_path !== 'string') throw new Error(`[PushPairModule] "source_path" is required for each item in "sources"`);
-			if (typeof source.end_point === 'undefined' || typeof source.end_point !== 'string') throw new Error(`[PushPairModule] "end_point" is required for each item in "sources"`);
+			if (typeof source.source_path === 'undefined' || typeof source.source_path !== 'string') throw new Error(`[P2PModule] "source_path" is required for each item in "sources"`);
+			if (typeof source.end_point === 'undefined' || typeof source.end_point !== 'string') throw new Error(`[P2PModule] "end_point" is required for each item in "sources"`);
 		});
 	});
 
     return {
         ...config,
         id: `${config.type}-${config.networkId}}`,
+		// TODO: what should these defaults be.
+		deviationPercentage: config.deviationPercentage ?? 0.5,
+		minimumUpdateInterval: config.minimumUpdateInterval ?? 1,
         contractAddress: config.contractAddress,
         interval: config.interval,
 		pairs: config.pairs.map((pair) => ({

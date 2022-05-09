@@ -4,6 +4,12 @@ import FluxPriceFeed from '../FluxPriceFeed.json';
 import { NearNetwork } from "../../../networks/near/NearNetwork";
 import { P2PInternalConfig } from "../models/P2PConfig";
 
+// TODO: when deviation
+/* interface TimestampUpdateReport {
+    oldestTimestamp: number;
+    timestamps: number[];
+} */
+
 export async function fetchEvmLastUpdate(config: P2PInternalConfig, network: EvmNetwork) {
     let timestamp = await network.view({
         method: 'latestTimestamp',

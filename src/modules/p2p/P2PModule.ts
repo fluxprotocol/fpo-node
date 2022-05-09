@@ -5,7 +5,7 @@ import { FetchJob } from "../../jobs/fetch/FetchJob";
 import { Module } from "../../models/Module";
 import { OutcomeType } from "../../models/Outcome";
 import { P2PDataRequestBatch, P2PResolvedDataRequest } from "./models/P2PDataRequest";
-import { createBatchFromPairs, createResolveP2PRequest } from "./services/P2PRequestService";
+import { createBatchFromPairs, createResolveP2PRequest, shouldMedianUpdate } from "./services/P2PRequestService";
 import { createSafeAppConfigString } from "../../services/AppConfigUtils";
 import { fetchEvmLastUpdate, fetchNearLastUpdate } from './services/FetchLastUpdateService';
 import { parseP2PConfig, P2PConfig, P2PInternalConfig } from "./models/P2PConfig";
@@ -13,11 +13,15 @@ import Communicator from "../../p2p/communication";
 import TCP from "libp2p-tcp";
 const Mplex = require("libp2p-mplex"); // no ts support yet :/
 import { NOISE } from "@chainsafe/libp2p-noise";
+import Big from "big.js";
+import { aggregate } from "../../p2p/aggregator";
 
 export class P2PModule extends Module {
+    private medians: Map<string, Big> = new Map();
+
     static type = "P2PModule";
     private internalConfig: P2PInternalConfig;
-    private batch: P2PDataRequestBatch;
+    private batch?: P2PDataRequestBatch;
     private p2p: Communicator;
 
     constructor(moduleConfig: P2PConfig, appConfig: AppConfig) {
@@ -25,7 +29,6 @@ export class P2PModule extends Module {
 
         this.internalConfig = parseP2PConfig(moduleConfig);
         this.id = this.internalConfig.id;
-        this.batch = createBatchFromPairs(this.internalConfig, this.network);
         this.p2p = new Communicator({
             peerId: appConfig.peer_id,
             ...appConfig.p2p_node,
@@ -54,8 +57,11 @@ export class P2PModule extends Module {
 
     private async processPairs() {
         try {
+            // TODO: when deviation
+            /* const timestampUpdateReport = await this.fetchLastUpdate();
             // Fetch elapsed time (in milliseconds) since last pair(s) update
-            const timeSinceUpdate = Date.now() - await this.fetchLastUpdate();
+            const timeSinceUpdate = Date.now() - timestampUpdateReport.oldestTimestamp; */
+            const timeSinceUpdate = await this.fetchLastUpdate();
 
             let remainingInterval;
             if (timeSinceUpdate < this.internalConfig.interval) {
@@ -72,6 +78,11 @@ export class P2PModule extends Module {
             const job = this.appConfig.jobs.find(job => job.type === FetchJob.type);
             if (!job) throw new Error(`No job found with id ${FetchJob.type}`);
 
+            if (!this.batch) {
+                logger.error('The pairs batch was not successfully initialized.')
+                throw new Error('Pairs batch was not successfully initialized.');
+            }
+
             const resolvedRequests = await Promise.all(this.batch.requests.map(async (unresolvedRequest) => {
                 const outcome = await job.executeRequest(unresolvedRequest);
 
@@ -83,7 +94,28 @@ export class P2PModule extends Module {
                     return null;
                 }
 
-                return createResolveP2PRequest(this.p2p, outcome, unresolvedRequest, this.internalConfig);
+                // TODO: need to get latestAggregatorRoundId from the contract so that we can properly elect a leader.
+                let median: Big | undefined = undefined;
+                await aggregate(this.p2p, unresolvedRequest, new Big(outcome.answer), async (median_to_send?: Big) => {
+                    if (median_to_send !== undefined) {
+                        median = median_to_send;
+                    }
+                });
+
+                // TODO: deviation
+               /*  // When the prices don't deviate too much we don't need to update the price pair
+                if (!shouldMedianUpdate(unresolvedRequest, timestampUpdateReport.timestamps[index], new Big(outcome.answer), this.medians.get(unresolvedRequest.internalId))) {
+                    logger.debug(`[${this.id}] ${unresolvedRequest.internalId} Price ${outcome.answer} doesn't deviate ${unresolvedRequest.extraInfo.deviationPercentage}% from ${this.prices.get(unresolvedRequest.internalId)}`);
+                    remainingInterval = this.internalConfig.interval;
+                    return null;
+                } */
+
+                // NOTICE: Limitation here is that we assume that the price update transaction may fail
+                // we do not know whether or not the transaction failed
+                if (median !== undefined) {
+                    this.medians.set(unresolvedRequest.internalId, median);
+                }
+                return createResolveP2PRequest(outcome, unresolvedRequest, this.internalConfig, median);
                 
             }));
 
@@ -99,16 +131,15 @@ export class P2PModule extends Module {
             }
             
             // TODO: deviation check after consensus.
-            
             this.network.addRequestsToQueue({
                 ...this.batch,
                 requests,
                 targetAddress: this.internalConfig.contractAddress,
             });
 
-
             // check if leader didn't send it if so ask someone else to send it.
 			// after publishing the leader shares the transaction hash and the peers verify the transaction hash right parameters to right contract
+            // but how would i preserve median since it was batched?
 
             logger.debug(`[${this.id}] Next update in ${Math.floor(remainingInterval / 1000)}s`);
             setTimeout(this.processPairs.bind(this), remainingInterval);
@@ -124,6 +155,8 @@ export class P2PModule extends Module {
 
     async start(): Promise<boolean> {
         try {
+            logger.info("Initializing p2p batch pairs...");
+            this.batch = await createBatchFromPairs(this.internalConfig, this.network);
             logger.info(`Initializing p2p node...`);
             await this.p2p.init();
             logger.info(`Starting p2p node...`);
