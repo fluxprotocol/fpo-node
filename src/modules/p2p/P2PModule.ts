@@ -5,8 +5,7 @@ import { FetchJob } from "../../jobs/fetch/FetchJob";
 import { Module } from "../../models/Module";
 import { OutcomeType } from "../../models/Outcome";
 import { P2PDataRequestBatch, P2PResolvedDataRequest } from "./models/P2PDataRequest";
-import { createBatchFromPairs, createEvmFactory2TransmitTransaction, createEvmFactoryTransmitTransaction, createResolvePairRequest } from "./services/P2PRequestService";
-import { createPairIfNeeded } from "./services/P2PCreationService";
+import { createBatchFromPairs, createResolveP2PRequest } from "./services/P2PRequestService";
 import { createSafeAppConfigString } from "../../services/AppConfigUtils";
 import { fetchEvmLastUpdate, fetchNearLastUpdate } from './services/FetchLastUpdateService';
 import { parseP2PConfig, P2PConfig, P2PInternalConfig } from "./models/P2PConfig";
@@ -14,8 +13,6 @@ import Communicator from "../../p2p/communication";
 import TCP from "libp2p-tcp";
 const Mplex = require("libp2p-mplex"); // no ts support yet :/
 import { NOISE } from "@chainsafe/libp2p-noise";
-import { aggregate } from "../../p2p/aggregator";
-import Big from "big.js";
 
 export class P2PModule extends Module {
     static type = "P2PModule";
@@ -30,6 +27,7 @@ export class P2PModule extends Module {
         this.id = this.internalConfig.id;
         this.batch = createBatchFromPairs(this.internalConfig, this.network);
         this.p2p = new Communicator({
+            peerId: appConfig.peer_id,
             ...appConfig.p2p_node,
             modules: {
                 transport: [TCP],
@@ -48,7 +46,7 @@ export class P2PModule extends Module {
             lastUpdate = await fetchEvmLastUpdate(this.internalConfig, this.network as EvmNetwork);
         }
         else {
-            throw new Error(`Failed to fetch last update for network ${this.network.type} and pairs type ${this.internalConfig.pairsType}`);
+            throw new Error(`Failed to fetch last update for network ${this.network.type}`);
         }
 
         return lastUpdate;
@@ -75,14 +73,6 @@ export class P2PModule extends Module {
             if (!job) throw new Error(`No job found with id ${FetchJob.type}`);
 
             const resolvedRequests = await Promise.all(this.batch.requests.map(async (unresolvedRequest) => {
-                // this sends the data
-                let median: Big;
-                await aggregate(this.p2p, new Big(1), async (median: Big) => {
-                    median = median;
-                });
-
-                // do something with median here.
-
                 const outcome = await job.executeRequest(unresolvedRequest);
 
                 if (outcome.type === OutcomeType.Invalid) {
@@ -93,36 +83,32 @@ export class P2PModule extends Module {
                     return null;
                 }
 
-                return createResolvePairRequest(outcome, unresolvedRequest, this.internalConfig);
+                return createResolveP2PRequest(this.p2p, outcome, unresolvedRequest, this.internalConfig);
                 
             }));
 
-            let requests: P2PResolvedDataRequest[] = resolvedRequests.filter(r => r !== null) as P2PResolvedDataRequest[];
+            let requests: P2PResolvedDataRequest[] = resolvedRequests.filter(r => r !== null && (r.extraInfo.answer !== undefined)) as P2PResolvedDataRequest[];            
 
             if (requests.length === 0) {
-                logger.warn(`[${this.id}] No requests where left to submit on-chain`, {
+                logger.warn(`[${this.id}] Node is not the leader for sending the median`, {
                     config: createSafeAppConfigString(this.appConfig),
                 });
 
                 setTimeout(this.processPairs.bind(this), remainingInterval);
                 return;
             }
-
-            // With the new EVM factory we can combine multiple transmits in one transaction
-            if (this.batch.targetNetwork.type === 'evm') {
-                if (this.internalConfig.pairsType === 'factory') {
-                    requests = [createEvmFactoryTransmitTransaction(this.internalConfig, requests)];
-                }
-                if (this.internalConfig.pairsType === 'factory2') {
-                    requests = [createEvmFactory2TransmitTransaction(this.internalConfig, requests)];
-                }
-            }
-
+            
+            // TODO: deviation check after consensus.
+            
             this.network.addRequestsToQueue({
                 ...this.batch,
                 requests,
                 targetAddress: this.internalConfig.contractAddress,
             });
+
+
+            // check if leader didn't send it if so ask someone else to send it.
+			// after publishing the leader shares the transaction hash and the peers verify the transaction hash right parameters to right contract
 
             logger.debug(`[${this.id}] Next update in ${Math.floor(remainingInterval / 1000)}s`);
             setTimeout(this.processPairs.bind(this), remainingInterval);
@@ -138,12 +124,6 @@ export class P2PModule extends Module {
 
     async start(): Promise<boolean> {
         try {
-            logger.info(`[${this.id}] Creating pairs if needed..`);
-            await Promise.all(this.internalConfig.pairs.map(async (pair) => {
-                return createPairIfNeeded(pair, this.internalConfig, this.network);
-            }));
-            logger.info(`[${this.id}] Done creating pairs`);
-            
             logger.info(`Initializing p2p node...`);
             await this.p2p.init();
             logger.info(`Starting p2p node...`);

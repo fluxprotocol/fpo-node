@@ -5,6 +5,7 @@ import { fromString } from 'uint8arrays/from-string';
 
 import Communicator from './communication';
 import logger from "../services/LoggerService";
+import { send } from "process";
 
 let current_leader = 0;
 
@@ -33,7 +34,37 @@ export function median(list: Big[]): Big {
 	}
 }
 
-export async function aggregate<O>(p2p: Communicator, data_to_send: Big, sender: (data: Big) => Promise<O>) {
+export async function backup_leader_send(p2p: Communicator, median: string) {
+	const new_leader = elect_leader(p2p);
+
+	const data = {
+		median,
+		new_leader,
+	};
+
+	p2p.send('/backup/leader', [fromString(JSON.stringify(data))]);
+}
+
+export async function handle_backup_leader(p2p: Communicator, sender: (data?: Big) => void) {
+	p2p.handle_incoming('/backup/leader', async (peer: Multiaddr, source: AsyncIterable<Uint8Array | BufferList>) => {
+		let data_str = '';
+		for await (const msg of source) {
+			data_str += msg.toString();
+		}
+
+		const data = JSON.parse(data_str);
+		logger.info(`Received elected backup leader \`${data.new_leader}\' from peer \`${peer}\``);
+
+		if (data.new_leader == p2p._node_addr) {
+			sender(new Big(data.median));
+		} else {
+			sender(undefined);
+		}
+		p2p.unhandle('/backup/leader');
+	});
+}
+
+export async function aggregate(p2p: Communicator, data_to_send: Big, sender: (data?: Big) => void) {
 	let received: Big[] = [data_to_send];
 	let med: Big = new Big(0);
 	let medians_received_count: number = 0;
@@ -51,16 +82,16 @@ export async function aggregate<O>(p2p: Communicator, data_to_send: Big, sender:
 		leaders_received_count++;
 		if (elected !== leader) {
 			logger.error(`Received elected leader \`${elected}\' from peer \`${peer}\` but it did not match our elected leader \`${leader}\``);
-		} else if (leaders_received_count === p2p._peers.size) { // check if we are the leader
-			if (leader == p2p._node_addr) {
-				// send data to contract.
-				await sender(med);
-			}
-			// check if leader didn't send it if so ask someone else to send it.
-			// after publishing the leader shares the transaction hash and the peers verify the transaction hash right parameters to right contract
-
+		} else if (leaders_received_count === p2p._peers.size && elected == p2p._node_addr) { // check if we are the leader
 			// reset for next run
 			await p2p.unhandle('/elected/leader');
+
+			if (leader == p2p._node_addr) {
+				// send data to contract.
+				sender(med);
+			} else {
+				sender(undefined);
+			}
 		}
 	});
 

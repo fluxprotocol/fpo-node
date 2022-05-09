@@ -1,3 +1,4 @@
+import Big from "big.js";
 import { DataRequest, DataRequestResolved } from "../../../models/DataRequest";
 import { DataRequestBatch, DataRequestBatchResolved } from "../../../models/DataRequestBatch";
 
@@ -12,6 +13,7 @@ export interface P2PResolvedDataRequest extends DataRequestResolved {
     extraInfo: {
         pair: string;
         decimals: number;
+        answer?: string;
     }
 };
 

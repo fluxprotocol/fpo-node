@@ -1,5 +1,7 @@
 import { readFile } from 'fs/promises';
 
+import PeerId from "peer-id";
+
 import { APP_CONFIG_LOCATION, HEALTHCHECK_ENABLED, HEALTHCHECK_PORT } from "../config";
 import { Healthcheck } from '../healthCheck/Healthcheck';
 import { AppConfig, UnparsedAppConfig } from '../models/AppConfig';
@@ -22,6 +24,7 @@ export async function parseAppConfig(): Promise<AppConfig> {
         networks: [],
         modules: [],
         jobs: [],
+        peer_id: await PeerId.createFromJSON(config.peer_id),
         p2p_node: config.p2p_node,
         peers_file: config.peers_file,
     };
