@@ -81,7 +81,9 @@ export class PushPairModule extends Module {
 
                 // When the prices don't deviate too much we don't need to update the price pair
                 if (!shouldPricePairUpdate(unresolvedRequest, timestampUpdateReport.timestamps[index], new Big(outcome.answer), this.prices.get(unresolvedRequest.internalId))) {
-                    logger.debug(`[${this.id}] ${unresolvedRequest.internalId} Price ${outcome.answer} doesn't deviate ${unresolvedRequest.extraInfo.deviationPercentage}% from ${this.prices.get(unresolvedRequest.internalId)}`);
+                    const timeSinceUpdate = Date.now() - timestampUpdateReport.timestamps[index];
+
+                    logger.debug(`[${this.id}] ${unresolvedRequest.internalId} Price ${outcome.answer} doesn't deviate ${unresolvedRequest.extraInfo.deviationPercentage}% from ${this.prices.get(unresolvedRequest.internalId)} and last update was ${timeSinceUpdate}ms/${unresolvedRequest.extraInfo.minimumUpdateInterval}ms`);
                     remainingInterval = this.internalConfig.interval;
                     return null;
                 }
