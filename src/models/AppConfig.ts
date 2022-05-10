@@ -13,15 +13,19 @@ export interface AppConfig {
     networks: INetwork[];
     modules: IModule[];
     jobs: IJob[];
-    peer_id: PeerId;
-    p2p_node: CreateOptions;
-    peers_file: string;
+    p2p?: {
+        peer_id: PeerId;
+        p2p_node?: CreateOptions;
+        peers_file?: string;
+    },
 }
 
 export interface UnparsedAppConfig {
     networks?: Partial<NetworkConfig>[];
     modules?: Partial<ModuleConfig>[];
-    peer_id: JSONPeerId;
-    p2p_node: CreateOptions,
-    peers_file: string,
+    p2p?: {
+        peer_id?: JSONPeerId;
+        p2p_node?: CreateOptions;
+        peers_file?: string;
+    }
 }

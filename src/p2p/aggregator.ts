@@ -76,9 +76,11 @@ export async function aggregate(p2p: Communicator, unresolvedRequest: P2PDataReq
 
 	p2p.handle_incoming(`/elected/leader/${peer_unique_id}`, async (peer: Multiaddr, source: AsyncIterable<Uint8Array | BufferList>) => {
 		let elected = '';
+
 		for await (const msg of source) {
 			elected += msg.toString();
 		}
+
 		logger.info(`Received elected leader \`${elected}\' from peer \`${peer}\``);
 
 		// make sure they all agree on who the leader is.
@@ -125,7 +127,7 @@ export async function aggregate(p2p: Communicator, unresolvedRequest: P2PDataReq
 			await p2p.unhandle(`/calculated/median/${peer_unique_id}`);
 		}
 	});
-	
+
 	p2p.handle_incoming(`/send/data/${peer_unique_id}`, async (peer: Multiaddr, source: AsyncIterable<Uint8Array | BufferList>) => {
 		let full_msg = '';
 		for await (const msg of source) {
@@ -145,5 +147,7 @@ export async function aggregate(p2p: Communicator, unresolvedRequest: P2PDataReq
 	});
 
 	logger.info(`Sending data to peers ${data_to_send}`);
-	p2p.send(`/send/data/${peer_unique_id}`, [fromString(data_to_send.toString())]);
+	p2p.send(`/send/data/${peer_unique_id}`, [
+        fromString(data_to_send.toString())
+    ]);
 }

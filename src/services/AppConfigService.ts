@@ -24,10 +24,18 @@ export async function parseAppConfig(): Promise<AppConfig> {
         networks: [],
         modules: [],
         jobs: [],
-        peer_id: await PeerId.createFromJSON(config.peer_id),
-        p2p_node: config.p2p_node,
-        peers_file: config.peers_file,
+
     };
+
+    if (config.p2p) {
+        if (typeof config.p2p.peer_id === 'undefined') throw new Error(`"peer_id" should be an object containing: "id", "pubKey?", "privKey?"`);
+
+        appConfig.p2p = {
+            peer_id: await PeerId.createFromJSON(config.p2p.peer_id),
+            p2p_node: config.p2p.p2p_node,
+            peers_file: config.p2p.peers_file,
+        };
+    }
 
     if (!config.networks || !Array.isArray(config.networks)) throw new Error(`"networks" is required and must be an array`);
 

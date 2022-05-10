@@ -1,9 +1,17 @@
 import logger from './services/LoggerService';
 import { parseAppConfig } from './services/AppConfigService';
 import { PROJECT_NAME, PROJECT_VERSION } from './config';
+import PeerId from 'peer-id';
 
 async function main() {
     logger.info(`🧙 Starting ${PROJECT_NAME} v${PROJECT_VERSION}`);
+
+    // TODO: Use yargs to give nodes a way to generate a private key for p2p..
+    const id = await PeerId.create();
+
+    const privKey = id.privKey.bytes;
+    console.log('[] id -> ', Buffer.from(privKey).toString('hex'));
+
     try {
         const appConfig = await parseAppConfig();
 
@@ -21,7 +29,7 @@ async function main() {
 
         logger.info(`🚀 Booted`);
     } catch (error) {
-        logger.error(`${error}`);
+        logger.error(`[main] ${error}`);
         process.exit(1);
     }
 }

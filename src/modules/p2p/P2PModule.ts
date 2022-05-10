@@ -10,8 +10,10 @@ import { createSafeAppConfigString } from "../../services/AppConfigUtils";
 import { fetchEvmLastUpdate, fetchNearLastUpdate } from './services/FetchLastUpdateService';
 import { parseP2PConfig, P2PConfig, P2PInternalConfig } from "./models/P2PConfig";
 import Communicator from "../../p2p/communication";
+// @ts-ignore
 import TCP from "libp2p-tcp";
 const Mplex = require("libp2p-mplex"); // no ts support yet :/
+// @ts-ignore
 import { NOISE } from "@chainsafe/libp2p-noise";
 import Big from "big.js";
 import { aggregate } from "../../p2p/aggregator";
@@ -27,17 +29,19 @@ export class P2PModule extends Module {
     constructor(moduleConfig: P2PConfig, appConfig: AppConfig) {
         super(P2PModule.type, moduleConfig, appConfig);
 
+        if (!appConfig.p2p) throw new Error(`"p2p" is required in the appConfig for ${this.type} to work`);
+
         this.internalConfig = parseP2PConfig(moduleConfig);
         this.id = this.internalConfig.id;
         this.p2p = new Communicator({
-            peerId: appConfig.peer_id,
-            ...appConfig.p2p_node,
+            peerId: appConfig.p2p.peer_id,
+            ...appConfig.p2p.p2p_node,
             modules: {
                 transport: [TCP],
                 streamMuxer: [Mplex],
                 connEncryption: [NOISE],
             }
-        }, appConfig.peers_file);
+        }, appConfig.p2p.peers_file);
     }
 
     private async fetchLastUpdate() {
@@ -79,8 +83,8 @@ export class P2PModule extends Module {
             if (!job) throw new Error(`No job found with id ${FetchJob.type}`);
 
             if (!this.batch) {
-                logger.error('The pairs batch was not successfully initialized.')
-                throw new Error('Pairs batch was not successfully initialized.');
+                logger.error('The pairs batch was not successfully initialized.');
+                return;
             }
 
             const resolvedRequests = await Promise.all(this.batch.requests.map(async (unresolvedRequest) => {
@@ -102,24 +106,17 @@ export class P2PModule extends Module {
                     }
                 });
 
-                // TODO: deviation
-               /*  // When the prices don't deviate too much we don't need to update the price pair
-                if (!shouldMedianUpdate(unresolvedRequest, timestampUpdateReport.timestamps[index], new Big(outcome.answer), this.medians.get(unresolvedRequest.internalId))) {
-                    logger.debug(`[${this.id}] ${unresolvedRequest.internalId} Price ${outcome.answer} doesn't deviate ${unresolvedRequest.extraInfo.deviationPercentage}% from ${this.prices.get(unresolvedRequest.internalId)}`);
-                    remainingInterval = this.internalConfig.interval;
-                    return null;
-                } */
-
                 // NOTICE: Limitation here is that we assume that the price update transaction may fail
                 // we do not know whether or not the transaction failed
                 if (median !== undefined) {
                     this.medians.set(unresolvedRequest.internalId, median);
                 }
+
                 return createResolveP2PRequest(outcome, unresolvedRequest, this.internalConfig, median);
-                
+
             }));
 
-            let requests: P2PResolvedDataRequest[] = resolvedRequests.filter(r => r !== null && (r.extraInfo.answer !== undefined)) as P2PResolvedDataRequest[];            
+            let requests: P2PResolvedDataRequest[] = resolvedRequests.filter(r => r !== null && (r.extraInfo.answer !== undefined)) as P2PResolvedDataRequest[];
 
             if (requests.length === 0) {
                 logger.warn(`[${this.id}] Node is not the leader for sending the median`, {
@@ -129,7 +126,7 @@ export class P2PModule extends Module {
                 setTimeout(this.processPairs.bind(this), remainingInterval);
                 return;
             }
-            
+
             // TODO: deviation check after consensus.
             this.network.addRequestsToQueue({
                 ...this.batch,
@@ -157,13 +154,17 @@ export class P2PModule extends Module {
         try {
             logger.info("Initializing p2p batch pairs...");
             this.batch = await createBatchFromPairs(this.internalConfig, this.network);
+
             logger.info(`Initializing p2p node...`);
             await this.p2p.init();
+
             logger.info(`Starting p2p node...`);
             await this.p2p.start();
+
             logger.info(`[${this.id}] Pre-submitting pairs with latest info`);
             await this.processPairs();
             logger.info(`[${this.id}] Pre-submitting done. Will be on a ${this.internalConfig.interval}ms interval`);
+
             return true;
         } catch (error) {
             await this.p2p.stop();

@@ -1,5 +1,6 @@
 import Big from "big.js";
 import FluxPriceFeedAbi from '../FluxPriceFeed.json';
+import FluxP2PFactory from '../FluxP2PFactory.json';
 import { FetchJob } from "../../../jobs/fetch/FetchJob";
 import { Network } from "../../../models/Network";
 import { OutcomeAnswer } from "../../../models/Outcome";
@@ -7,17 +8,48 @@ import { P2PDataRequest, P2PDataRequestBatch, P2PResolvedDataRequest } from "../
 import { P2PInternalConfig } from '../models/P2PConfig';
 import { createDataRequestBatch } from "../../../models/DataRequestBatch";
 import logger from "../../../services/LoggerService";
-import { Contract } from "ethers";
+import { BigNumber, Contract } from "ethers";
+import cache from "../../../services/CacheService";
+
+async function getPairAddress(config: P2PInternalConfig, network: Network, pairId: string): Promise<string> {
+    return cache(`${pairId}-${network.id}`, async () => {
+        if (network.type === 'evm') {
+            const pairAddress = await network.view({
+                address: config.contractAddress,
+                amount: '0',
+                method: 'addressOfPricePair',
+                params: {
+                    _id: pairId,
+                }
+            });
+
+            return pairAddress;
+        }
+
+        return config.contractAddress;
+    });
+}
+
+async function getRoundIdForPair(config: P2PInternalConfig, network: Network, pairId: string) {
+    const pairAddress = await getPairAddress(config, network, pairId);
+
+
+}
 
 export async function createBatchFromPairs(config: P2PInternalConfig, targetNetwork: Network): Promise<P2PDataRequestBatch> {
-    // TODO: replace this abi with the P2P one
-    const p2p_contract = new Contract(config.contractAddress, FluxPriceFeedAbi.abi);
-    
-    const requests: P2PDataRequest[] = await Promise.all(config.pairs.map(async (pairInfo, index) => {
-        const pair_address = await p2p_contract.addressOfPricePair(pairInfo.pair);
-        // This one is the correct abi (Franklin thinks :) ).
-        const price_feed_contract = new Contract(pair_address, FluxPriceFeedAbi.abi);
-        const latestAggregatorRoundId = await price_feed_contract.latestAggregatorRoundId;
+    const requests: P2PDataRequest[] = await Promise.all(config.pairs.map(async (pairInfo) => {
+        await getRoundIdForPair(config, targetNetwork, pairInfo.pair);
+        console.log('Heydo!');
+
+
+
+
+
+        process.exit(0);
+
+        // // This one is the correct abi (Franklin thinks :) ).
+        // const price_feed_contract = new Contract(pairAddress, FluxPriceFeedAbi.abi);
+        // const latestAggregatorRoundId = await price_feed_contract.latestAggregatorRoundId;
 
         return {
             args: [
@@ -32,7 +64,7 @@ export async function createBatchFromPairs(config: P2PInternalConfig, targetNetw
                 decimals: pairInfo.decimals,
                 deviationPercentage: config.deviationPercentage,
                 minimumUpdateInterval: config.minimumUpdateInterval,
-                latestAggregatorRoundId,
+                latestAggregatorRoundId: new BigNumber(1, ''),
             },
             internalId: `${targetNetwork.id}/p${pairInfo.pair}-d${pairInfo.decimals}`,
             originNetwork: targetNetwork,
@@ -81,7 +113,7 @@ export async function createResolveP2PRequest(outcome: OutcomeAnswer, request: P
     } else {
         throw new Error(`Network type is not supported for P2PModule`);
     }
-    
+
     return {
         ...request,
         txCallParams,

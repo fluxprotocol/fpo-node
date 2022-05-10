@@ -60,8 +60,8 @@ export default class Communicator {
 	}
 
 	async init(): Promise<void> {
-		this._node = await create(this._options);
-		this._peers = await this.load_peers();
+        this._node = await create(this._options);
+        this._peers = await this.load_peers();
 	}
 
 	async retry(): Promise<void> {
@@ -194,7 +194,7 @@ export default class Communicator {
 			}
 		});
 	}
-	
+
 
 	async save_peers(): Promise<void> {
 		let peers = Array.from(this._peers).sort();
@@ -212,10 +212,10 @@ export default class Communicator {
 		try {
 			let peers: Set<string> = new Set();
 			await promises.access(this._peers_file);
-					
+
 			const json = await promises.readFile(this._peers_file, 'utf-8');
 			const peers_list: string[] = JSON.parse(json);
-			
+
 			for (const peer of peers_list) {
 				peers.add(peer);
 			}
