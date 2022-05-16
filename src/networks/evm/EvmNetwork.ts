@@ -339,7 +339,7 @@ export default class EvmNetwork extends Network {
 
     async getBalance(accountId: string): Promise<Big | undefined> {
         try {
-            const provider = new JsonRpcProvider(this.networkConfig.rpc);
+            const provider = new JsonRpcProvider(this.getRpc());
             const balance = await provider.getBalance(accountId);
 
             if (!balance) return;
