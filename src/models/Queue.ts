@@ -3,6 +3,8 @@ import { sleep } from "../services/TimerUtils";
 import { AppConfig } from "./AppConfig";
 import { DataRequestBatchResolved, hydrateDataRequestBatchResolved, storeDataRequestBatchResolved } from "./DataRequestBatch";
 
+const RETRIES = 5;
+
 export class Queue {
     items: DataRequestBatchResolved[] = [];
     processingId?: string;
@@ -31,23 +33,42 @@ export class Queue {
 
     start(onBatchReady: (batch: DataRequestBatchResolved) => Promise<void>) {
         this.intervalId = setInterval(async () => {
-            if (this.processingId) return;
+            try {
+                if (this.processingId) return;
+    
+                const batch = this.items.shift();
+                if (!batch) return;
+    
+                this.processingId = batch.internalId;
+                
+                await this.executeBatch(onBatchReady, batch, 0);
 
-            const batch = this.items.shift();
-            if (!batch) return;
+                this.processingId = undefined;
+            } catch (err) {
 
-            this.processingId = batch.internalId;
+            }
+        }, 100);
+    }
 
+    async executeBatch(onBatchReady: (batch: DataRequestBatchResolved) => Promise<void>, batch: DataRequestBatchResolved, retries: number): Promise<void> {
+        try {
             logger.debug(`[${this.id}] Submitting batch to blockchain ${batch.internalId}`);
-
+        
             await onBatchReady(batch);
             // Adding more padding between transactions in order for the RPC to correctly set the nonce
             await sleep(this.queueDelay);
-
+    
             logger.debug(`[${this.id}] Submitting batch to blockchain completed ${batch.internalId}`);
+        } catch (err) {
+            logger.error(`[${this.id}] Error submitting batch to blockchain ${err}`);
+            if (retries < RETRIES) {
+                this.executeBatch(onBatchReady, batch, ++retries)
+            } else {
+                logger.error(`[${this.id}] Something went really wrong with this batch ${err}`)
+                logger.info(`[${this.id}] pathway frozen because of batch: ${this.items}`)
+            }
+        }
 
-            this.processingId = undefined;
-        }, 100);
     }
 
     stop() {
