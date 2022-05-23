@@ -23,18 +23,6 @@ export function electLeader(p2p: Communicator, roundId: Big): Multiaddr {
 	return new Multiaddr(elected);
 }
 
-export function median(list: Big[]): Big {
-	list = list.sort();
-
-	let mid_point = Math.floor(list.length / 2);
-
-	if (mid_point % 2) {
-		return (list[mid_point - 1].plus(list[mid_point])).div(2);
-	} else {
-		return list[mid_point];
-	}
-}
-
 function hashPairSignatureInfo(request: P2PDataRequest, roundId: string, data: string): string {
     return keccak256(fromString(`${request.extraInfo.pair}${request.extraInfo.decimals}${roundId}${data}`));
 }
@@ -78,7 +66,7 @@ export default class P2PAggregator extends EventEmitter {
 
         reports.add(message);
         this.requestReports.set(message.id, reports);
-        
+
         logger.debug(`[${LOG_NAME}-${message.id}] Received message from ${peer} ${this.requestReports.size}/${this.p2p._peers.size}`);
 
         const request = this.requests.get(message.id);
@@ -161,32 +149,32 @@ export default class P2PAggregator extends EventEmitter {
             // TODO: Maybe do a check where if the request already exist we should ignore it?
             const message = hashPairSignatureInfo(request, roundId.toString(), data);
             const signature = await request.targetNetwork.sign(fromString(message));
-    
+
             const p2pMessage: P2PMessage = {
                 data,
                 signature: toString(signature, 'base64'),
                 id: request.internalId,
             };
-    
+
             this.callbacks.set(request.internalId, resolve);
             this.checkStatusCallback.set(request.internalId, isRequestResolved);
             this.requests.set(request.internalId, request);
             this.roundIds.set(request.internalId, roundId);
-    
+
             // Reports may already been set due to a faster node
             let reports = this.requestReports.get(request.internalId);
             if (!reports) {
                 reports = new Set();
             }
-    
+
             reports.add(p2pMessage);
             this.requestReports.set(request.internalId, reports);
-    
+
             logger.debug(`[${LOG_NAME}-${request.internalId}] Sending data to peers: ${data}`);
             await this.p2p.send(`/send/data`, [
                 fromString(JSON.stringify(p2pMessage)),
             ]);
-            
+
             // It is possible that we already got enough reports due the async nature of p2p
             await this.handleReports(request.internalId);
         });

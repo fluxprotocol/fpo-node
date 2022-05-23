@@ -27,6 +27,7 @@ export class P2PModule extends Module {
     private batch?: P2PDataRequestBatch;
     private p2p: Communicator;
     private aggregator: P2PAggregator;
+    private processing: Set<string> = new Set();
 
     constructor(moduleConfig: P2PConfig, appConfig: AppConfig) {
         super(P2PModule.type, moduleConfig, appConfig);
@@ -94,6 +95,11 @@ export class P2PModule extends Module {
             }
 
             const resolvedRequests = await Promise.all(this.batch.requests.map(async (unresolvedRequest) => {
+                if (this.processing.has(unresolvedRequest.internalId)) {
+                    return;
+                }
+
+                this.processing.add(unresolvedRequest.internalId);
                 const outcome = await job.executeRequest(unresolvedRequest);
 
                 if (outcome.type === OutcomeType.Invalid) {
@@ -117,6 +123,8 @@ export class P2PModule extends Module {
                     // When the round id incremented we've updated the prices on chain
                     return !newRoundId.eq(roundId);
                 });
+
+                this.processing.delete(unresolvedRequest.internalId);
 
                 // At this stage everything should already be fully handled by the leader
                 // and if not atleast submitted by this node. We can safely move on
