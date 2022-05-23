@@ -5,9 +5,9 @@ import { NOISE } from "@chainsafe/libp2p-noise";
 import { Multiaddr } from "multiaddr";
 import PeerId from "peer-id";
 import BufferList from "bl/BufferList";
-import { promises } from "fs";
 
 import logger from "../services/LoggerService";
+import { debouncedInterval } from "../services/TimerUtils";
 
 async function* createAsyncIterable(syncIterable: Uint8Array[]) {
 	for (const elem of syncIterable) {
@@ -30,10 +30,9 @@ export default class Communicator {
 	_node?: Libp2p;
 	_node_addr: string;
 	_peers: Set<string> = new Set();
-	_peers_file: string;
 	_retry: Set<string> = new Set();
 
-	constructor(config?: Libp2pOptions & CreateOptions, peers_file?: string) {
+	constructor(config?: Libp2pOptions & CreateOptions, preloadedPeersAddresses: Set<string> = new Set()) {
 		if (config === undefined) {
 			this._options = {
 				addresses: {
@@ -49,19 +48,12 @@ export default class Communicator {
 			this._options = config;
 		}
 
-		if (peers_file === undefined) {
-			this._peers_file = 'peers.json';
-			this._peers = new Set();
-		} else {
-			this._peers_file = peers_file;
-		}
-
+        this._peers = preloadedPeersAddresses;
 		this._node_addr = '';
 	}
 
 	async init(): Promise<void> {
         this._node = await create(this._options);
-        this._peers = await this.load_peers();
 	}
 
 	async retry(): Promise<void> {
@@ -76,8 +68,11 @@ export default class Communicator {
 
 	async start(): Promise<[Multiaddr, PeerId] | void> {
 		return attempt(this, undefined, async (node: Libp2p) => {
-			await node.start();
 
+			await node.start();
+            this._node_addr = `${node.multiaddrs[0]}/p2p/${node.peerId.toJSON().id}`;
+
+			console.log('Picked an address');
 			// TODO: Not sure if trying to connect to peers on startup would have adverse affects?
 			// we could always just call retry... but we don't know when the other nodes started...
 			// idk if we would want to wait for to be connected to all given peers in the list or
@@ -91,7 +86,10 @@ export default class Communicator {
 				}
 			}
 
-			this._node_addr = `${node.multiaddrs[0]}/p2p/${node.peerId.toJSON().id}`;
+            // // It's good to let the node continuesly try to reconnect to peers it cannot connect to
+            debouncedInterval(async () => {
+                await this.retry();
+            }, 5000);
 
 			return [
 				node.multiaddrs[0],
@@ -106,8 +104,6 @@ export default class Communicator {
 				for (const peer of this._peers) {
 					node.hangUp(peer);
 				}
-
-				this.save_peers();
 
 				await node.stop();
 
@@ -193,38 +189,5 @@ export default class Communicator {
 				await stream.sink(createAsyncIterable(data));
 			}
 		});
-	}
-
-
-	async save_peers(): Promise<void> {
-		let peers = Array.from(this._peers).sort();
-
-		const json = JSON.stringify(peers, null, 4);
-		try {
-			await promises.writeFile(this._peers_file, json);
-		} catch (error) {
-			logger.error(`Node failed to save peers with error '${error}'.`);
-		}
-
-	}
-
-	async load_peers(): Promise<Set<string>> {
-		try {
-			let peers: Set<string> = new Set();
-			await promises.access(this._peers_file);
-
-			const json = await promises.readFile(this._peers_file, 'utf-8');
-			const peers_list: string[] = JSON.parse(json);
-
-			for (const peer of peers_list) {
-				peers.add(peer);
-			}
-
-			return peers;
-		} catch (error) {
-			logger.error(`Node failed to load peers with error '${error}'.`);
-			return new Set();
-		}
-
 	}
 }

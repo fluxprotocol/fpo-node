@@ -25,6 +25,7 @@ export interface P2PInternalConfig extends ModuleConfig {
     interval: number;
 	deviationPercentage: number;
 	minimumUpdateInterval: number;
+    p2pReelectWaitTimeMs: number;
 }
 
 export interface P2PConfig extends ModuleConfig {
@@ -33,6 +34,7 @@ export interface P2PConfig extends ModuleConfig {
 	pairs?: P2PInternalConfig['pairs'];
 	deviationPercentage?: P2PInternalConfig['deviationPercentage'];
 	minimumUpdateInterval?: P2PInternalConfig['minimumUpdateInterval'];
+    p2pReelectWaitTimeMs?: P2PInternalConfig['p2pReelectWaitTimeMs'];
 }
 
 export function parseP2PConfig(config: P2PConfig): P2PInternalConfig {
@@ -53,12 +55,13 @@ export function parseP2PConfig(config: P2PConfig): P2PInternalConfig {
 
     return {
         ...config,
-        id: `${config.type}-${config.networkId}}`,
+        id: `${config.type}-${config.networkId}`,
 		// TODO: what should these defaults be.
 		deviationPercentage: config.deviationPercentage ?? 0.5,
 		minimumUpdateInterval: config.minimumUpdateInterval ?? 1,
         contractAddress: config.contractAddress,
         interval: config.interval,
+        p2pReelectWaitTimeMs: config.p2pReelectWaitTimeMs ?? Math.ceil(config.interval / 2),
 		pairs: config.pairs.map((pair) => ({
 			...pair,
 			sources: pair.sources.map((source) => ({

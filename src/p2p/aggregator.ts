@@ -1,26 +1,26 @@
 import Big from "big.js";
 import { Multiaddr } from "multiaddr";
 import BufferList from "bl/BufferList";
-import { fromString } from 'uint8arrays/from-string';
+import { fromString, toString } from 'uint8arrays';
 
 import Communicator from './communication';
 import logger from "../services/LoggerService";
 import { P2PDataRequest } from "../modules/p2p/models/P2PDataRequest";
+import { keccak256 } from "ethers/lib/utils";
+import { extractP2PMessage, P2PMessage } from './models/P2PMessage';
+import EventEmitter from "events";
 
-// TODO: this should take a nonce, otherwise if a new node spawns later it doesn't
-// know what this value currently is in execution.
-let current_leader = 0;
-export async function elect_leader(p2p: Communicator, unresolvedRequest: P2PDataRequest): Promise<string> {
+const LOG_NAME = 'p2p-aggregator';
+
+export function electLeader(p2p: Communicator, roundId: Big): Multiaddr {
 	let peers = Array.from(p2p._peers);
 	peers.push(p2p._node_addr);
 	peers = peers.sort();
-	// this.rpcIndex = (this.rpcIndex + 1) % this.internalConfig.rpc.length; same problem tho
-	// const elected = peers[unresolvedRequest.extraInfo.latestAggregatorRoundId.mod()];
-	// TODO: ask help
-	const index = unresolvedRequest.extraInfo.latestAggregatorRoundId.mod(0);
-	const elected = peers[current_leader];
 
-	return elected;
+	const index = roundId.mod(peers.length);
+	const elected = peers[index.toNumber()];
+
+	return new Multiaddr(elected);
 }
 
 export function median(list: Big[]): Big {
@@ -35,119 +35,251 @@ export function median(list: Big[]): Big {
 	}
 }
 
-// TODO: fix for when we need to elect backup leader
-/* export async function backup_leader_send(p2p: Communicator, median: string) {
-	const new_leader = elect_leader(p2p);
-
-	const data = {
-		median,
-		new_leader,
-	};
-
-	p2p.send('/backup/leader', [fromString(JSON.stringify(data))]);
+function hashPairSignatureInfo(request: P2PDataRequest, roundId: string, data: string): string {
+    return keccak256(fromString(`${request.extraInfo.pair}${request.extraInfo.decimals}${roundId}${data}`));
 }
 
-export async function handle_backup_leader(p2p: Communicator, sender: (data?: Big) => void) {
-	p2p.handle_incoming('/backup/leader', async (peer: Multiaddr, source: AsyncIterable<Uint8Array | BufferList>) => {
-		let data_str = '';
-		for await (const msg of source) {
-			data_str += msg.toString();
-		}
+export interface AggregateResult {
+    leader: boolean;
+    reports: Set<P2PMessage>;
+}
 
-		const data = JSON.parse(data_str);
-		logger.info(`Received elected backup leader \`${data.new_leader}\' from peer \`${peer}\``);
+export default class P2PAggregator extends EventEmitter {
+    private p2p: Communicator;
+    private requestReports: Map<string, Set<P2PMessage>> = new Map();
+    private requests: Map<string, P2PDataRequest> = new Map();
+    private roundIds: Map<string, Big> = new Map();
+    private thisNode: Multiaddr;
+    private callbacks: Map<string, (value: AggregateResult) => void> = new Map();
+    private checkStatusCallback: Map<string, () => Promise<boolean>> = new Map();
 
-		if (data.new_leader == p2p._node_addr) {
-			sender(new Big(data.median));
-		} else {
-			sender(undefined);
-		}
-		p2p.unhandle('/backup/leader');
-	});
-} */
+    constructor(p2p: Communicator) {
+        super();
 
-export async function aggregate(p2p: Communicator, unresolvedRequest: P2PDataRequest, data_to_send: Big, sender: (data?: Big) => void) {
-	const peer_unique_id: string = unresolvedRequest.internalId;
-	let received: Big[] = [data_to_send];
-	let med: Big = new Big(0);
-	let medians_received_count: number = 0;
-	let leader: string = '';
-	let leaders_received_count: number = 0;
+        this.p2p = p2p;
+        this.thisNode = new Multiaddr(this.p2p._node_addr);
+    }
 
-	p2p.handle_incoming(`/elected/leader/${peer_unique_id}`, async (peer: Multiaddr, source: AsyncIterable<Uint8Array | BufferList>) => {
-		let elected = '';
+    async init(): Promise<void> {
+        this.p2p.handle_incoming('/send/data', this.handleIncomingData.bind(this));
+        this.thisNode = new Multiaddr(this.p2p._node_addr);
+    }
 
-		for await (const msg of source) {
-			elected += msg.toString();
-		}
+    private async handleIncomingData(peer: Multiaddr, source: AsyncIterable<Uint8Array | BufferList>) {
+        const message = await extractP2PMessage(source);
+        if (!message) return;
 
-		logger.info(`Received elected leader \`${elected}\' from peer \`${peer}\``);
+        // It's possible we got these message even before this node
+        // realises that the pair needs to be updated. We save them for future use.
+        let reports = this.requestReports.get(message.id);
+        if (!reports) {
+            reports = new Set();
+        }
 
-		// make sure they all agree on who the leader is.
-		leaders_received_count++;
-		if (elected !== leader) {
-			logger.error(`Received elected leader \`${elected}\' from peer \`${peer}\` but it did not match our elected leader \`${leader}\``);
-			// should we fully error out,
-			// or should we keep going as long as 51% agrees just like the median?
-		} else if (leaders_received_count === p2p._peers.size && elected == p2p._node_addr) { // check if we are the leader
-			// reset for next run
-			await p2p.unhandle(`/elected/leader/${peer_unique_id}`);
+        reports.add(message);
+        this.requestReports.set(message.id, reports);
+        
+        logger.debug(`[${LOG_NAME}-${message.id}] Received message from ${peer} ${this.requestReports.size}/${this.p2p._peers.size}`);
 
-			if (leader == p2p._node_addr) {
-				// send data to contract.
-				sender(med);
-			} else {
-				sender(undefined);
-			}
-		}
-	});
+        const request = this.requests.get(message.id);
+        if (!request) {
+            logger.debug(`[${LOG_NAME}-${message.id}] Request could not be found yet, reports are being saved for future use.`);
+            return;
+        }
 
-	p2p.handle_incoming(`/calculated/median/${peer_unique_id}`, async (peer: Multiaddr, source: AsyncIterable<Uint8Array | BufferList>) => {
-		let full_msg = '';
-		for await (const msg of source) {
-			full_msg += msg.toString();
-		}
-		medians_received_count++;
-		logger.info(`Received median \`${full_msg}\' from peer \`${peer}\``);
+        await this.handleReports(message.id);
+    }
 
-		let same_median = true;
-		let received_median = new Big(full_msg);
-		if (!received_median.eq(med)) {
-			logger.error(`Received median \`${full_msg}\' from peer \`${peer}\` but it did not match our median \`${med}\``);
-			same_median = false;
-			// Should throw some error here or something?
-			// 51 % + agrees still send the median?
-			// log an error.
-			// see if there is a way to grab who sent this iteration of data.
-		} else if (medians_received_count === p2p._peers.size && same_median) {
-			leader = await elect_leader(p2p, unresolvedRequest);
-			logger.info(`Elected leader \`${leader}\'`);
-			p2p.send(`/elected/leader/${peer_unique_id}`, [fromString(leader)]);
-			// reset for next run
-			await p2p.unhandle(`/calculated/median/${peer_unique_id}`);
-		}
-	});
+    private clearRequest(id: string) {
+        this.requestReports.delete(id);
+        this.requests.delete(id);
+        this.roundIds.delete(id);
+        this.callbacks.delete(id);
+        this.checkStatusCallback.delete(id);
+    }
 
-	p2p.handle_incoming(`/send/data/${peer_unique_id}`, async (peer: Multiaddr, source: AsyncIterable<Uint8Array | BufferList>) => {
-		let full_msg = '';
-		for await (const msg of source) {
-			full_msg += msg.toString();
-		}
-		logger.info(`Received data \`${full_msg}\' from peer \`${peer}\``);
+    private async reselectLeader(id: string) {
+        const isRequestResolved = this.checkStatusCallback.get(id);
+        if (!isRequestResolved) return;
 
-		received.push(new Big(full_msg));
-		// account for our data
-		if (received.length === (p2p._peers.size + 1)) {
-			med = median(received);
-			logger.info(`Calculated median \`${med}\'`);
-			p2p.send('/calculated/median', [fromString(med.toString())]);
-			// reset for next run
-			await p2p.unhandle(`/send/data/${peer_unique_id}`);
-		}
-	});
+        const resolved = await isRequestResolved();
 
-	logger.info(`Sending data to peers ${data_to_send}`);
-	p2p.send(`/send/data/${peer_unique_id}`, [
-        fromString(data_to_send.toString())
-    ]);
+        if (resolved) {
+            const resolve = this.callbacks.get(id);
+            this.clearRequest(id);
+
+            return resolve!({
+                leader: false,
+                reports: this.requestReports.get(id) ?? new Set(),
+            });
+        }
+
+        const roundId = this.roundIds.get(id);
+        this.roundIds.set(id, roundId?.plus(1) ?? new Big(0));
+        await this.handleReports(id);
+    }
+
+    private async handleReports(id: string) {
+        const reports = this.requestReports.get(id);
+        if (!reports) return;
+
+        const request = this.requests.get(id);
+        if (!request) return;
+
+        const roundId = this.roundIds.get(id);
+        if (!roundId) return;
+
+        // TODO: This is apperently a property on the smart contract. We can later always try to call this property. (with ofc a cache of 30min or so and use a stale value if that fails)
+        const requiredAmountOfSignatures = Math.floor(this.p2p._peers.size / 2) + 1;
+
+        if (reports.size <= requiredAmountOfSignatures) {
+            return;
+        }
+
+        logger.debug(`[${LOG_NAME}-${id}] Received enough signatures`);
+        // Round id can randomly be modified so we should only use it for reelecting a leader
+        const leader = electLeader(this.p2p, roundId);
+
+        if (this.thisNode.equals(leader)) {
+            logger.debug(`[${LOG_NAME}-${request.internalId}] This node is the leader. Sending transaction across network and blockchain`);
+
+            const resolve = this.callbacks.get(id);
+            this.clearRequest(id);
+
+            return resolve!({
+                leader: true,
+                reports,
+            });
+        }
+
+        // The leader node could fail. We should select the next leader once x amount of time passes
+        setTimeout(() => this.reselectLeader(id), request.extraInfo.p2pReelectWaitTimeMs);
+    }
+
+    async aggregate(request: P2PDataRequest, data: string, roundId: Big, isRequestResolved: () => Promise<boolean>): Promise<AggregateResult> {
+        return new Promise(async (resolve) => {
+            // TODO: Maybe do a check where if the request already exist we should ignore it?
+            const message = hashPairSignatureInfo(request, roundId.toString(), data);
+            const signature = await request.targetNetwork.sign(fromString(message));
+    
+            const p2pMessage: P2PMessage = {
+                data,
+                signature: toString(signature, 'base64'),
+                id: request.internalId,
+            };
+    
+            this.callbacks.set(request.internalId, resolve);
+            this.checkStatusCallback.set(request.internalId, isRequestResolved);
+            this.requests.set(request.internalId, request);
+            this.roundIds.set(request.internalId, roundId);
+    
+            // Reports may already been set due to a faster node
+            let reports = this.requestReports.get(request.internalId);
+            if (!reports) {
+                reports = new Set();
+            }
+    
+            reports.add(p2pMessage);
+            this.requestReports.set(request.internalId, reports);
+    
+            logger.debug(`[${LOG_NAME}-${request.internalId}] Sending data to peers: ${data}`);
+            await this.p2p.send(`/send/data`, [
+                fromString(JSON.stringify(p2pMessage)),
+            ]);
+            
+            // It is possible that we already got enough reports due the async nature of p2p
+            await this.handleReports(request.internalId);
+        });
+    }
+}
+
+export async function aggregate(p2p: Communicator, roundId: Big, unresolvedRequest: P2PDataRequest, data_to_send: Big, isRequestResolved: () => Promise<boolean>): Promise<AggregateResult> {
+    return new Promise(async (resolve) => {
+        let leader = electLeader(p2p, roundId);
+        const thisNode = new Multiaddr(p2p._node_addr);
+        const message = hashPairSignatureInfo(unresolvedRequest, roundId.toString(), data_to_send.toString());
+        const signature = await unresolvedRequest.targetNetwork.sign(fromString(message));
+        let signedTransactionWaitIntervalId: NodeJS.Timer | undefined;
+
+        const p2pMessage: P2PMessage = {
+            data: data_to_send.toString(),
+            signature: toString(signature, 'base64'),
+            id: unresolvedRequest.internalId,
+        };
+
+        // TODO: Maybe we should also include the round id in this to make sure "stale" nodes do not push old prices
+        const peer_unique_id: string = unresolvedRequest.internalId;
+        let receivedMessages: Set<P2PMessage> = new Set([p2pMessage]);
+
+        // TODO: This is apperently a property on the smart contract. We can later always try to call this property. (with ofc a cache of 30min or so)
+        const requiredAmountOfSignatures = Math.floor(p2p._peers.size / 2) + 1;
+
+        async function reelectLeaders() {
+            // Ask the upper level if the transaction has been completed and in the blockchain
+            const resolved = await isRequestResolved();
+
+            if (resolved) {
+                logger.debug(`[${LOG_NAME}-${unresolvedRequest.internalId}] Leader resolved price feed`);
+                return resolve({
+                    leader: false,
+                    reports: receivedMessages,
+                });
+            }
+
+            const oldLeader = leader;
+            leader = electLeader(p2p, roundId.plus(1));
+
+            logger.debug(`[${LOG_NAME}-${unresolvedRequest.internalId}] ${oldLeader} did not respond in a sufficient amount of time, switching to ${leader}`);
+
+            if (thisNode.equals(leader)) {
+                await p2p.unhandle(`/send/data/${peer_unique_id}`);
+
+                return resolve({
+                    leader: true,
+                    reports: receivedMessages,
+                });
+            }
+
+            // The next node could fail too,
+            // We give it the same amount of time as our first leader
+            signedTransactionWaitIntervalId = setTimeout(() => reelectLeaders(), unresolvedRequest.extraInfo.p2pReelectWaitTimeMs);
+        }
+
+        // This is our first entry point
+        // All nodes flood the network with their answer for this particulair price pair
+        p2p.handle_incoming(`/send/data/${peer_unique_id}`, async (peer: Multiaddr, source: AsyncIterable<Uint8Array | BufferList>) => {
+            const message = await extractP2PMessage(source);
+            if (!message) return;
+
+            receivedMessages.add(message);
+            logger.debug(`[${LOG_NAME}-${unresolvedRequest.internalId}] Received message from ${peer} ${receivedMessages.size}/${p2p._peers.size}`);
+
+            if (receivedMessages.size <= requiredAmountOfSignatures) {
+                return;
+            }
+
+            logger.debug(`[${LOG_NAME}-${unresolvedRequest.internalId}] Received enough signatures`);
+
+            // As a leader we should send the transaction across the network
+            if (thisNode.equals(leader)) {
+                logger.debug(`[${LOG_NAME}-${unresolvedRequest.internalId}] This node is the leader. Sending transaction across network and blockchain`);
+                await p2p.unhandle(`/send/data/${peer_unique_id}`);
+
+                return resolve({
+                    leader: true,
+                    reports: receivedMessages,
+                });
+            }
+
+            // This node is not the leader, we do however want to wait a certain amount of time to make sure the
+            // transaction got completed on-chain
+            signedTransactionWaitIntervalId = setTimeout(() => reelectLeaders(), unresolvedRequest.extraInfo.p2pReelectWaitTimeMs);
+        });
+
+        logger.debug(`[${LOG_NAME}-${unresolvedRequest.internalId}] Sending data to peers ${data_to_send}`);
+
+        p2p.send(`/send/data/${peer_unique_id}`, [
+            fromString(JSON.stringify(p2pMessage)),
+        ]);
+    });
 }

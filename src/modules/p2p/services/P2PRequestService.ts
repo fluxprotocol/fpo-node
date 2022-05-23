@@ -3,53 +3,76 @@ import FluxPriceFeedAbi from '../FluxPriceFeed.json';
 import FluxP2PFactory from '../FluxP2PFactory.json';
 import { FetchJob } from "../../../jobs/fetch/FetchJob";
 import { Network } from "../../../models/Network";
-import { OutcomeAnswer } from "../../../models/Outcome";
+import { OutcomeType } from "../../../models/Outcome";
 import { P2PDataRequest, P2PDataRequestBatch, P2PResolvedDataRequest } from "../models/P2PDataRequest";
 import { P2PInternalConfig } from '../models/P2PConfig';
 import { createDataRequestBatch } from "../../../models/DataRequestBatch";
 import logger from "../../../services/LoggerService";
-import { BigNumber, Contract } from "ethers";
+import { BigNumber } from "ethers";
 import cache from "../../../services/CacheService";
+import { computeFactoryPairId } from "../../pushPair/services/utils";
+import { AggregateResult } from "../../../p2p/aggregator";
+import { fromString } from "uint8arrays/from-string";
 
-async function getPairAddress(config: P2PInternalConfig, network: Network, pairId: string): Promise<string> {
+async function getPairAddress(config: P2PInternalConfig, network: Network, pairId: string, decimals: number): Promise<string> {
     return cache(`${pairId}-${network.id}`, async () => {
         if (network.type === 'evm') {
+            const computedId = computeFactoryPairId(pairId, decimals);
+
+            console.log('[] computedId -> ', computedId);
             const pairAddress = await network.view({
                 address: config.contractAddress,
-                amount: '0',
                 method: 'addressOfPricePair',
                 params: {
-                    _id: pairId,
-                }
+                    _id: computedId,
+                },
+                abi: FluxP2PFactory.abi,
             });
+
+            if (pairAddress === '0x0000000000000000000000000000000000000000') {
+                throw new Error('NULL_ADDRESS');
+            }
 
             return pairAddress;
         }
 
+        // NEAR does not have a factory so it's the same address
         return config.contractAddress;
     });
 }
 
-async function getRoundIdForPair(config: P2PInternalConfig, network: Network, pairId: string) {
-    const pairAddress = await getPairAddress(config, network, pairId);
+export async function getRoundIdForPair(config: P2PInternalConfig, network: Network, pairId: string, decimals: number): Promise<Big> {
+    try {
+        const pairAddress = await getPairAddress(config, network, pairId, decimals);
 
+        if (network.type === 'evm') {
+            const latestRound: BigNumber = await network.view({
+                address: pairAddress,
+                method: 'latestRound',
+                params: {},
+                abi: FluxP2PFactory.abi,
+            });
+
+            return new Big(latestRound.toString());
+        }
+
+        // TODO: Near currently does not have a latest round...
+        return new Big(5);
+    } catch(error) {
+        if (error instanceof Error) {
+            // Price pair does not exist yet
+            if (error.message === 'NULL_ADDRESS') {
+                return new Big(0);
+            }
+        }
+
+        throw error;
+    }
 
 }
 
-export async function createBatchFromPairs(config: P2PInternalConfig, targetNetwork: Network): Promise<P2PDataRequestBatch> {
-    const requests: P2PDataRequest[] = await Promise.all(config.pairs.map(async (pairInfo) => {
-        await getRoundIdForPair(config, targetNetwork, pairInfo.pair);
-        console.log('Heydo!');
-
-
-
-
-
-        process.exit(0);
-
-        // // This one is the correct abi (Franklin thinks :) ).
-        // const price_feed_contract = new Contract(pairAddress, FluxPriceFeedAbi.abi);
-        // const latestAggregatorRoundId = await price_feed_contract.latestAggregatorRoundId;
+export function createBatchFromPairs(config: P2PInternalConfig, targetNetwork: Network): P2PDataRequestBatch {
+    const requests: P2PDataRequest[] = config.pairs.map((pairInfo) => {
 
         return {
             args: [
@@ -64,7 +87,7 @@ export async function createBatchFromPairs(config: P2PInternalConfig, targetNetw
                 decimals: pairInfo.decimals,
                 deviationPercentage: config.deviationPercentage,
                 minimumUpdateInterval: config.minimumUpdateInterval,
-                latestAggregatorRoundId: new BigNumber(1, ''),
+                p2pReelectWaitTimeMs: config.p2pReelectWaitTimeMs,
             },
             internalId: `${targetNetwork.id}/p${pairInfo.pair}-d${pairInfo.decimals}`,
             originNetwork: targetNetwork,
@@ -78,12 +101,12 @@ export async function createBatchFromPairs(config: P2PInternalConfig, targetNetw
                 },
             },
         }
-    }));
+    });
 
     return createDataRequestBatch(requests) as P2PDataRequestBatch;
 }
 
-export async function createResolveP2PRequest(outcome: OutcomeAnswer, request: P2PDataRequest, config: P2PInternalConfig, median?: Big): Promise<P2PResolvedDataRequest> {
+export function createResolveP2PRequest(aggregateResult: AggregateResult, roundId: Big, request: P2PDataRequest, config: P2PInternalConfig): P2PResolvedDataRequest {
     let txCallParams: P2PResolvedDataRequest['txCallParams'] = {
         address: config.contractAddress,
         amount: '0',
@@ -91,36 +114,49 @@ export async function createResolveP2PRequest(outcome: OutcomeAnswer, request: P
         params: {},
     };
 
+    const reports = Array.from(aggregateResult.reports);
+
+    console.log('[] reports -> ', reports);
+
     if (request.targetNetwork.type === 'evm') {
         txCallParams = {
             ...txCallParams,
             amount: '0',
             method: 'transmit',
-            abi: FluxPriceFeedAbi.abi, // TODO: Same as for other ABI
+            abi: FluxP2PFactory.abi, // TODO: Same as for other ABI
             params: {
-                _answer: outcome.answer,
+                _signatures: reports.map((report) => fromString(report.signature, 'base64')),
+                _pricePair: request.extraInfo.pair,
+                _decimals: request.extraInfo.decimals,
+                _roundId: roundId.toNumber(),
+                _answers: reports.map(report => BigNumber.from(report.data)),
             },
         };
-    } else if (request.targetNetwork.type === 'near') {
-        txCallParams = {
-            ...txCallParams,
-            amount: '0',
-            method: 'push_data',
-            params: {
-                price: outcome.answer,
-            },
-        };
-    } else {
+    } 
+    // else if (request.targetNetwork.type === 'near') {
+    //     txCallParams = {
+    //         ...txCallParams,
+    //         amount: '0',
+    //         method: 'push_data',
+    //         params: {
+    //             price: outcome.answer,
+    //         },
+    //     };
+    // } 
+    else {
         throw new Error(`Network type is not supported for P2PModule`);
     }
 
     return {
         ...request,
         txCallParams,
-        outcome,
+        outcome: {
+            answer: '',
+            logs: [],
+            type: OutcomeType.Answer,
+        },
         extraInfo: {
             ...request.extraInfo,
-            answer: median?.toString(),
         }
     };
 }

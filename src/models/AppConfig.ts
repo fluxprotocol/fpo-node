@@ -16,7 +16,10 @@ export interface AppConfig {
     p2p?: {
         peer_id: PeerId;
         p2p_node?: CreateOptions;
-        peers_file?: string;
+        peers: Set<string>;
+        addresses: {
+            listen: string[];
+        }
     },
 }
 
@@ -26,6 +29,9 @@ export interface UnparsedAppConfig {
     p2p?: {
         peer_id?: JSONPeerId;
         p2p_node?: CreateOptions;
-        peers_file?: string;
+        peers?: string[];
+        addresses?: {
+            listen?: string[];
+        };
     }
 }

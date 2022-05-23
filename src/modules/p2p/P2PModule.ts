@@ -5,10 +5,11 @@ import { FetchJob } from "../../jobs/fetch/FetchJob";
 import { Module } from "../../models/Module";
 import { OutcomeType } from "../../models/Outcome";
 import { P2PDataRequestBatch, P2PResolvedDataRequest } from "./models/P2PDataRequest";
-import { createBatchFromPairs, createResolveP2PRequest, shouldMedianUpdate } from "./services/P2PRequestService";
+import { createBatchFromPairs, createResolveP2PRequest, getRoundIdForPair, shouldMedianUpdate } from "./services/P2PRequestService";
 import { createSafeAppConfigString } from "../../services/AppConfigUtils";
 import { fetchEvmLastUpdate, fetchNearLastUpdate } from './services/FetchLastUpdateService';
 import { parseP2PConfig, P2PConfig, P2PInternalConfig } from "./models/P2PConfig";
+import { createPairIfNeeded } from '../pushPair/services/PushPairCreationService';
 import Communicator from "../../p2p/communication";
 // @ts-ignore
 import TCP from "libp2p-tcp";
@@ -16,7 +17,7 @@ const Mplex = require("libp2p-mplex"); // no ts support yet :/
 // @ts-ignore
 import { NOISE } from "@chainsafe/libp2p-noise";
 import Big from "big.js";
-import { aggregate } from "../../p2p/aggregator";
+import P2PAggregator, { aggregate } from "../../p2p/aggregator";
 
 export class P2PModule extends Module {
     private medians: Map<string, Big> = new Map();
@@ -25,6 +26,7 @@ export class P2PModule extends Module {
     private internalConfig: P2PInternalConfig;
     private batch?: P2PDataRequestBatch;
     private p2p: Communicator;
+    private aggregator: P2PAggregator;
 
     constructor(moduleConfig: P2PConfig, appConfig: AppConfig) {
         super(P2PModule.type, moduleConfig, appConfig);
@@ -35,13 +37,15 @@ export class P2PModule extends Module {
         this.id = this.internalConfig.id;
         this.p2p = new Communicator({
             peerId: appConfig.p2p.peer_id,
+            addresses: appConfig.p2p.addresses,
             ...appConfig.p2p.p2p_node,
             modules: {
                 transport: [TCP],
                 streamMuxer: [Mplex],
                 connEncryption: [NOISE],
-            }
-        }, appConfig.p2p.peers_file);
+            },
+        }, appConfig.p2p.peers);
+        this.aggregator = new P2PAggregator(this.p2p);
     }
 
     private async fetchLastUpdate() {
@@ -65,18 +69,20 @@ export class P2PModule extends Module {
             /* const timestampUpdateReport = await this.fetchLastUpdate();
             // Fetch elapsed time (in milliseconds) since last pair(s) update
             const timeSinceUpdate = Date.now() - timestampUpdateReport.oldestTimestamp; */
-            const timeSinceUpdate = await this.fetchLastUpdate();
+            // const timeSinceUpdate = await this.fetchLastUpdate();
 
-            let remainingInterval;
-            if (timeSinceUpdate < this.internalConfig.interval) {
-                remainingInterval = this.internalConfig.interval - timeSinceUpdate;
-                logger.debug(`[${this.id}] Target update interval not yet reached. Delaying update ${Math.floor(remainingInterval / 1000)}s ...`);
+            // let remainingInterval;
+            // if (timeSinceUpdate < this.internalConfig.interval) {
+            //     remainingInterval = this.internalConfig.interval - timeSinceUpdate;
+            //     logger.debug(`[${this.id}] Target update interval not yet reached. Delaying update ${Math.floor(remainingInterval / 1000)}s ...`);
 
-                setTimeout(this.processPairs.bind(this), remainingInterval);
-                return;
-            } else {
-                remainingInterval = this.internalConfig.interval;
-            }
+            //     setTimeout(this.processPairs.bind(this), remainingInterval);
+            //     return;
+            // } else {
+            //     remainingInterval = this.internalConfig.interval;
+            // }
+
+            // if processing, ignore the second one
 
             logger.info(`[${this.id}] Processing job`);
             const job = this.appConfig.jobs.find(job => job.type === FetchJob.type);
@@ -98,32 +104,38 @@ export class P2PModule extends Module {
                     return null;
                 }
 
-                // TODO: need to get latestAggregatorRoundId from the contract so that we can properly elect a leader.
-                let median: Big | undefined = undefined;
-                await aggregate(this.p2p, unresolvedRequest, new Big(outcome.answer), async (median_to_send?: Big) => {
-                    if (median_to_send !== undefined) {
-                        median = median_to_send;
-                    }
+                // Round id is used to determine the leader in the network.
+                // All nodes are expected to run the same peer list
+                const roundId = await getRoundIdForPair(this.internalConfig, this.network, unresolvedRequest.extraInfo.pair, unresolvedRequest.extraInfo.decimals);
+                logger.debug(`[${this.id}] ${unresolvedRequest.extraInfo.pair} on round id ${roundId.toString()}`);
+
+                // Send the outcome through the p2p network to come to a consensus
+                const aggregateResult = await this.aggregator.aggregate(unresolvedRequest, outcome.answer, roundId, async () => {
+                    // Check whether or not the transaction has been in the blockchain
+                    const newRoundId = await getRoundIdForPair(this.internalConfig, this.network, unresolvedRequest.extraInfo.pair, unresolvedRequest.extraInfo.decimals);
+
+                    // When the round id incremented we've updated the prices on chain
+                    return !newRoundId.eq(roundId);
                 });
 
-                // NOTICE: Limitation here is that we assume that the price update transaction may fail
-                // we do not know whether or not the transaction failed
-                if (median !== undefined) {
-                    this.medians.set(unresolvedRequest.internalId, median);
+                // At this stage everything should already be fully handled by the leader
+                // and if not atleast submitted by this node. We can safely move on
+                if (!aggregateResult.leader) {
+                    return null;
                 }
 
-                return createResolveP2PRequest(outcome, unresolvedRequest, this.internalConfig, median);
-
+                // We are the leader and we should send the transaction
+                return createResolveP2PRequest(aggregateResult, roundId, unresolvedRequest, this.internalConfig);
             }));
 
-            let requests: P2PResolvedDataRequest[] = resolvedRequests.filter(r => r !== null && (r.extraInfo.answer !== undefined)) as P2PResolvedDataRequest[];
+            let requests: P2PResolvedDataRequest[] = resolvedRequests.filter(r => r !== null) as P2PResolvedDataRequest[];
 
             if (requests.length === 0) {
-                logger.warn(`[${this.id}] Node is not the leader for sending the median`, {
+                logger.log(`[${this.id}] Node did not have to send anything`, {
                     config: createSafeAppConfigString(this.appConfig),
                 });
 
-                setTimeout(this.processPairs.bind(this), remainingInterval);
+                // setTimeout(this.processPairs.bind(this), remainingInterval);
                 return;
             }
 
@@ -138,9 +150,10 @@ export class P2PModule extends Module {
 			// after publishing the leader shares the transaction hash and the peers verify the transaction hash right parameters to right contract
             // but how would i preserve median since it was batched?
 
-            logger.debug(`[${this.id}] Next update in ${Math.floor(remainingInterval / 1000)}s`);
-            setTimeout(this.processPairs.bind(this), remainingInterval);
+            // logger.debug(`[${this.id}] Next update in ${Math.floor(remainingInterval / 1000)}s`);
+            // setTimeout(this.processPairs.bind(this), remainingInterval);
         } catch (error) {
+            console.error(error);
             logger.error(`[${this.id}] Process pairs unknown error`, {
                 error,
                 config: createSafeAppConfigString(this.appConfig),
@@ -153,17 +166,15 @@ export class P2PModule extends Module {
     async start(): Promise<boolean> {
         try {
             logger.info("Initializing p2p batch pairs...");
-            this.batch = await createBatchFromPairs(this.internalConfig, this.network);
+            this.batch = createBatchFromPairs(this.internalConfig, this.network);
 
             logger.info(`Initializing p2p node...`);
             await this.p2p.init();
 
             logger.info(`Starting p2p node...`);
             await this.p2p.start();
-
-            logger.info(`[${this.id}] Pre-submitting pairs with latest info`);
+            await this.aggregator.init();
             await this.processPairs();
-            logger.info(`[${this.id}] Pre-submitting done. Will be on a ${this.internalConfig.interval}ms interval`);
 
             return true;
         } catch (error) {

@@ -4,7 +4,7 @@ import { transactions } from "near-api-js";
 import { FinalExecutionOutcome } from "near-api-js/lib/providers";
 import { DataRequestBatchResolved } from "../../models/DataRequestBatch";
 import { Network } from "../../models/Network";
-import { TxCallParams } from "../../models/TxCallParams";
+import { TxCallParams, TxViewParams } from "../../models/TxCallParams";
 import logger from "../../services/LoggerService";
 import { InternalNearNetworkConfig, NearNetworkConfig, parseNearNetworkConfig } from "./models/NearNetworkConfig";
 import { isTransactionFailure } from "./services/NearTransactionService";
@@ -24,7 +24,7 @@ export class NearNetwork extends Network {
         this.queue.start(this.onQueueBatch.bind(this));
     }
 
-    async view(txParams: TxCallParams): Promise<any> {
+    async view(txParams: TxViewParams): Promise<any> {
         if (!this.internalConfig) throw new Error(`[${this.id}] Config is not loaded`);
 
         const result = await this.internalConfig.account.viewFunction(txParams.address, txParams.method, txParams.params);

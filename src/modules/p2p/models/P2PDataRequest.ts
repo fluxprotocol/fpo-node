@@ -1,4 +1,4 @@
-import { BigNumber } from "ethers";
+import Big from "big.js";
 import { DataRequest, DataRequestResolved } from "../../../models/DataRequest";
 import { DataRequestBatch, DataRequestBatchResolved } from "../../../models/DataRequestBatch";
 
@@ -8,7 +8,7 @@ export interface P2PDataRequest extends DataRequest {
         decimals: number;
         deviationPercentage: number;
         minimumUpdateInterval: number;
-        latestAggregatorRoundId: BigNumber;
+        p2pReelectWaitTimeMs: number;
     }
 }
 

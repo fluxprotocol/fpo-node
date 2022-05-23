@@ -1,13 +1,15 @@
 import Big from "big.js";
-import { Contract, Wallet } from "ethers";
+import { Contract, ethers, Wallet } from "ethers";
 import { JsonRpcProvider } from "@ethersproject/providers";
+import { fromString } from 'uint8arrays';
 
 import logger from "../../services/LoggerService";
 import { Block, getBlockType } from "../../models/Block";
 import { DataRequestBatchResolved } from "../../models/DataRequestBatch";
 import { EvmNetworkConfig, InternalEvmNetworkConfig, parseEvmNetworkConfig } from "./models/EvmNetworkConfig";
 import { Network } from "../../models/Network";
-import { TxCallParams } from "../../models/TxCallParams";
+import { TxCallParams, TxViewParams } from "../../models/TxCallParams";
+import { DataRequestResolved } from "../../models/DataRequest";
 
 export default class EvmNetwork extends Network {
     static type: string = "evm";
@@ -22,7 +24,7 @@ export default class EvmNetwork extends Network {
         this.queue.start(this.onQueueBatch.bind(this));
     }
 
-    async view(txParams: TxCallParams): Promise<any> {
+    async view(txParams: TxViewParams): Promise<any> {
         if (!txParams.abi) throw new Error(`[${this.id}] ABI is required for tx ${JSON.stringify(txParams)}`);
         const provider = new JsonRpcProvider(this.internalConfig.rpc);
         const contract = new Contract(txParams.address, txParams.abi, provider);
@@ -63,7 +65,6 @@ export default class EvmNetwork extends Network {
                             && (body.error.message === 'ERR_INCORRECT_NONCE' || body.error.message === 'already known')
                         ) {
                             logger.debug(`[${this.id}-onQueueBatch] [${request.internalId}] Request seems to be already pushed (${body.error.message})`);
-
                             continue;
                         }
                     } catch (error) {
@@ -143,6 +144,21 @@ export default class EvmNetwork extends Network {
             });
             return undefined;
         }
+    }
+
+    async sign(digest: Uint8Array): Promise<Uint8Array> {
+        const signature = await this.wallet.signMessage(digest);
+        return fromString(signature);
+    }
+
+    async verifySignature(message: Uint8Array, signature: Uint8Array): Promise<string> {
+        return ethers.utils.verifyMessage(message, signature);
+    }
+
+    async createSignedTransaction(dataRequest: DataRequestResolved): Promise<void> {
+        this.wallet.populateTransaction({
+
+        });
     }
 
     getWalletPublicAddress() {

@@ -1,3 +1,4 @@
+
 {
     "_format": "hh-sol-artifact-1",
     "contractName": "FluxP2PFactory",
@@ -488,9 +489,9 @@
                     "type": "uint32"
                 },
                 {
-                    "internalType": "int192",
-                    "name": "_answer",
-                    "type": "int192"
+                    "internalType": "int192[]",
+                    "name": "_answers",
+                    "type": "int192[]"
                 }
             ],
             "name": "transmit",
