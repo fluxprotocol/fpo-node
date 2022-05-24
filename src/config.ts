@@ -1,7 +1,10 @@
 import { config } from 'dotenv';
 import packageJson from '../package.json';
+import Big from 'big.js';
 
 config();
+
+Big.PE = 1000000;
 
 export const MAX_LOG_LIFETIME = '14d';
 export const DEBUG = process.env.DEBUG === 'true';
