@@ -204,7 +204,7 @@ export async function executeFetch(args: string[]): Promise<ExecuteResult> {
         logs.push(`{"type":"Valid","value":"${stringResult}"}`);
     } else if (sourcesType === 'number') {
         let multiplier = Big(args[3]);
-        numberResult = numberResult.div(Big(usedSources)).mul(multiplier).round(0);
+        numberResult = numberResult.mul(multiplier).div(Big(usedSources)).round(0);
 
         logs.push(`{"type":"Valid","value":"${numberResult}"}`);
     }
