@@ -16,6 +16,7 @@ export interface Pair {
     pair: string;
     sources: Source[];
     decimals: number;
+    deviationPercentage?: number;
     minimumUpdateInterval?: number;
 }
 
@@ -75,6 +76,7 @@ export function parsePushPairConfig(config: PushPairConfig): PushPairInternalCon
         interval: config.interval,
         pairs: config.pairs.map((pair) => ({
             ...pair,
+            deviationPercentage: pair.deviationPercentage ?? config.deviationPercentage,
             minimumUpdateInterval: pair.minimumUpdateInterval ?? config.minimumUpdateInterval,
             sources: pair.sources.map((source) => ({
                 ...source,
