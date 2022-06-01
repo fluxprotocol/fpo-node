@@ -25,7 +25,7 @@ export function createBatchFromPairs(config: PushPairInternalConfig, targetNetwo
             extraInfo: {
                 pair: pairInfo.pair,
                 decimals: pairInfo.decimals,
-                deviationPercentage: config.deviationPercentage,
+                deviationPercentage: pairInfo.deviationPercentage ?? config.deviationPercentage,
                 minimumUpdateInterval: pairInfo.minimumUpdateInterval ?? config.minimumUpdateInterval,
             },
             internalId: `${targetNetwork.id}/p${pairInfo.pair}-d${pairInfo.decimals}-i${index}`,
