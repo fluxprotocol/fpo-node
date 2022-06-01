@@ -16,6 +16,7 @@ export interface Pair {
     pair: string;
     sources: Source[];
     decimals: number;
+    minimumUpdateInterval?: number;
 }
 
 export interface PushPairInternalConfig extends ModuleConfig {
@@ -74,6 +75,7 @@ export function parsePushPairConfig(config: PushPairConfig): PushPairInternalCon
         interval: config.interval,
         pairs: config.pairs.map((pair) => ({
             ...pair,
+            minimumUpdateInterval: pair.minimumUpdateInterval ?? config.minimumUpdateInterval,
             sources: pair.sources.map((source) => ({
                 ...source,
                 source_path: convertOldSourcePath(source.source_path),
