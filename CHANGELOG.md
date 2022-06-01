@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.3.1](https://github.com/fluxprotocol/fpo-node/compare/v1.3.0...v1.3.1) (2022-06-01)
+
+
+### Bug Fixes
+
+* **fetchjob:** Fix big integer precision loss ([6e685dc](https://github.com/fluxprotocol/fpo-node/commit/6e685dc294eba730cfadedec70f3af3710e1d5c2))
+
 ## [1.3.0](https://github.com/fluxprotocol/fpo-node/compare/v1.2.1...v1.3.0) (2022-05-20)
 
 
