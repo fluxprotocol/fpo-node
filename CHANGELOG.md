@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.4.0](https://github.com/fluxprotocol/fpo-node/compare/v1.3.1...v1.4.0) (2022-06-01)
+
+
+### Features
+
+* **pushpair:** Add ability to add deviationPercentage per pair ([2d8e0a5](https://github.com/fluxprotocol/fpo-node/commit/2d8e0a56354965f84e6f905b6050dd46da8f69ad))
+* **pushpair:** Add ability to add minimumUpdateInterval per pair ([196da87](https://github.com/fluxprotocol/fpo-node/commit/196da8780afc229a0f0ab7620bf6bbb3bebfdb00))
+
 ### [1.3.1](https://github.com/fluxprotocol/fpo-node/compare/v1.3.0...v1.3.1) (2022-06-01)
 
 
