@@ -11,13 +11,15 @@ import peer2Key from './peer2.json';
 async function test() {
     const node1: NodeInfo = {
         peerId: await PeerId.createFromJSON(peer1Key),
-        port: 1337
+        port: 1337,
+        privateKeyEnv: "EVM_PRIVATE_KEY",
     };
 
 
     const node2: NodeInfo = {
         peerId: await PeerId.createFromJSON(peer2Key),
-        port: 1338
+        port: 1338,
+        privateKeyEnv: "EVM_PRIVATE_KEY2",
     }
 
     const node1Config = createNodeConfig(node1, [node2]);

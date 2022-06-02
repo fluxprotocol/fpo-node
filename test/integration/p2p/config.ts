@@ -4,6 +4,7 @@ import { UnparsedAppConfig } from "../../../src/models/AppConfig";
 export interface NodeInfo {
     port: number;
     peerId: PeerId;
+    privateKeyEnv: string;
 }
 
 export function createNodeConfig(ownNode: NodeInfo, otherNodes: NodeInfo[]) {
@@ -22,17 +23,17 @@ export function createNodeConfig(ownNode: NodeInfo, otherNodes: NodeInfo[]) {
         "networks": [
             {
                 "type": "evm",
-                "networkId": 5,
-                "chainId": 5,
-                "privateKeyEnvKey": "EVM_PRIVATE_KEY",
-                "rpc": "https://goerli.infura.io/v3/9aa3d95b3bc440fa88ea12eaa4456161",
+                "networkId": 1313161555,
+                "chainId": 1313161555,
+                "privateKeyEnvKey": ownNode.privateKeyEnv,
+                "rpc": "https://aurora-testnet.infura.io/v3/c74faac46a3f4b7f855851aab2292f8b",
             }
         ],
         "modules": [
             {
-                "networkId": 5,
+                "networkId": 1313161555,
                 // @ts-ignore
-                "contractAddress": "0x3E599C6FbB823a631b97908485784a9ED9C51F35",
+                "contractAddress": "0x5C52246D0a114Beb0943673E851140447fDF6C20",
                 "deviationPercentage": 0.5,
                 "minimumUpdateInterval": 1800000,
                 "pairs": [

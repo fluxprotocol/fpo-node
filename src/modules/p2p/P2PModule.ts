@@ -9,7 +9,6 @@ import { createBatchFromPairs, createResolveP2PRequest, getRoundIdForPair, shoul
 import { createSafeAppConfigString } from "../../services/AppConfigUtils";
 import { fetchEvmLastUpdate, fetchNearLastUpdate } from './services/FetchLastUpdateService';
 import { parseP2PConfig, P2PConfig, P2PInternalConfig } from "./models/P2PConfig";
-import { createPairIfNeeded } from '../pushPair/services/PushPairCreationService';
 import Communicator from "../../p2p/communication";
 // @ts-ignore
 import TCP from "libp2p-tcp";
@@ -113,7 +112,7 @@ export class P2PModule extends Module {
                 // Round id is used to determine the leader in the network.
                 // All nodes are expected to run the same peer list
                 const roundId = await getRoundIdForPair(this.internalConfig, this.network, unresolvedRequest.extraInfo.pair, unresolvedRequest.extraInfo.decimals);
-                logger.debug(`[${this.id}] ${unresolvedRequest.extraInfo.pair} on round id ${roundId.toString()}`);
+                logger.info(`[${this.id}] ${unresolvedRequest.extraInfo.pair} on round id ${roundId.toString()}`);
 
                 // Send the outcome through the p2p network to come to a consensus
                 const aggregateResult = await this.aggregator.aggregate(unresolvedRequest, outcome.answer, roundId, async () => {

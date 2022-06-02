@@ -6,7 +6,7 @@ import { fromString, toString } from 'uint8arrays';
 import Communicator from './communication';
 import logger from "../services/LoggerService";
 import { P2PDataRequest } from "../modules/p2p/models/P2PDataRequest";
-import { keccak256 } from "ethers/lib/utils";
+import { arrayify, solidityKeccak256 } from "ethers/lib/utils";
 import { extractP2PMessage, P2PMessage } from './models/P2PMessage';
 import EventEmitter from "events";
 
@@ -24,7 +24,10 @@ export function electLeader(p2p: Communicator, roundId: Big): Multiaddr {
 }
 
 function hashPairSignatureInfo(request: P2PDataRequest, roundId: string, data: string): string {
-    return keccak256(fromString(`${request.extraInfo.pair}${request.extraInfo.decimals}${roundId}${data}`));
+    return solidityKeccak256(
+        ["string", "uint8", "uint32", "int192"],
+        [request.extraInfo.pair, request.extraInfo.decimals, roundId, data]
+    );
 }
 
 export interface AggregateResult {
@@ -148,7 +151,7 @@ export default class P2PAggregator extends EventEmitter {
         return new Promise(async (resolve) => {
             // TODO: Maybe do a check where if the request already exist we should ignore it?
             const message = hashPairSignatureInfo(request, roundId.toString(), data);
-            const signature = await request.targetNetwork.sign(fromString(message));
+            const signature = await request.targetNetwork.sign(arrayify(message));
 
             const p2pMessage: P2PMessage = {
                 data,

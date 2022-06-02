@@ -42,14 +42,13 @@ export default class EvmNetwork extends Network {
                     logger.warn(`[${this.id}] Tx ${request.internalId} was not processed due to missing ABI`);
                     continue;
                 }
-
+                
                 const contract = new Contract(request.txCallParams.address, request.txCallParams.abi, this.wallet);
-
                 if (!contract[request.txCallParams.method]) {
                     logger.warn(`[${this.id}] Tx ${request.internalId} was not processed due to missing method ${request.txCallParams.method}`);
                     continue;
                 }
-
+                
                 const args = Object.values(request.txCallParams.params);
                 await contract[request.txCallParams.method](...args);
             } catch (error: any) {

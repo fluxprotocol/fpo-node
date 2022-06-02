@@ -1,5 +1,4 @@
 import Big from "big.js";
-import FluxPriceFeedAbi from '../FluxPriceFeed.json';
 import FluxP2PFactory from '../FluxP2PFactory.json';
 import { FetchJob } from "../../../jobs/fetch/FetchJob";
 import { Network } from "../../../models/Network";
@@ -9,47 +8,23 @@ import { P2PInternalConfig } from '../models/P2PConfig';
 import { createDataRequestBatch } from "../../../models/DataRequestBatch";
 import logger from "../../../services/LoggerService";
 import { BigNumber } from "ethers";
-import cache from "../../../services/CacheService";
 import { computeFactoryPairId } from "../../pushPair/services/utils";
 import { AggregateResult } from "../../../p2p/aggregator";
-import { fromString } from "uint8arrays/from-string";
+import { fromString, toString } from "uint8arrays";
 
-async function getPairAddress(config: P2PInternalConfig, network: Network, pairId: string, decimals: number): Promise<string> {
-    return cache(`${pairId}-${network.id}`, async () => {
+export async function getRoundIdForPair(config: P2PInternalConfig, network: Network, pairId: string, decimals: number): Promise<Big> {
+    try {
         if (network.type === 'evm') {
             const computedId = computeFactoryPairId(pairId, decimals);
 
             console.log('[] computedId -> ', computedId);
-            const pairAddress = await network.view({
+
+            const latestRound: BigNumber = await network.view({
                 address: config.contractAddress,
-                method: 'addressOfPricePair',
+                method: 'latestRoundOfPricePair',
                 params: {
                     _id: computedId,
                 },
-                abi: FluxP2PFactory.abi,
-            });
-
-            if (pairAddress === '0x0000000000000000000000000000000000000000') {
-                throw new Error('NULL_ADDRESS');
-            }
-
-            return pairAddress;
-        }
-
-        // NEAR does not have a factory so it's the same address
-        return config.contractAddress;
-    });
-}
-
-export async function getRoundIdForPair(config: P2PInternalConfig, network: Network, pairId: string, decimals: number): Promise<Big> {
-    try {
-        const pairAddress = await getPairAddress(config, network, pairId, decimals);
-
-        if (network.type === 'evm') {
-            const latestRound: BigNumber = await network.view({
-                address: pairAddress,
-                method: 'latestRound',
-                params: {},
                 abi: FluxP2PFactory.abi,
             });
 
@@ -68,7 +43,6 @@ export async function getRoundIdForPair(config: P2PInternalConfig, network: Netw
 
         throw error;
     }
-
 }
 
 export function createBatchFromPairs(config: P2PInternalConfig, targetNetwork: Network): P2PDataRequestBatch {
@@ -115,21 +89,22 @@ export function createResolveP2PRequest(aggregateResult: AggregateResult, roundI
     };
 
     const reports = Array.from(aggregateResult.reports);
-
-    console.log('[] reports -> ', reports);
+    console.log(`[${reports.length}] reports -> `, reports);
 
     if (request.targetNetwork.type === 'evm') {
+        const signatures = reports.map((report) => toString(fromString(report.signature, 'base64')));
+        const answers = reports.map(report => BigNumber.from(report.data));
         txCallParams = {
             ...txCallParams,
             amount: '0',
             method: 'transmit',
-            abi: FluxP2PFactory.abi, // TODO: Same as for other ABI
+            abi: FluxP2PFactory.abi,
             params: {
-                _signatures: reports.map((report) => fromString(report.signature, 'base64')),
+                _signatures: signatures,
                 _pricePair: request.extraInfo.pair,
                 _decimals: request.extraInfo.decimals,
                 _roundId: roundId.toNumber(),
-                _answers: reports.map(report => BigNumber.from(report.data)),
+                _answers: answers,
             },
         };
     } 
