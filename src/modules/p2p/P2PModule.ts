@@ -17,16 +17,22 @@ const Mplex = require("libp2p-mplex"); // no ts support yet :/
 import { NOISE } from "@chainsafe/libp2p-noise";
 import Big from "big.js";
 import P2PAggregator, { aggregate } from "../../p2p/aggregator";
+import { prettySeconds } from "../../services/TimerUtils";
 
 export class P2PModule extends Module {
-    private medians: Map<string, Big> = new Map();
-
     static type = "P2PModule";
     private internalConfig: P2PInternalConfig;
     private batch?: P2PDataRequestBatch;
     private p2p: Communicator;
     private aggregator: P2PAggregator;
     private processing: Set<string> = new Set();
+
+    // internalId => old median
+    // We should only update the mapping when we push the new medain
+    // Otherwise we might never update the price.
+    // However, we still need to update it even if we are not the leader.
+    // Otherwise non-leader nodes would not check deviation.
+    private medians: Map<string, Big> = new Map();
 
     constructor(moduleConfig: P2PConfig, appConfig: AppConfig) {
         super(P2PModule.type, moduleConfig, appConfig);
@@ -49,40 +55,34 @@ export class P2PModule extends Module {
     }
 
     private async fetchLastUpdate() {
-        let lastUpdate;
         if (this.network.type === 'near') {
-            lastUpdate = await fetchNearLastUpdate(this.internalConfig, this.network);
+            return fetchNearLastUpdate(this.internalConfig, this.network);
         }
         else if (this.network.type === 'evm') {
-            lastUpdate = await fetchEvmLastUpdate(this.internalConfig, this.network as EvmNetwork);
+            return fetchEvmLastUpdate(this.internalConfig, this.network as EvmNetwork);
         }
         else {
             throw new Error(`Failed to fetch last update for network ${this.network.type}`);
         }
-
-        return lastUpdate;
     }
 
     private async processPairs() {
         try {
-            // TODO: when deviation
-            /* const timestampUpdateReport = await this.fetchLastUpdate();
+            const timestampUpdateReport = await this.fetchLastUpdate();
             // Fetch elapsed time (in milliseconds) since last pair(s) update
-            const timeSinceUpdate = Date.now() - timestampUpdateReport.oldestTimestamp; */
-            // const timeSinceUpdate = await this.fetchLastUpdate();
+            const timeSinceUpdate = Date.now() - timestampUpdateReport.oldestTimestamp;
+            logger.debug(`[${this.id}] Oldest pair update: ${prettySeconds(Math.floor(timeSinceUpdate / 1000))} ago`);
 
-            // let remainingInterval;
-            // if (timeSinceUpdate < this.internalConfig.interval) {
-            //     remainingInterval = this.internalConfig.interval - timeSinceUpdate;
-            //     logger.debug(`[${this.id}] Target update interval not yet reached. Delaying update ${Math.floor(remainingInterval / 1000)}s ...`);
+            let remainingInterval;
+            if (timeSinceUpdate < this.internalConfig.interval) {
+                remainingInterval = this.internalConfig.interval - timeSinceUpdate;
+                logger.debug(`[${this.id}] Target update interval not yet reached. Delaying update ${Math.floor(remainingInterval / 1000)}s ...`);
 
-            //     setTimeout(this.processPairs.bind(this), remainingInterval);
-            //     return;
-            // } else {
-            //     remainingInterval = this.internalConfig.interval;
-            // }
-
-            // if processing, ignore the second one
+                setTimeout(this.processPairs.bind(this), remainingInterval);
+                return;
+            } else {
+                remainingInterval = this.internalConfig.interval;
+            }
 
             logger.info(`[${this.id}] Processing job`);
             const job = this.appConfig.jobs.find(job => job.type === FetchJob.type);
@@ -93,9 +93,9 @@ export class P2PModule extends Module {
                 return;
             }
 
-            const resolvedRequests = await Promise.all(this.batch.requests.map(async (unresolvedRequest) => {
+            const resolvedRequests = await Promise.all(this.batch.requests.map(async (unresolvedRequest, index) => {
                 if (this.processing.has(unresolvedRequest.internalId)) {
-                    return;
+                    return null;
                 }
 
                 this.processing.add(unresolvedRequest.internalId);
@@ -106,6 +106,13 @@ export class P2PModule extends Module {
                         config: createSafeAppConfigString(this.appConfig),
                         logs: outcome.logs,
                     });
+                    return null;
+                }
+
+                // When the prices don't deviate too much we don't need to update the price pair
+                if (!shouldMedianUpdate(unresolvedRequest, timestampUpdateReport.timestamps[index], new Big(outcome.answer), this.medians.get(unresolvedRequest.internalId))) {
+                    logger.debug(`[${this.id}] ${unresolvedRequest.internalId} Price ${outcome.answer} doesn't deviate ${unresolvedRequest.extraInfo.deviationPercentage}% from ${this.medians.get(unresolvedRequest.internalId)}`);
+                    remainingInterval = this.internalConfig.interval;
                     return null;
                 }
 
@@ -125,6 +132,7 @@ export class P2PModule extends Module {
 
                 this.processing.delete(unresolvedRequest.internalId);
 
+                this.medians.set(unresolvedRequest.internalId, new Big(outcome.answer));
                 // At this stage everything should already be fully handled by the leader
                 // and if not atleast submitted by this node. We can safely move on
                 if (!aggregateResult.leader) {
@@ -142,11 +150,10 @@ export class P2PModule extends Module {
                     config: createSafeAppConfigString(this.appConfig),
                 });
 
-                // setTimeout(this.processPairs.bind(this), remainingInterval);
+                setTimeout(this.processPairs.bind(this), remainingInterval);
                 return;
             }
 
-            // TODO: deviation check after consensus.
             this.network.addRequestsToQueue({
                 ...this.batch,
                 requests,
@@ -154,11 +161,11 @@ export class P2PModule extends Module {
             });
 
             // check if leader didn't send it if so ask someone else to send it.
-			// after publishing the leader shares the transaction hash and the peers verify the transaction hash right parameters to right contract
+            // after publishing the leader shares the transaction hash and the peers verify the transaction hash right parameters to right contract
             // but how would i preserve median since it was batched?
 
-            // logger.debug(`[${this.id}] Next update in ${Math.floor(remainingInterval / 1000)}s`);
-            // setTimeout(this.processPairs.bind(this), remainingInterval);
+            logger.debug(`[${this.id}] Next update in ${Math.floor(remainingInterval / 1000)}s`);
+            setTimeout(this.processPairs.bind(this), remainingInterval);
         } catch (error) {
             console.error(error);
             logger.error(`[${this.id}] Process pairs unknown error`, {

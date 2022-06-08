@@ -13,14 +13,14 @@ import EventEmitter from "events";
 const LOG_NAME = 'p2p-aggregator';
 
 export function electLeader(p2p: Communicator, roundId: Big): Multiaddr {
-	let peers = Array.from(p2p._peers);
-	peers.push(p2p._node_addr);
-	peers = peers.sort();
+    let peers = Array.from(p2p._peers);
+    peers.push(p2p._node_addr);
+    peers = peers.sort();
 
-	const index = roundId.mod(peers.length);
-	const elected = peers[index.toNumber()];
+    const index = roundId.mod(peers.length);
+    const elected = peers[index.toNumber()];
 
-	return new Multiaddr(elected);
+    return new Multiaddr(elected);
 }
 
 function hashPairSignatureInfo(request: P2PDataRequest, roundId: string, data: string): string {

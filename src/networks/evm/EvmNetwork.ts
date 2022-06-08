@@ -71,7 +71,7 @@ export default class EvmNetwork extends Network {
                     }
                 }
 
-                logger.error(`[${this.id}-onQueueBatch] [${request.internalId}] On queue batch unknown error`, {
+                logger.error(`[${this.id}-onQueueBatch] [${request?.internalId}] On queue batch unknown error`, {
                     error,
                     config: this.networkConfig,
                     fingerprint: `${this.type}-${this.networkId}-onQueueBatch-unknown`,

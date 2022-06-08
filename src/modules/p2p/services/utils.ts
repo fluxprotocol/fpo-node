@@ -1,5 +1,4 @@
 import toPath from 'lodash.topath';
-import { utils } from "ethers";
 
 export function convertOldSourcePath(sourcePath: string): string {
     // Keep support for more functions

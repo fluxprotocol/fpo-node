@@ -33,7 +33,7 @@ export async function getRoundIdForPair(config: P2PInternalConfig, network: Netw
 
         // TODO: Near currently does not have a latest round...
         return new Big(5);
-    } catch(error) {
+    } catch (error) {
         if (error instanceof Error) {
             // Price pair does not exist yet
             if (error.message === 'NULL_ADDRESS') {
@@ -107,7 +107,7 @@ export function createResolveP2PRequest(aggregateResult: AggregateResult, roundI
                 _answers: answers,
             },
         };
-    } 
+    }
     // else if (request.targetNetwork.type === 'near') {
     //     txCallParams = {
     //         ...txCallParams,
@@ -136,19 +136,18 @@ export function createResolveP2PRequest(aggregateResult: AggregateResult, roundI
     };
 }
 
-
-export function shouldMedianUpdate(pair: P2PDataRequest, lastUpdate: number, newMedian: Big, oldMedian?: Big): boolean {
+export function shouldMedianUpdate(req: P2PDataRequest, lastUpdate: number, newMedian: Big, oldMedian?: Big): boolean {
     // This is probably the first time we are pushing
     if (!oldMedian || oldMedian.eq(0)) {
-        logger.debug(`[PushPairModule] ${pair.extraInfo.pair} there is no old price, pushing a new one`);
+        logger.debug(`[PushPairModule] ${req.extraInfo.pair} there is no old price, pushing a new one`);
         return true;
     }
 
     const timeSinceUpdate = Date.now() - lastUpdate;
 
     // There hasn't been an update in a while, we should just update
-    if (timeSinceUpdate >= pair.extraInfo.minimumUpdateInterval) {
-        logger.debug(`[PushPairModule] ${pair.extraInfo.pair} needs update because last update was ${timeSinceUpdate}ms ago (minimum ${pair.extraInfo.minimumUpdateInterval}ms)`);
+    if (timeSinceUpdate >= req.extraInfo.minimumUpdateInterval) {
+        logger.debug(`[PushPairModule] ${req.extraInfo.pair} needs update because last update was ${timeSinceUpdate}ms ago (minimum ${req.extraInfo.minimumUpdateInterval}ms)`);
         return true;
     }
 
@@ -156,19 +155,19 @@ export function shouldMedianUpdate(pair: P2PDataRequest, lastUpdate: number, new
     const percentageChange = valueChange.div(oldMedian).times(100);
 
     if (percentageChange.lt(0)) {
-        const shouldUpdate = percentageChange.lte(-pair.extraInfo.deviationPercentage);
+        const shouldUpdate = percentageChange.lte(-req.extraInfo.deviationPercentage);
 
         if (shouldUpdate) {
-            logger.debug(`[PushPairModule] ${pair.extraInfo.pair} needs update because deviation of ${percentageChange.toString()} (max -${pair.extraInfo.deviationPercentage}%)`);
+            logger.debug(`[PushPairModule] ${req.extraInfo.pair} needs update because deviation of ${percentageChange.toString()} (max -${req.extraInfo.deviationPercentage}%)`);
         }
 
         return shouldUpdate;
     }
 
-    const shouldUpdate = percentageChange.gte(pair.extraInfo.deviationPercentage);
+    const shouldUpdate = percentageChange.gte(req.extraInfo.deviationPercentage);
 
     if (shouldUpdate) {
-        logger.debug(`[PushPairModule] ${pair.extraInfo.pair} needs update because deviation of ${percentageChange.toString()} (max ${pair.extraInfo.deviationPercentage}%)`);
+        logger.debug(`[PushPairModule] ${req.extraInfo.pair} needs update because deviation of ${percentageChange.toString()} (max ${req.extraInfo.deviationPercentage}%)`);
     }
 
     return shouldUpdate;

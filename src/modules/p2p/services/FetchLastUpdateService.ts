@@ -1,19 +1,16 @@
 import EvmNetwork from '../../../networks/evm/EvmNetwork';
-// TODO: Ask Jameson for proper JSON for methods.
-import FluxPriceFeed from '../FluxPriceFeed.json';
 import { NearNetwork } from "../../../networks/near/NearNetwork";
 import { P2PInternalConfig } from "../models/P2PConfig";
 import { BigNumber } from 'ethers';
 import { computeFactoryPairId } from '../../pushPair/services/utils';
 import FluxP2PFactory from '../FluxP2PFactory.json';
 
-// TODO: when deviation
 interface TimestampUpdateReport {
     oldestTimestamp: number;
     timestamps: number[];
 }
 
-export async function fetchEvmLastUpdate(config: P2PInternalConfig, network: EvmNetwork) {
+export async function fetchEvmLastUpdate(config: P2PInternalConfig, network: EvmNetwork): Promise<TimestampUpdateReport> {
     let lastUpdated: BigNumber;
     let allPairTimestamps: number[];
 
@@ -26,7 +23,7 @@ export async function fetchEvmLastUpdate(config: P2PInternalConfig, network: Evm
             address: config.contractAddress,
             amount: '0',
             params: {
-                id: computeFactoryPairId(pair.pair, pair.decimals, network.getWalletPublicAddress()),
+                id: computeFactoryPairId(pair.pair, pair.decimals),
             },
             abi: FluxP2PFactory.abi,
         }))[1];
@@ -37,16 +34,14 @@ export async function fetchEvmLastUpdate(config: P2PInternalConfig, network: Evm
     lastUpdated = pairTimestamps.reduce((prev, next) => prev.gt(next) ? next : prev);
     allPairTimestamps = pairTimestamps.map(t => t.mul(1000).toNumber());
 
-    return lastUpdated.mul(1000).toNumber();
-
-    // return {
-    //     oldestTimestamp: lastUpdated.mul(1000).toNumber(),
-    //     timestamps: allPairTimestamps,
-    // };
+    return {
+        oldestTimestamp: lastUpdated.mul(1000).toNumber(),
+        timestamps: allPairTimestamps,
+    };
 }
 
 // TODO: I don't think we support near yet?
-export async function fetchNearLastUpdate(config: P2PInternalConfig, network: NearNetwork) {
+export async function fetchNearLastUpdate(config: P2PInternalConfig, network: NearNetwork): Promise<TimestampUpdateReport> {
     let pairTimestamps: number[] = [];
     for await (let pair of config.pairs) {
         const entry = await network.view({
@@ -65,10 +60,8 @@ export async function fetchNearLastUpdate(config: P2PInternalConfig, network: Ne
 
     const timestamp = pairTimestamps.reduce((prev, next) => prev > next ? next : prev);
 
-    // return {
-    //     oldestTimestamp: timestamp,
-    //     timestamps: pairTimestamps,
-    // };
-
-    return timestamp;
+    return {
+        oldestTimestamp: timestamp,
+        timestamps: pairTimestamps,
+    };
 }

@@ -1,4 +1,3 @@
-import Big from "big.js";
 import { DataRequest, DataRequestResolved } from "../../../models/DataRequest";
 import { DataRequestBatch, DataRequestBatchResolved } from "../../../models/DataRequestBatch";
 
