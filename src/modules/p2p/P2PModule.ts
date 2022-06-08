@@ -160,10 +160,6 @@ export class P2PModule extends Module {
                 targetAddress: this.internalConfig.contractAddress,
             });
 
-            // check if leader didn't send it if so ask someone else to send it.
-            // after publishing the leader shares the transaction hash and the peers verify the transaction hash right parameters to right contract
-            // but how would i preserve median since it was batched?
-
             logger.debug(`[${this.id}] Next update in ${Math.floor(remainingInterval / 1000)}s`);
             setTimeout(this.processPairs.bind(this), remainingInterval);
         } catch (error) {
