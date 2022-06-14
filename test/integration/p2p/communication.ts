@@ -22,8 +22,8 @@ async function test() {
         privateKeyEnv: "EVM_PRIVATE_KEY2",
     }
 
-    const node1Config = createNodeConfig(node1, [node2]);
-    const node2Config = createNodeConfig(node2, [node1]);
+    const node1Config = createNodeConfig(node1, [node2], "node1_logs");
+    const node2Config = createNodeConfig(node2, [node1], "node2_logs");
 
     main(node1Config);
     main(node2Config);

@@ -16,8 +16,10 @@ const Mplex = require("libp2p-mplex"); // no ts support yet :/
 // @ts-ignore
 import { NOISE } from "@chainsafe/libp2p-noise";
 import Big from "big.js";
-import P2PAggregator, { aggregate } from "../../p2p/aggregator";
+import P2PAggregator, { aggregate, AggregateResult } from "../../p2p/aggregator";
 import { prettySeconds } from "../../services/TimerUtils";
+import DatabaseConstructor, { Database } from "better-sqlite3";
+import { DEBUG } from "../../config";
 
 export class P2PModule extends Module {
     static type = "P2PModule";
@@ -26,6 +28,7 @@ export class P2PModule extends Module {
     private p2p: Communicator;
     private aggregator: P2PAggregator;
     private processing: Set<string> = new Set();
+    private db: Database;
 
     // internalId => old median
     // We should only update the mapping when we push the new medain
@@ -52,6 +55,9 @@ export class P2PModule extends Module {
             },
         }, appConfig.p2p.peers);
         this.aggregator = new P2PAggregator(this.p2p);
+
+        const db_opts = DEBUG ? { verbose: logger.info } : { verbose: logger.debug };
+        this.db = new DatabaseConstructor(`logs/${appConfig.p2p.logFile}`, db_opts);
     }
 
     private async fetchLastUpdate() {
@@ -122,7 +128,7 @@ export class P2PModule extends Module {
                 logger.info(`[${this.id}] ${unresolvedRequest.extraInfo.pair} on round id ${roundId.toString()}`);
 
                 // Send the outcome through the p2p network to come to a consensus
-                const aggregateResult = await this.aggregator.aggregate(unresolvedRequest, outcome.answer, roundId, async () => {
+                const aggregateResult: AggregateResult = await this.aggregator.aggregate(unresolvedRequest, outcome.answer, roundId, async () => {
                     // Check whether or not the transaction has been in the blockchain
                     const newRoundId = await getRoundIdForPair(this.internalConfig, this.network, unresolvedRequest.extraInfo.pair, unresolvedRequest.extraInfo.decimals);
 
@@ -155,6 +161,7 @@ export class P2PModule extends Module {
             }
 
             this.network.addRequestsToQueue({
+                db: this.db,
                 ...this.batch,
                 requests,
                 targetAddress: this.internalConfig.contractAddress,
@@ -175,6 +182,16 @@ export class P2PModule extends Module {
 
     async start(): Promise<boolean> {
         try {
+            logger.info("Setting up log file...");
+            this.db.exec(`CREATE TABLE IF NOT EXISTS logs (
+                tx_id TEXT NOT NULL,
+                ts TIMESTAMP NOT NULL,
+                answers TEXT NOT NULL,
+                PRIMARY KEY(tx_id, ts)
+            );`);
+            this.db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS timestamps on logs(ts);`);
+            this.db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS transactions on logs(tx_id);`);
+
             logger.info("Initializing p2p batch pairs...");
             this.batch = createBatchFromPairs(this.internalConfig, this.network);
 
@@ -188,6 +205,7 @@ export class P2PModule extends Module {
 
             return true;
         } catch (error) {
+            this.db.close();
             await this.p2p.stop();
             logger.error(`[${this.id}] Start failure`, {
                 error,

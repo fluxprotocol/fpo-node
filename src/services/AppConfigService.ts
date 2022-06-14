@@ -34,7 +34,8 @@ export async function parseAppConfig(config: UnparsedAppConfig): Promise<AppConf
             peers: new Set(config.p2p.peers),
             addresses: {
                 listen: config.p2p.addresses.listen,
-            }
+            },
+            logFile: config.p2p.logFile ?? `p2p_logs.db`,
         };
     }
 

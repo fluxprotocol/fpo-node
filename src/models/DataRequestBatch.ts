@@ -1,3 +1,4 @@
+import { Database } from "better-sqlite3";
 import Big from "big.js";
 import { Block } from "./Block";
 import { DataRequest, DataRequestResolved } from "./DataRequest";
@@ -12,6 +13,7 @@ export interface DataRequestBatch {
 export interface DataRequestBatchResolved extends DataRequestBatch {
     targetAddress: string;
     requests: DataRequestResolved[];
+    db?: Database;
 }
 
 let nonce = 0;

@@ -7,7 +7,7 @@ export interface NodeInfo {
     privateKeyEnv: string;
 }
 
-export function createNodeConfig(ownNode: NodeInfo, otherNodes: NodeInfo[]) {
+export function createNodeConfig(ownNode: NodeInfo, otherNodes: NodeInfo[], logFile: string) {
 
     const config: UnparsedAppConfig = {
         "p2p": {
@@ -19,6 +19,7 @@ export function createNodeConfig(ownNode: NodeInfo, otherNodes: NodeInfo[]) {
             "peers": otherNodes.map(peer => {
                 return `/ip4/127.0.0.1/tcp/${peer.port}/p2p/${peer.peerId.toB58String()}`;
             }),
+            "logFile": logFile,
         },
         "networks": [
             {

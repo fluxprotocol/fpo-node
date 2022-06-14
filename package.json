@@ -17,6 +17,7 @@
         "@chainsafe/libp2p-noise": "^5.0.3",
         "@fluxprotocol/oracle-vm": "^2.0.0",
         "@libp2p/bootstrap": "^1.0.5",
+        "better-sqlite3": "^7.5.3",
         "big.js": "^6.1.1",
         "bn.js": "^5.2.0",
         "dotenv": "^15.0.0",
@@ -35,6 +36,7 @@
         "winston-transport-sentry-node": "^2.3.0"
     },
     "devDependencies": {
+        "@types/better-sqlite3": "^7.5.0",
         "@types/big.js": "^6.1.2",
         "@types/bl": "^5.0.2",
         "@types/debug": "^4.1.7",

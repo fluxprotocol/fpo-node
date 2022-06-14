@@ -42,15 +42,21 @@ export default class EvmNetwork extends Network {
                     logger.warn(`[${this.id}] Tx ${request.internalId} was not processed due to missing ABI`);
                     continue;
                 }
-                
+
                 const contract = new Contract(request.txCallParams.address, request.txCallParams.abi, this.wallet);
                 if (!contract[request.txCallParams.method]) {
                     logger.warn(`[${this.id}] Tx ${request.internalId} was not processed due to missing method ${request.txCallParams.method}`);
                     continue;
                 }
-                
+
                 const args = Object.values(request.txCallParams.params);
-                await contract[request.txCallParams.method](...args);
+                const result = await contract[request.txCallParams.method](...args);
+
+                if (batch.db !== undefined) {
+                    batch.db
+                        .prepare(`INSERT INTO logs VALUES (?, ?, ?);`)
+                        .run(result.hash, Date.now(), request.txCallParams.params._answers.join(','));
+                }
             } catch (error: any) {
                 // Try to check if SERVER ERROR was because a node already pushed the same update
                 //
