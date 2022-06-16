@@ -6,6 +6,7 @@ import { Module } from "../../models/Module";
 import { OutcomeType } from "../../models/Outcome";
 import { P2PDataRequestBatch, P2PResolvedDataRequest } from "./models/P2PDataRequest";
 import { createBatchFromPairs, createResolveP2PRequest, getRoundIdForPair, shouldMedianUpdate } from "./services/P2PRequestService";
+import { createPairIfNeeded } from "./services/P2PCreationService";
 import { createSafeAppConfigString } from "../../services/AppConfigUtils";
 import { fetchEvmLastUpdate, fetchNearLastUpdate } from './services/FetchLastUpdateService';
 import { parseP2PConfig, P2PConfig, P2PInternalConfig } from "./models/P2PConfig";
@@ -20,6 +21,7 @@ import P2PAggregator, { aggregate, AggregateResult } from "../../p2p/aggregator"
 import { prettySeconds } from "../../services/TimerUtils";
 import DatabaseConstructor, { Database } from "better-sqlite3";
 import { DEBUG } from "../../config";
+import { getHashFeedIdForPair } from "../pushPair/services/utils";
 
 export class P2PModule extends Module {
     static type = "P2PModule";
@@ -122,15 +124,18 @@ export class P2PModule extends Module {
                     return null;
                 }
 
+                // The hash feed id for the pair.
+                const hashFeedId: string = await getHashFeedIdForPair(this.internalConfig, unresolvedRequest.extraInfo.pair, unresolvedRequest.extraInfo.decimals);
+
                 // Round id is used to determine the leader in the network.
                 // All nodes are expected to run the same peer list
-                const roundId = await getRoundIdForPair(this.internalConfig, this.network, unresolvedRequest.extraInfo.pair, unresolvedRequest.extraInfo.decimals);
+                const roundId = await getRoundIdForPair(this.internalConfig, this.network, unresolvedRequest.extraInfo.pair, unresolvedRequest.extraInfo.decimals, hashFeedId);
                 logger.info(`[${this.id}] ${unresolvedRequest.extraInfo.pair} on round id ${roundId.toString()}`);
 
                 // Send the outcome through the p2p network to come to a consensus
-                const aggregateResult: AggregateResult = await this.aggregator.aggregate(unresolvedRequest, outcome.answer, roundId, async () => {
+                const aggregateResult: AggregateResult = await this.aggregator.aggregate(unresolvedRequest, hashFeedId, outcome.answer, roundId, async () => {
                     // Check whether or not the transaction has been in the blockchain
-                    const newRoundId = await getRoundIdForPair(this.internalConfig, this.network, unresolvedRequest.extraInfo.pair, unresolvedRequest.extraInfo.decimals);
+                    const newRoundId = await getRoundIdForPair(this.internalConfig, this.network, unresolvedRequest.extraInfo.pair, unresolvedRequest.extraInfo.decimals, hashFeedId);
 
                     // When the round id incremented we've updated the prices on chain
                     return !newRoundId.eq(roundId);
@@ -146,7 +151,7 @@ export class P2PModule extends Module {
                 }
 
                 // We are the leader and we should send the transaction
-                return createResolveP2PRequest(aggregateResult, roundId, unresolvedRequest, this.internalConfig);
+                return createResolveP2PRequest(aggregateResult, hashFeedId, roundId, unresolvedRequest, this.internalConfig);
             }));
 
             let requests: P2PResolvedDataRequest[] = resolvedRequests.filter(r => r !== null) as P2PResolvedDataRequest[];
@@ -191,6 +196,12 @@ export class P2PModule extends Module {
             );`);
             this.db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS timestamps on logs(ts);`);
             this.db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS transactions on logs(tx_id);`);
+
+            // logger.info(`[${this.id}] Creating pairs if needed..`);
+            // await Promise.all(this.internalConfig.pairs.map(async (pair) => {
+            //     return createPairIfNeeded(pair, this.internalConfig, this.network);
+            // }));
+            // logger.info(`[${this.id}] Done creating pairs`);
 
             logger.info("Initializing p2p batch pairs...");
             this.batch = createBatchFromPairs(this.internalConfig, this.network);

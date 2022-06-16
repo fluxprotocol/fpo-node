@@ -34,7 +34,7 @@ export function createNodeConfig(ownNode: NodeInfo, otherNodes: NodeInfo[], logF
             {
                 "networkId": 1313161555,
                 // @ts-ignore
-                "contractAddress": "0x5C52246D0a114Beb0943673E851140447fDF6C20",
+                "contractAddress": "0x13dd5C7D444448f2235D1B874b0b63897b9D8A46",
                 "deviationPercentage": 0.5,
                 "minimumUpdateInterval": 1800000,
                 "pairs": [

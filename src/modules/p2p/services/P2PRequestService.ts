@@ -7,16 +7,13 @@ import { P2PDataRequest, P2PDataRequestBatch, P2PResolvedDataRequest } from "../
 import { P2PInternalConfig } from '../models/P2PConfig';
 import { createDataRequestBatch } from "../../../models/DataRequestBatch";
 import logger from "../../../services/LoggerService";
-import { BigNumber } from "ethers";
-import { computeFactoryPairId } from "../../pushPair/services/utils";
+import { BigNumber, ethers } from "ethers";
 import { AggregateResult } from "../../../p2p/aggregator";
 import { fromString, toString } from "uint8arrays";
 
-export async function getRoundIdForPair(config: P2PInternalConfig, network: Network, pairId: string, decimals: number): Promise<Big> {
+export async function getRoundIdForPair(config: P2PInternalConfig, network: Network, pairId: string, decimals: number, computedId: string): Promise<Big> {
     try {
         if (network.type === 'evm') {
-            const computedId = computeFactoryPairId(pairId, decimals);
-
             console.log('[] computedId -> ', computedId);
 
             const latestRound: BigNumber = await network.view({
@@ -80,7 +77,7 @@ export function createBatchFromPairs(config: P2PInternalConfig, targetNetwork: N
     return createDataRequestBatch(requests) as P2PDataRequestBatch;
 }
 
-export function createResolveP2PRequest(aggregateResult: AggregateResult, roundId: Big, request: P2PDataRequest, config: P2PInternalConfig): P2PResolvedDataRequest {
+export function createResolveP2PRequest(aggregateResult: AggregateResult, hashFeedId: string, roundId: Big, request: P2PDataRequest, config: P2PInternalConfig): P2PResolvedDataRequest {
     let txCallParams: P2PResolvedDataRequest['txCallParams'] = {
         address: config.contractAddress,
         amount: '0',
@@ -101,10 +98,9 @@ export function createResolveP2PRequest(aggregateResult: AggregateResult, roundI
             abi: FluxP2PFactory.abi,
             params: {
                 _signatures: signatures,
-                _pricePair: request.extraInfo.pair,
-                _decimals: request.extraInfo.decimals,
-                _roundId: roundId.toNumber(),
+                _id: hashFeedId,
                 _answers: answers,
+                _timestamps: reports.map(report => report.timestamp),
             },
         };
     }

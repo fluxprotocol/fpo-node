@@ -23,10 +23,10 @@ export function electLeader(p2p: Communicator, roundId: Big): Multiaddr {
     return new Multiaddr(elected);
 }
 
-function hashPairSignatureInfo(request: P2PDataRequest, roundId: string, data: string): string {
+function hashPairSignatureInfo(hashFeedId: string, roundId: string, data: string, timestamp: number): string {
     return solidityKeccak256(
-        ["string", "uint8", "uint32", "int192"],
-        [request.extraInfo.pair, request.extraInfo.decimals, roundId, data]
+        ["string", "uint32", "int192", "uint64"],
+        [hashFeedId, roundId, data, timestamp]
     );
 }
 
@@ -147,16 +147,18 @@ export default class P2PAggregator extends EventEmitter {
         setTimeout(() => this.reselectLeader(id), request.extraInfo.p2pReelectWaitTimeMs);
     }
 
-    async aggregate(request: P2PDataRequest, data: string, roundId: Big, isRequestResolved: () => Promise<boolean>): Promise<AggregateResult> {
+    async aggregate(request: P2PDataRequest, hashFeedId: string, data: string, roundId: Big, isRequestResolved: () => Promise<boolean>): Promise<AggregateResult> {
         return new Promise(async (resolve) => {
             // TODO: Maybe do a check where if the request already exist we should ignore it?
-            const message = hashPairSignatureInfo(request, roundId.toString(), data);
+            const timestamp = Date.now();
+            const message = hashPairSignatureInfo(hashFeedId, roundId.toString(), data, timestamp);
             const signature = await request.targetNetwork.sign(arrayify(message));
 
             const p2pMessage: P2PMessage = {
                 data,
                 signature: toString(signature, 'base64'),
                 id: request.internalId,
+                timestamp,
             };
 
             this.callbacks.set(request.internalId, resolve);
@@ -184,11 +186,12 @@ export default class P2PAggregator extends EventEmitter {
     }
 }
 
-export async function aggregate(p2p: Communicator, roundId: Big, unresolvedRequest: P2PDataRequest, data_to_send: Big, isRequestResolved: () => Promise<boolean>): Promise<AggregateResult> {
+export async function aggregate(p2p: Communicator, hashFeedId: string, roundId: Big, unresolvedRequest: P2PDataRequest, data_to_send: Big, isRequestResolved: () => Promise<boolean>): Promise<AggregateResult> {
     return new Promise(async (resolve) => {
         let leader = electLeader(p2p, roundId);
         const thisNode = new Multiaddr(p2p._node_addr);
-        const message = hashPairSignatureInfo(unresolvedRequest, roundId.toString(), data_to_send.toString());
+        const timestamp = Date.now();
+        const message = hashPairSignatureInfo(hashFeedId, roundId.toString(), data_to_send.toString(), timestamp);
         const signature = await unresolvedRequest.targetNetwork.sign(fromString(message));
         let signedTransactionWaitIntervalId: NodeJS.Timer | undefined;
 
@@ -196,6 +199,7 @@ export async function aggregate(p2p: Communicator, roundId: Big, unresolvedReque
             data: data_to_send.toString(),
             signature: toString(signature, 'base64'),
             id: unresolvedRequest.internalId,
+            timestamp,
         };
 
         // TODO: Maybe we should also include the round id in this to make sure "stale" nodes do not push old prices

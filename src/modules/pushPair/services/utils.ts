@@ -1,5 +1,6 @@
 import toPath from 'lodash.topath';
 import { utils } from "ethers";
+import { P2PInternalConfig } from '../../p2p/models/P2PConfig';
 
 export function convertOldSourcePath(sourcePath: string): string {
     // Keep support for more functions
@@ -32,4 +33,11 @@ export function computeFactoryPairId(pair: string, decimals: number, provider?: 
         // Id = keccak256(bytes("Price-<PAIR>-<DECIMALS>)")
         return utils.keccak256(utils.toUtf8Bytes(`Price-${pair}-${decimals.toString()}`));
     }
+}
+
+export async function getHashFeedIdForPair(config: P2PInternalConfig, pair: string, decimals: number): Promise<string> {
+    return utils.solidityKeccak256(
+        ["string", "string", "string", "address"],
+        ["Price-", pair, `-${decimals.toString()}-`, config.contractAddress],
+    );
 }

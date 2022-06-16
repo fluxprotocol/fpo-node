@@ -6,6 +6,7 @@ export interface P2PMessage {
     data: string;
     signature: string;
     id: string;
+    timestamp: number;
 }
 
 export async function extractP2PMessage(source: AsyncIterable<Uint8Array | BufferList>): Promise<P2PMessage | undefined> {
