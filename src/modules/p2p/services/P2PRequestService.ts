@@ -25,7 +25,7 @@ export async function getRoundIdForPair(config: P2PInternalConfig, network: Netw
                 abi: FluxP2PFactory.abi,
             });
 
-            return new Big(latestRound.toString());
+            return new Big(latestRound.toString()).add(1);
         }
 
         // TODO: Near currently does not have a latest round...

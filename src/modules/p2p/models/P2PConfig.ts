@@ -19,28 +19,37 @@ export interface Pair {
 }
 
 export interface P2PInternalConfig extends ModuleConfig {
-    id: string;
-    contractAddress: string;
+	id: string;
+	contractAddress: string;
 	pairs: Pair[];
-    interval: number;
+	interval: number;
 	deviationPercentage: number;
 	minimumUpdateInterval: number;
-    p2pReelectWaitTimeMs: number;
+	p2pReelectWaitTimeMs: number;
+	logFile: string;
+	creator: string;
+	signers: string[];
 }
 
 export interface P2PConfig extends ModuleConfig {
-    contractAddress?: P2PInternalConfig['contractAddress'];
-    interval?: P2PInternalConfig['interval'];
+	contractAddress?: P2PInternalConfig['contractAddress'];
+	interval?: P2PInternalConfig['interval'];
 	pairs?: P2PInternalConfig['pairs'];
 	deviationPercentage?: P2PInternalConfig['deviationPercentage'];
 	minimumUpdateInterval?: P2PInternalConfig['minimumUpdateInterval'];
-    p2pReelectWaitTimeMs?: P2PInternalConfig['p2pReelectWaitTimeMs'];
+	p2pReelectWaitTimeMs?: P2PInternalConfig['p2pReelectWaitTimeMs'];
+	logFile?: P2PInternalConfig['logFile'];
+	creator?: P2PInternalConfig['creator'];
+	signers?: P2PInternalConfig['signers'];
 }
 
 export function parseP2PConfig(config: P2PConfig): P2PInternalConfig {
-    if (typeof config.contractAddress === 'undefined' || typeof config.contractAddress !== 'string') throw new Error(`[P2PModule] "oracleContractAddress" is required and must be a string`);
-    if (typeof config.interval === 'undefined' || typeof config.interval !== 'number') throw new Error(`[P2PModule] "interval" is required and must be a number`);
+	if (typeof config.contractAddress === 'undefined' || typeof config.contractAddress !== 'string') throw new Error(`[P2PModule] "oracleContractAddress" is required and must be a string`);
+	if (typeof config.interval === 'undefined' || typeof config.interval !== 'number') throw new Error(`[P2PModule] "interval" is required and must be a number`);
+	if (typeof config.creator === 'undefined') throw new Error(`[P2PModule] "creator" is required and must be the creators address`);
+
 	if (!Array.isArray(config.pairs)) throw new Error(`[P2PModule] "pairs" is required and must be an array`);
+	if (!Array.isArray(config.signers)) throw new Error(`[P2PModule] "signers" is required and must be an array of strings`);
 
 	config.pairs.forEach((pair: Partial<Pair>) => {
 		if (typeof pair.pair === 'undefined' || typeof pair.pair !== 'string') throw new Error(`[P2PModule] "pair" is required for each item in "pairs"`);
@@ -53,15 +62,15 @@ export function parseP2PConfig(config: P2PConfig): P2PInternalConfig {
 		});
 	});
 
-    return {
-        ...config,
-        id: `${config.type}-${config.networkId}`,
+	return {
+		...config,
+		id: `${config.type}-${config.networkId}`,
 		// TODO: what should these defaults be.
 		deviationPercentage: config.deviationPercentage ?? 0.5,
 		minimumUpdateInterval: config.minimumUpdateInterval ?? 1,
-        contractAddress: config.contractAddress,
-        interval: config.interval,
-        p2pReelectWaitTimeMs: config.p2pReelectWaitTimeMs ?? Math.ceil(config.interval / 2),
+		contractAddress: config.contractAddress,
+		interval: config.interval,
+		p2pReelectWaitTimeMs: config.p2pReelectWaitTimeMs ?? Math.ceil(config.interval / 2),
 		pairs: config.pairs.map((pair) => ({
 			...pair,
 			sources: pair.sources.map((source) => ({
@@ -69,5 +78,8 @@ export function parseP2PConfig(config: P2PConfig): P2PInternalConfig {
 				source_path: convertOldSourcePath(source.source_path),
 			}))
 		})),
-    };
+		logFile: config.logFile ?? "p2p_logs",
+		creator: config.creator,
+		signers: config.signers,
+	};
 }

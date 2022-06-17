@@ -20,7 +20,6 @@ export interface AppConfig {
         addresses: {
             listen: string[];
         }
-        logFile: string;
     },
 }
 
@@ -34,6 +33,5 @@ export interface UnparsedAppConfig {
         addresses?: {
             listen?: string[];
         };
-        logFile?: string;
     }
 }

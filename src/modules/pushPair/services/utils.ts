@@ -38,6 +38,6 @@ export function computeFactoryPairId(pair: string, decimals: number, provider?: 
 export async function getHashFeedIdForPair(config: P2PInternalConfig, pair: string, decimals: number): Promise<string> {
     return utils.solidityKeccak256(
         ["string", "string", "string", "address"],
-        ["Price-", pair, `-${decimals.toString()}-`, config.contractAddress],
+        ["Price-", pair, `-${decimals.toString()}-`, config.creator],
     );
 }

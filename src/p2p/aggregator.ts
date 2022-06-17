@@ -25,7 +25,7 @@ export function electLeader(p2p: Communicator, roundId: Big): Multiaddr {
 
 function hashPairSignatureInfo(hashFeedId: string, roundId: string, data: string, timestamp: number): string {
     return solidityKeccak256(
-        ["string", "uint32", "int192", "uint64"],
+        ["bytes32", "uint256", "int192", "uint64"],
         [hashFeedId, roundId, data, timestamp]
     );
 }
@@ -150,7 +150,7 @@ export default class P2PAggregator extends EventEmitter {
     async aggregate(request: P2PDataRequest, hashFeedId: string, data: string, roundId: Big, isRequestResolved: () => Promise<boolean>): Promise<AggregateResult> {
         return new Promise(async (resolve) => {
             // TODO: Maybe do a check where if the request already exist we should ignore it?
-            const timestamp = Date.now();
+            const timestamp = Math.round(new Date().getTime() / 1000);
             const message = hashPairSignatureInfo(hashFeedId, roundId.toString(), data, timestamp);
             const signature = await request.targetNetwork.sign(arrayify(message));
 
@@ -184,97 +184,4 @@ export default class P2PAggregator extends EventEmitter {
             await this.handleReports(request.internalId);
         });
     }
-}
-
-export async function aggregate(p2p: Communicator, hashFeedId: string, roundId: Big, unresolvedRequest: P2PDataRequest, data_to_send: Big, isRequestResolved: () => Promise<boolean>): Promise<AggregateResult> {
-    return new Promise(async (resolve) => {
-        let leader = electLeader(p2p, roundId);
-        const thisNode = new Multiaddr(p2p._node_addr);
-        const timestamp = Date.now();
-        const message = hashPairSignatureInfo(hashFeedId, roundId.toString(), data_to_send.toString(), timestamp);
-        const signature = await unresolvedRequest.targetNetwork.sign(fromString(message));
-        let signedTransactionWaitIntervalId: NodeJS.Timer | undefined;
-
-        const p2pMessage: P2PMessage = {
-            data: data_to_send.toString(),
-            signature: toString(signature, 'base64'),
-            id: unresolvedRequest.internalId,
-            timestamp,
-        };
-
-        // TODO: Maybe we should also include the round id in this to make sure "stale" nodes do not push old prices
-        const peer_unique_id: string = unresolvedRequest.internalId;
-        let receivedMessages: Set<P2PMessage> = new Set([p2pMessage]);
-
-        // TODO: This is apperently a property on the smart contract. We can later always try to call this property. (with ofc a cache of 30min or so)
-        const requiredAmountOfSignatures = Math.floor(p2p._peers.size / 2) + 1;
-
-        async function reelectLeaders() {
-            // Ask the upper level if the transaction has been completed and in the blockchain
-            const resolved = await isRequestResolved();
-
-            if (resolved) {
-                logger.debug(`[${LOG_NAME}-${unresolvedRequest.internalId}] Leader resolved price feed`);
-                return resolve({
-                    leader: false,
-                    reports: receivedMessages,
-                });
-            }
-
-            const oldLeader = leader;
-            leader = electLeader(p2p, roundId.plus(1));
-
-            logger.debug(`[${LOG_NAME}-${unresolvedRequest.internalId}] ${oldLeader} did not respond in a sufficient amount of time, switching to ${leader}`);
-
-            if (thisNode.equals(leader)) {
-                await p2p.unhandle(`/send/data/${peer_unique_id}`);
-
-                return resolve({
-                    leader: true,
-                    reports: receivedMessages,
-                });
-            }
-
-            // The next node could fail too,
-            // We give it the same amount of time as our first leader
-            signedTransactionWaitIntervalId = setTimeout(() => reelectLeaders(), unresolvedRequest.extraInfo.p2pReelectWaitTimeMs);
-        }
-
-        // This is our first entry point
-        // All nodes flood the network with their answer for this particulair price pair
-        p2p.handle_incoming(`/send/data/${peer_unique_id}`, async (peer: Multiaddr, source: AsyncIterable<Uint8Array | BufferList>) => {
-            const message = await extractP2PMessage(source);
-            if (!message) return;
-
-            receivedMessages.add(message);
-            logger.debug(`[${LOG_NAME}-${unresolvedRequest.internalId}] Received message from ${peer} ${receivedMessages.size}/${p2p._peers.size}`);
-
-            if (receivedMessages.size <= requiredAmountOfSignatures) {
-                return;
-            }
-
-            logger.debug(`[${LOG_NAME}-${unresolvedRequest.internalId}] Received enough signatures`);
-
-            // As a leader we should send the transaction across the network
-            if (thisNode.equals(leader)) {
-                logger.debug(`[${LOG_NAME}-${unresolvedRequest.internalId}] This node is the leader. Sending transaction across network and blockchain`);
-                await p2p.unhandle(`/send/data/${peer_unique_id}`);
-
-                return resolve({
-                    leader: true,
-                    reports: receivedMessages,
-                });
-            }
-
-            // This node is not the leader, we do however want to wait a certain amount of time to make sure the
-            // transaction got completed on-chain
-            signedTransactionWaitIntervalId = setTimeout(() => reelectLeaders(), unresolvedRequest.extraInfo.p2pReelectWaitTimeMs);
-        });
-
-        logger.debug(`[${LOG_NAME}-${unresolvedRequest.internalId}] Sending data to peers ${data_to_send}`);
-
-        p2p.send(`/send/data/${peer_unique_id}`, [
-            fromString(JSON.stringify(p2pMessage)),
-        ]);
-    });
 }

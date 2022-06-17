@@ -17,11 +17,10 @@ const Mplex = require("libp2p-mplex"); // no ts support yet :/
 // @ts-ignore
 import { NOISE } from "@chainsafe/libp2p-noise";
 import Big from "big.js";
-import P2PAggregator, { aggregate, AggregateResult } from "../../p2p/aggregator";
+import P2PAggregator, { AggregateResult } from "../../p2p/aggregator";
 import { prettySeconds } from "../../services/TimerUtils";
-import DatabaseConstructor, { Database } from "better-sqlite3";
-import { DEBUG } from "../../config";
 import { getHashFeedIdForPair } from "../pushPair/services/utils";
+import DBLogger from "../../models/DBLoggerModule";
 
 export class P2PModule extends Module {
     static type = "P2PModule";
@@ -30,7 +29,7 @@ export class P2PModule extends Module {
     private p2p: Communicator;
     private aggregator: P2PAggregator;
     private processing: Set<string> = new Set();
-    private db: Database;
+    private db: DBLogger;
 
     // internalId => old median
     // We should only update the mapping when we push the new medain
@@ -58,8 +57,7 @@ export class P2PModule extends Module {
         }, appConfig.p2p.peers);
         this.aggregator = new P2PAggregator(this.p2p);
 
-        const db_opts = DEBUG ? { verbose: logger.info } : { verbose: logger.debug };
-        this.db = new DatabaseConstructor(`logs/${appConfig.p2p.logFile}`, db_opts);
+        this.db = new DBLogger(this.internalConfig.logFile);
     }
 
     private async fetchLastUpdate() {
@@ -129,7 +127,7 @@ export class P2PModule extends Module {
 
                 // Round id is used to determine the leader in the network.
                 // All nodes are expected to run the same peer list
-                const roundId = await getRoundIdForPair(this.internalConfig, this.network, unresolvedRequest.extraInfo.pair, unresolvedRequest.extraInfo.decimals, hashFeedId);
+                const roundId: Big = await getRoundIdForPair(this.internalConfig, this.network, unresolvedRequest.extraInfo.pair, unresolvedRequest.extraInfo.decimals, hashFeedId);
                 logger.info(`[${this.id}] ${unresolvedRequest.extraInfo.pair} on round id ${roundId.toString()}`);
 
                 // Send the outcome through the p2p network to come to a consensus
@@ -187,21 +185,6 @@ export class P2PModule extends Module {
 
     async start(): Promise<boolean> {
         try {
-            logger.info("Setting up log file...");
-            this.db.exec(`CREATE TABLE IF NOT EXISTS logs (
-                tx_id TEXT NOT NULL,
-                ts TIMESTAMP NOT NULL,
-                answers TEXT NOT NULL,
-                PRIMARY KEY(tx_id, ts)
-            );`);
-            this.db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS timestamps on logs(ts);`);
-            this.db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS transactions on logs(tx_id);`);
-
-            // logger.info(`[${this.id}] Creating pairs if needed..`);
-            // await Promise.all(this.internalConfig.pairs.map(async (pair) => {
-            //     return createPairIfNeeded(pair, this.internalConfig, this.network);
-            // }));
-            // logger.info(`[${this.id}] Done creating pairs`);
 
             logger.info("Initializing p2p batch pairs...");
             this.batch = createBatchFromPairs(this.internalConfig, this.network);
@@ -212,6 +195,13 @@ export class P2PModule extends Module {
             logger.info(`Starting p2p node...`);
             await this.p2p.start();
             await this.aggregator.init();
+
+            logger.info(`[${this.id}] Creating pairs if needed..`);
+            await Promise.all(this.internalConfig.pairs.map(async (pair) => {
+                return createPairIfNeeded(pair, this.internalConfig, this.network);
+            }));
+            logger.info(`[${this.id}] Done creating pairs`);
+
             await this.processPairs();
 
             return true;

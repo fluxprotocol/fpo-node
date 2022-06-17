@@ -35,6 +35,17 @@ export default class EvmNetwork extends Network {
         return result;
     }
 
+    async call(txParams: TxCallParams): Promise<any> {
+        if (!txParams.abi) throw new Error(`[${this.id}] ABI is required for tx ${JSON.stringify(txParams)}`);
+        const provider = new JsonRpcProvider(this.internalConfig.rpc);
+        const contract = new Contract(txParams.address, txParams.abi, this.wallet);
+
+        const args = Object.values(txParams.params);
+        const result = await contract[txParams.method](...args);
+
+        return result;
+    }
+
     async onQueueBatch(batch: DataRequestBatchResolved): Promise<void> {
         for await (const request of batch.requests) {
             try {
@@ -53,9 +64,7 @@ export default class EvmNetwork extends Network {
                 const result = await contract[request.txCallParams.method](...args);
 
                 if (batch.db !== undefined) {
-                    batch.db
-                        .prepare(`INSERT INTO logs VALUES (?, ?, ?);`)
-                        .run(result.hash, Date.now(), request.txCallParams.params._answers.join(','));
+                    batch.db.log(result.hash, request.txCallParams.params._answers.join(','));
                 }
             } catch (error: any) {
                 // Try to check if SERVER ERROR was because a node already pushed the same update

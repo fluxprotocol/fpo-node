@@ -19,7 +19,6 @@ export function createNodeConfig(ownNode: NodeInfo, otherNodes: NodeInfo[], logF
             "peers": otherNodes.map(peer => {
                 return `/ip4/127.0.0.1/tcp/${peer.port}/p2p/${peer.peerId.toB58String()}`;
             }),
-            "logFile": logFile,
         },
         "networks": [
             {
@@ -40,7 +39,7 @@ export function createNodeConfig(ownNode: NodeInfo, otherNodes: NodeInfo[], logF
                 "pairs": [
                     {
                         "pair": "NEAR/USDT",
-                        "decimals": 6,
+                        "decimals": 9,
                         "sources": [
                             {
                                 "source_path": "market_data.current_price.usd",
@@ -50,6 +49,9 @@ export function createNodeConfig(ownNode: NodeInfo, otherNodes: NodeInfo[], logF
                     }
                 ],
                 "interval": 60000,
+                "logFile": logFile,
+                "creator": "0x20F1F70CA77e0db2F88eC3e0464063321Be05055",
+                "signers": ["0x20F1F70CA77e0db2F88eC3e0464063321Be05055", "0xa0976a2285Ef1B939442Ccb2dcE96BfD56b16a03"],
                 "type": "P2PModule"
             }
         ]
