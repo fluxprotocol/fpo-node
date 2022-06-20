@@ -239,9 +239,6 @@ async function retryFetch(input: RequestInfo, init?: RequestInit, maxRetries = 5
             url: response.url,
             statusText: response.statusText
         });
-        await sleep(waitTimeMs);
-
-        return retryFetch(input, init, maxRetries - 1, waitTimeMs);
     } catch (error) {
         if ((maxRetries - 1) === 0) {
             throw error;
@@ -251,8 +248,8 @@ async function retryFetch(input: RequestInfo, init?: RequestInit, maxRetries = 5
             error,
             fingerprint: "executeFetch-retry-failure"
         });
-        await sleep(waitTimeMs);
-
-        return retryFetch(input, init, maxRetries - 1, waitTimeMs);
     }
+    await sleep(waitTimeMs);
+
+    return retryFetch(input, init, maxRetries - 1, waitTimeMs);
 }
