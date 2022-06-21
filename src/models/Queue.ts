@@ -21,9 +21,13 @@ export class Queue {
     }
 
     add(batch: DataRequestBatchResolved) {
-        if (this.has(batch)) return;
+        if (this.has(batch)) {
+            logger.debug(`[${this.id}] Cannot add the already existing ${batch.internalId} to queue (size: ${this.items.length})`);
+
+            return;
+        }
         this.items.push(batch);
-        logger.debug(`[${this.id}] Added "${batch.internalId}" to queue`);
+        logger.debug(`[${this.id}] Added "${batch.internalId}" to queue (size: ${this.items.length})`);
     }
 
     start(onBatchReady: (batch: DataRequestBatchResolved) => Promise<void>) {
