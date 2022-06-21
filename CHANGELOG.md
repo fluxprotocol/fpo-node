@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.4.1](https://github.com/fluxprotocol/fpo-node/compare/v1.4.0...v1.4.1) (2022-06-21)
+
+
+### Bug Fixes
+
+* **fetch:** Move recursive call outside try-catch ([39511d4](https://github.com/fluxprotocol/fpo-node/commit/39511d49f49f4210dde45bb4b752cf6ac438871c))
+
 ## [1.4.0](https://github.com/fluxprotocol/fpo-node/compare/v1.3.1...v1.4.0) (2022-06-01)
 
 

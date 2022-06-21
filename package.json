@@ -1,6 +1,6 @@
 {
     "name": "fpo-node",
-    "version": "1.4.0",
+    "version": "1.4.1",
     "description": "First Party Oracle",
     "main": "index.js",
     "repository": "git@github.com:fluxprotocol/fpo-node.git",
