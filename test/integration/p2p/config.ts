@@ -39,7 +39,7 @@ export function createNodeConfig(ownNode: NodeInfo, otherNodes: NodeInfo[], logF
                 "pairs": [
                     {
                         "pair": "NEAR/USDT",
-                        "decimals": 9,
+                        "decimals": 6,
                         "sources": [
                             {
                                 "source_path": "market_data.current_price.usd",

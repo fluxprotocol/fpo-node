@@ -54,7 +54,7 @@ export class Network extends EventEmitter implements INetwork {
         throw new Error(`${this.id} Not implemented call`);
     }
 
-    async onQueueBatch(batch: DataRequestBatch): Promise<void> {
+    async onQueueBatch(batch: DataRequestBatch) {
         throw new Error(`${this.id} Not implemented onQueueBatch`);
     }
 
