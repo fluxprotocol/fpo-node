@@ -35,15 +35,12 @@ export default class EvmNetwork extends Network {
         return result;
     }
 
-    async call(txParams: TxCallParams): Promise<any> {
+    async call(txParams: TxCallParams): Promise<void> {
         if (!txParams.abi) throw new Error(`[${this.id}] ABI is required for tx ${JSON.stringify(txParams)}`);
-        const provider = new JsonRpcProvider(this.internalConfig.rpc);
-        const contract = new Contract(txParams.address, txParams.abi, provider);
-
+        const contract = new Contract(txParams.address, txParams.abi, this.wallet);
         const args = Object.values(txParams.params);
-        const result = await contract[txParams.method](...args);
-
-        return result;
+        await contract[txParams.method](...args);
+        return
     }
 
     async onQueueBatch(batch: DataRequestBatchResolved): Promise<void> {

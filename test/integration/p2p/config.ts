@@ -38,7 +38,7 @@ export function createNodeConfig(ownNode: NodeInfo, otherNodes: NodeInfo[], logF
                 "minimumUpdateInterval": 1800000,
                 "pairs": [
                     {
-                        "pair": "NEAR/USDT",
+                        "pair": "NEAR--USDT",
                         "decimals": 6,
                         "sources": [
                             {
@@ -50,12 +50,14 @@ export function createNodeConfig(ownNode: NodeInfo, otherNodes: NodeInfo[], logF
                 ],
                 "interval": 60000,
                 "logFile": logFile,
-                "creator": "0x20F1F70CA77e0db2F88eC3e0464063321Be05055",
-                "signers": ["0x20F1F70CA77e0db2F88eC3e0464063321Be05055", "0xa0976a2285Ef1B939442Ccb2dcE96BfD56b16a03"],
+                "creator": "0xE19E8d5346Ade8294ec07c5431E5f6A1bb7F8ab2",
+                "signers": ["0xE19E8d5346Ade8294ec07c5431E5f6A1bb7F8ab2", "0xD8FC00c7fe6e9a12d701192595abF425A6546E9A"],
+                // "creator": "0x20F1F70CA77e0db2F88eC3e0464063321Be05055",
+                // "signers": ["0x20F1F70CA77e0db2F88eC3e0464063321Be05055", "0xa0976a2285Ef1B939442Ccb2dcE96BfD56b16a03"],
                 "type": "P2PModule"
             }
         ]
     }
-
+    console.log("listen+++++", `/ip4/127.0.0.1/tcp/${ownNode.port}/p2p/${ownNode.peerId.toB58String()}`)
     return config;
 }
