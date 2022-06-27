@@ -38,7 +38,7 @@ export function createNodeConfig(ownNode: NodeInfo, otherNodes: NodeInfo[], logF
                 "minimumUpdateInterval": 1800000,
                 "pairs": [
                     {
-                        "pair": "NEAR--USDT",
+                        "pair": "NEAR//USDT",
                         "decimals": 6,
                         "sources": [
                             {
