@@ -24,6 +24,8 @@ async function test() {
 
     const node1Config = createNodeConfig(node1, [node2], "node1_logs");
     const node2Config = createNodeConfig(node2, [node1], "node2_logs");
+    // console.log(node1Config)
+    console.log(node2Config)
 
     main(node1Config);
     main(node2Config);
