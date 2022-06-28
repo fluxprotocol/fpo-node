@@ -30,7 +30,7 @@
             "minimumUpdateInterval": 1800000,
             "pairs": [
                 {
-                    "pair": "NEAR///USD",
+                    "pair": "NEAR+/USD",
                     "decimals": 9,
                     "sources": [
                         {
