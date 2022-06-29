@@ -58,6 +58,7 @@ export default class EvmNetwork extends Network {
                 }
 
                 const args = Object.values(request.txCallParams.params);
+                console.log("**sent args", args)
                 const result = await contract[request.txCallParams.method](...args);
 
                 if (batch.db !== undefined) {
@@ -159,7 +160,10 @@ export default class EvmNetwork extends Network {
 
     async sign(digest: Uint8Array): Promise<Uint8Array> {
         const signature = await this.wallet.signMessage(digest);
+        // return fromString(signature);
+        console.log("SIGNATuREEEEEEEEEEE", signature)
         return fromString(signature);
+
     }
 
     async verifySignature(message: Uint8Array, signature: Uint8Array): Promise<string> {

@@ -87,6 +87,8 @@ export function createResolveP2PRequest(aggregateResult: AggregateResult, hashFe
 
     const reports = Array.from(aggregateResult.reports);
     console.log(`[${reports.length}] reports -> `, reports);
+    reports.sort((a, b) => Number(a.data) - Number(b.data))
+    console.log("**sorted reports: ", reports)
 
     if (request.targetNetwork.type === 'evm') {
         const signatures = reports.map((report) => toString(fromString(report.signature, 'base64')));
