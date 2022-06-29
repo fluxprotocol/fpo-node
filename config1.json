@@ -25,12 +25,12 @@
     "modules": [
         {
             "networkId": 1313161555,
-            "contractAddress": "0x4535B42d72EA8B657e7aEfFB8a6e89C581262dc5",
+            "contractAddress": "0x33ca1C7b295b9D7Bf97A2926122c7BE44ed27539",
             "deviationPercentage": 0.5,
             "minimumUpdateInterval": 1800000,
             "pairs": [
                 {
-                    "pair": "Test/USD",
+                    "pair": "Test////testt+1",
                     "decimals": 9,
                     "sources": [
                         {

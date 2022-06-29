@@ -160,8 +160,7 @@ export default class EvmNetwork extends Network {
 
     async sign(digest: Uint8Array): Promise<Uint8Array> {
         const signature = await this.wallet.signMessage(digest);
-        // return fromString(signature);
-        console.log("SIGNATuREEEEEEEEEEE", signature)
+        console.log("SIGNATUREEEE", signature)
         return fromString(signature);
 
     }

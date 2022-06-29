@@ -91,8 +91,12 @@ export function createResolveP2PRequest(aggregateResult: AggregateResult, hashFe
     console.log("**sorted reports: ", reports)
 
     if (request.targetNetwork.type === 'evm') {
-        const signatures = reports.map((report) => toString(fromString(report.signature, 'base64')));
-        const answers = reports.map(report => BigNumber.from(report.data));
+        // const signatures = reports.map((report) => toString(fromString(report.signature, 'base64')));
+        const signatures = reports.map((report) => toString(fromString(report.signature)));
+
+        // const answers = reports.map(report => BigNumber.from(report.data));
+        const answers = reports.map(report => report.data);
+
         const timestamps = reports.map(report => report.timestamp);
 
         txCallParams = {

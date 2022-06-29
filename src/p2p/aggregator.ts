@@ -9,6 +9,12 @@ import { P2PDataRequest } from "../modules/p2p/models/P2PDataRequest";
 import { arrayify, solidityKeccak256 } from "ethers/lib/utils";
 import { extractP2PMessage, P2PMessage } from './models/P2PMessage';
 import EventEmitter from "events";
+import EvmNetwork from "../networks/evm/EvmNetwork";
+import getWalletPublicAddress from "../networks/evm/EvmNetwork"
+import { time } from "console";
+
+
+
 
 const LOG_NAME = 'p2p-aggregator';
 
@@ -59,6 +65,8 @@ export default class P2PAggregator extends EventEmitter {
     private async handleIncomingData(peer: Multiaddr, source: AsyncIterable<Uint8Array | BufferList>) {
         const message = await extractP2PMessage(source);
         if (!message) return;
+        const request = this.requests.get(message.id);
+
 
         // It's possible we got these message even before this node
         // realises that the pair needs to be updated. We save them for future use.
@@ -66,13 +74,26 @@ export default class P2PAggregator extends EventEmitter {
         if (!reports) {
             reports = new Set();
         }
+        if (reports.size >= 1){
+            let it = reports.values();
+            let report = it.next().value;
+            while( report != null){
+                if(report.round < message.round){
+                    reports.delete(report)
+                    console.log("**Deleted outdated report (wrong round)")
 
+                }
+                report = it.next().value;
+            }
+
+        }
+      
         reports.add(message);
         this.requestReports.set(message.id, reports);
 
         logger.debug(`[${LOG_NAME}-${message.id}] Received message from ${peer} ${this.requestReports.size}/${this.p2p._peers.size}`);
 
-        const request = this.requests.get(message.id);
+        // const request = this.requests.get(message.id);
         if (!request) {
             logger.debug(`[${LOG_NAME}-${message.id}] Request could not be found yet, reports are being saved for future use.`);
             return;
@@ -119,18 +140,22 @@ export default class P2PAggregator extends EventEmitter {
 
         const roundId = this.roundIds.get(id);
         if (!roundId) return;
+        
 
         // TODO: This is apperently a property on the smart contract. We can later always try to call this property. (with ofc a cache of 30min or so and use a stale value if that fails)
         const requiredAmountOfSignatures = Math.floor(this.p2p._peers.size / 2) + 1;
-
+      
         if (reports.size <= requiredAmountOfSignatures) {
+            // TODO: clear outdated requests *************
+            // this.clearRequest(id);
+            setTimeout(() => this.reselectLeader(id), request.extraInfo.p2pReelectWaitTimeMs);
             return;
         }
+        
 
         logger.debug(`[${LOG_NAME}-${id}] Received enough signatures`);
         // Round id can randomly be modified so we should only use it for reelecting a leader
         const leader = electLeader(this.p2p, roundId);
-
         if (this.thisNode.equals(leader)) {
             logger.debug(`[${LOG_NAME}-${request.internalId}] This node is the leader. Sending transaction across network and blockchain`);
 
@@ -153,12 +178,17 @@ export default class P2PAggregator extends EventEmitter {
             const timestamp = Math.round(new Date().getTime() / 1000);
             const message = hashPairSignatureInfo(hashFeedId, roundId.toString(), data, timestamp);
             const signature = await request.targetNetwork.sign(arrayify(message));
+            console.log(`+++++++++SIG = ${toString(signature)} , answer = ${data} , signer = ${request.targetNetwork.getWalletPublicAddress()},
+            timestamp ${timestamp}, round ${roundId.toString()}`)
 
             const p2pMessage: P2PMessage = {
                 data,
-                signature: toString(signature, 'base64'),
+                // signature: toString(signature, 'base64'),
+                signature: toString(signature),
+
                 id: request.internalId,
                 timestamp,
+                round: Number(roundId)
             };
 
             this.callbacks.set(request.internalId, resolve);
@@ -171,6 +201,7 @@ export default class P2PAggregator extends EventEmitter {
             if (!reports) {
                 reports = new Set();
             }
+
 
             reports.add(p2pMessage);
             this.requestReports.set(request.internalId, reports);
