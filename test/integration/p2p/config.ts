@@ -33,13 +33,13 @@ export function createNodeConfig(ownNode: NodeInfo, otherNodes: NodeInfo[], logF
             {
                 "networkId": 1313161555,
                 // @ts-ignore
-                "contractAddress": "0x13dd5C7D444448f2235D1B874b0b63897b9D8A46",
+                "contractAddress": "0xCff7fF64fa168DeC1f2820Df98ede4A1F4Cc1DD7",
                 "deviationPercentage": 0.5,
                 "minimumUpdateInterval": 1800000,
                 "pairs": [
                     {
-                        "pair": "Test++USD",
-                        "decimals": 6,
+                        "pair": "Test//*+++++",
+                        "decimals": 9,
                         "sources": [
                             {
                                 "source_path": "market_data.current_price.usd",

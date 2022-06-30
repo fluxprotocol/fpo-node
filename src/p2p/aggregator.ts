@@ -87,16 +87,21 @@ export default class P2PAggregator extends EventEmitter {
             }
 
         }
-      
+
         reports.add(message);
         this.requestReports.set(message.id, reports);
 
         logger.debug(`[${LOG_NAME}-${message.id}] Received message from ${peer} ${this.requestReports.size}/${this.p2p._peers.size}`);
 
-        // const request = this.requests.get(message.id);
+
         if (!request) {
             logger.debug(`[${LOG_NAME}-${message.id}] Request could not be found yet, reports are being saved for future use.`);
             return;
+        }
+        if(reports.size == 1){
+            console.log("RESELECTING LEADER+++++++")
+            setTimeout(() => this.reselectLeader(message.id), request?.extraInfo.p2pReelectWaitTimeMs);
+
         }
 
         await this.handleReports(message.id);
@@ -140,15 +145,13 @@ export default class P2PAggregator extends EventEmitter {
 
         const roundId = this.roundIds.get(id);
         if (!roundId) return;
-        
 
         // TODO: This is apperently a property on the smart contract. We can later always try to call this property. (with ofc a cache of 30min or so and use a stale value if that fails)
         const requiredAmountOfSignatures = Math.floor(this.p2p._peers.size / 2) + 1;
       
         if (reports.size <= requiredAmountOfSignatures) {
-            // TODO: clear outdated requests *************
-            // this.clearRequest(id);
-            setTimeout(() => this.reselectLeader(id), request.extraInfo.p2pReelectWaitTimeMs);
+            logger.debug(`[${LOG_NAME}-${id}] No enough signatures`);
+            // setTimeout(() => this.reselectLeader(id), request.extraInfo.p2pReelectWaitTimeMs);
             return;
         }
         
@@ -202,7 +205,14 @@ export default class P2PAggregator extends EventEmitter {
                 reports = new Set();
             }
 
-
+            let it = reports.values();
+            let report = it.next().value;
+            while(report != null){
+                if (report.round < p2pMessage.round){
+                    reports.delete(report)
+                }
+                report = it.next().value;
+            }
             reports.add(p2pMessage);
             this.requestReports.set(request.internalId, reports);
 
