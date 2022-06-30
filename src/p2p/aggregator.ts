@@ -66,30 +66,39 @@ export default class P2PAggregator extends EventEmitter {
         const message = await extractP2PMessage(source);
         if (!message) return;
         const request = this.requests.get(message.id);
-
+        if (!request) return;
 
         // It's possible we got these message even before this node
         // realises that the pair needs to be updated. We save them for future use.
-        let reports = this.requestReports.get(message.id);
-        if (!reports) {
-            reports = new Set();
-        }
+        // However if they have the wrong roundID we have to reconstruct the signatures.
+        let reports = this.requestReports.get(message.id) ?? new Set();
+        let reconstructed_reports: Set<P2PMessage> = new Set();
         if (reports.size >= 1){
-            let it = reports.values();
-            let report = it.next().value;
-            while( report != null){
+            for (const report of reports) {
                 if(report.round < message.round){
                     reports.delete(report)
-                    console.log("**Deleted outdated report (wrong round)")
-
+                    console.log("**Deleted outdated report (wrong round)");
+                    // Reconstructs the old report so that we have enough reports.
+                    const timestamp = Math.round(new Date().getTime() / 1000);
+                    const hash = hashPairSignatureInfo(message.hashFeedId, message.round.toString(), report.data, timestamp);
+                    const signature = toString(await request.targetNetwork.sign(arrayify(hash)));
+                    console.log(`+++++++++SIG = ${signature} , answer = ${report.data}, signature = ${signature},
+            timestamp ${timestamp}, round ${message.round.toString()}`)
+                    const p2pMessage: P2PMessage = {
+                        ...report,
+                        round: message.round,
+                        signature,
+                        timestamp,
+                    };
+                    reconstructed_reports.add(p2pMessage);
+                } else {
+                    reconstructed_reports.add(report);
                 }
-                report = it.next().value;
             }
-
         }
 
-        reports.add(message);
-        this.requestReports.set(message.id, reports);
+        reconstructed_reports.add(message);
+        this.requestReports.set(message.id, reconstructed_reports);
 
         logger.debug(`[${LOG_NAME}-${message.id}] Received message from ${peer} ${this.requestReports.size}/${this.p2p._peers.size}`);
 
@@ -188,7 +197,7 @@ export default class P2PAggregator extends EventEmitter {
                 data,
                 // signature: toString(signature, 'base64'),
                 signature: toString(signature),
-
+                hashFeedId,
                 id: request.internalId,
                 timestamp,
                 round: Number(roundId)
@@ -200,18 +209,15 @@ export default class P2PAggregator extends EventEmitter {
             this.roundIds.set(request.internalId, roundId);
 
             // Reports may already been set due to a faster node
-            let reports = this.requestReports.get(request.internalId);
-            if (!reports) {
-                reports = new Set();
-            }
+            let reports = this.requestReports.get(request.internalId) ?? new Set();
 
-            let it = reports.values();
-            let report = it.next().value;
-            while(report != null){
+            for (const report of reports) {
                 if (report.round < p2pMessage.round){
-                    reports.delete(report)
+                    // this one doesn't seem to be hit. I think we can delete it.
+                    // Will leave it it in for testing purposes.
+                    console.log("~~Deleted outdated report (wrong round)");
+                    reports.delete(report);
                 }
-                report = it.next().value;
             }
             reports.add(p2pMessage);
             this.requestReports.set(request.internalId, reports);

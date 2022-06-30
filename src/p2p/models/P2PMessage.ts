@@ -4,6 +4,7 @@ import logger from "../../services/LoggerService";
 
 export interface P2PMessage {
     data: string;
+    hashFeedId: string;
     signature: string;
     id: string;
     timestamp: number;
