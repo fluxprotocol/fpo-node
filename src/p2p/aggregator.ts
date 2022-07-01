@@ -84,21 +84,92 @@ export default class P2PAggregator extends EventEmitter {
 
         let reconstructed_reports: Set<P2PMessage> = new Set();
 
-        if (reports.size >= 1){
+        // if (reports.size >= 1){
+        //     let deleted = false;
+        //     for (const report of reports) {
+        //         if(report.round < message.round){
+        //             reports.delete(report)
+        //             console.log("**Deleted outdated report (wrong round)");
+        //             deleted = true;
+        //             let executeResult = await executeFetch(request.args);
+        //             const lastLog = executeResult.logs.pop(); 
+        //             let data;
+        //             if(lastLog){
+        //                 const logResult = JSON.parse(lastLog);
+        //                 data = logResult.value;
+        //                 console.log("**fetched data", data);
+        //             }
+        //             // Reconstructs the old report so that we have enough reports.
+        //             const timestamp = Math.round(new Date().getTime() / 1000);
+        //             const data_to_be_signed = data ?? report.data;
+        //             const hash = hashPairSignatureInfo(message.hashFeedId, message.round.toString(), data_to_be_signed, timestamp);
+        //             const signature = toString(await request.targetNetwork.sign(arrayify(hash)));
+        //             console.log(`++SIG = ${signature} , answer = ${data_to_be_signed}, signature = ${signature},
+        //             timestamp ${timestamp}, round ${message.round.toString()}`)
+        //             const p2pMessage: P2PMessage = {
+        //                 ...report,
+        //                 round: message.round,
+        //                 signature,
+        //                 timestamp,
+        //                 signer: request.targetNetwork.getWalletPublicAddress()
+        //             };
+        //             let exists = false;
+        //             for(let rreport of reconstructed_reports){
+        //                 if((rreport.signature == p2pMessage.signature) || (rreport.signer == request.targetNetwork.getWalletPublicAddress())){
+        //                     exists = true;
+        //                 }
+        //             }
+        //             if(!exists){
+        //                 reconstructed_reports.add(p2pMessage);
+        //                 setTimeout(() => this.reselectLeader(message.id), request?.extraInfo.p2pReelectWaitTimeMs);
+        //                 // logger.debug(`[${LOG_NAME}-${request.internalId}] ++++Sending data to peers: ${p2pMessage.data}`);
+        //                 //     await this.p2p.send(`/send/data`, [
+        //                 //         fromString(JSON.stringify(p2pMessage)),
+        //                 //     ]);
+        //             }
+        //         } else {
+        //             reconstructed_reports.add(report);
+        //         }
+        //     }
+        //     if ((reconstructed_reports.size - 1 < requiredAmountOfSignatures) && !deleted ){
+        //         let report1 = reconstructed_reports.values().next().value ?? null;
+        //         const timestamp = Math.round(new Date().getTime() / 1000);
+        //                 const hash = hashPairSignatureInfo(message.hashFeedId, message.round.toString(), report1.data, timestamp);
+        //                 const signature = toString(await request.targetNetwork.sign(arrayify(hash)));
+        //                 console.log(`+++++++++SIG = ${signature} , answer = ${report1.data}, signature = ${signature},
+        //         timestamp ${timestamp}, round ${message.round.toString()}`)
+        //                 const p2pMessage: P2PMessage = {
+        //                     ...report1,
+        //                     round: message.round,
+        //                     signature,
+        //                     timestamp,
+        //                 };
+        //                 let exists = false;
+        //                 for(let rreport of reconstructed_reports){
+        //                     if((rreport.signature == p2pMessage.signature) || (rreport.signer == request.targetNetwork.getWalletPublicAddress())){
+        //                         exists = true;
+        //                     }
+        //                 }
+        //                 if(!exists){
+        //                     reconstructed_reports.add(p2pMessage);
+        //                     setTimeout(() => this.reselectLeader(message.id), request?.extraInfo.p2pReelectWaitTimeMs);
+        //                     // logger.debug(`[${LOG_NAME}-${request.internalId}] ----Sending data to peers: ${p2pMessage.data}`);
+        //                     // await this.p2p.send(`/send/data`, [
+        //                     //     fromString(JSON.stringify(p2pMessage)),
+        //                     // ]);
+        //                 }
+        //     }
+        // }
 
-            let deleted = false;
-           
-            
+
+        if (reports.size >= 1){
             for (const report of reports) {
                 if(report.round < message.round){
                     reports.delete(report)
                     console.log("**Deleted outdated report (wrong round)");
-                    deleted = true;
-
 
                     let executeResult = await executeFetch(request.args);
-                    const lastLog = executeResult.logs.pop();
-                    
+                    const lastLog = executeResult.logs.pop(); 
                     let data;
                     if(lastLog){
                         const logResult = JSON.parse(lastLog);
@@ -108,10 +179,9 @@ export default class P2PAggregator extends EventEmitter {
 
                     // Reconstructs the old report so that we have enough reports.
                     const timestamp = Math.round(new Date().getTime() / 1000);
-                    const data_to_be_signed = data ?? report.data;
-                    const hash = hashPairSignatureInfo(message.hashFeedId, message.round.toString(), data_to_be_signed, timestamp);
+                    const hash = hashPairSignatureInfo(message.hashFeedId, message.round.toString(), data?? report.data, timestamp);
                     const signature = toString(await request.targetNetwork.sign(arrayify(hash)));
-                    console.log(`++SIG = ${signature} , answer = ${data_to_be_signed}, signature = ${signature},
+                    console.log(`+++++++++SIG = ${signature} , answer = ${report.data}, signature = ${signature},
                     timestamp ${timestamp}, round ${message.round.toString()}`)
                     const p2pMessage: P2PMessage = {
                         ...report,
@@ -119,59 +189,25 @@ export default class P2PAggregator extends EventEmitter {
                         signature,
                         timestamp,
                         signer: request.targetNetwork.getWalletPublicAddress()
-
                     };
                     let exists = false;
                     for(let rreport of reconstructed_reports){
-                        if((rreport.signature == p2pMessage.signature) || (rreport.signer == request.targetNetwork.getWalletPublicAddress())){
+                        if((rreport.signature == p2pMessage.signature) || (rreport.signer == p2pMessage.signer)){
                             exists = true;
                         }
                     }
                     if(!exists){
                         reconstructed_reports.add(p2pMessage);
                         setTimeout(() => this.reselectLeader(message.id), request?.extraInfo.p2pReelectWaitTimeMs);
-                        // logger.debug(`[${LOG_NAME}-${request.internalId}] ++++Sending data to peers: ${p2pMessage.data}`);
-                        //     await this.p2p.send(`/send/data`, [
-                        //         fromString(JSON.stringify(p2pMessage)),
-                        //     ]);
-                    }
+
+                       
+                    }                
                 } else {
                     reconstructed_reports.add(report);
                 }
             }
-
-            if ((reconstructed_reports.size - 1 < requiredAmountOfSignatures) && !deleted ){
-                let report1 = reconstructed_reports.values().next().value ?? null;
-
-                const timestamp = Math.round(new Date().getTime() / 1000);
-                        const hash = hashPairSignatureInfo(message.hashFeedId, message.round.toString(), report1.data, timestamp);
-                        const signature = toString(await request.targetNetwork.sign(arrayify(hash)));
-                        console.log(`+++++++++SIG = ${signature} , answer = ${report1.data}, signature = ${signature},
-                timestamp ${timestamp}, round ${message.round.toString()}`)
-                        const p2pMessage: P2PMessage = {
-                            ...report1,
-                            round: message.round,
-                            signature,
-                            timestamp,
-                        };
-                        let exists = false;
-                        for(let rreport of reconstructed_reports){
-                            if((rreport.signature == p2pMessage.signature) || (rreport.signer == request.targetNetwork.getWalletPublicAddress())){
-                                exists = true;
-                            }
-                        }
-                        if(!exists){
-                            reconstructed_reports.add(p2pMessage);
-                            setTimeout(() => this.reselectLeader(message.id), request?.extraInfo.p2pReelectWaitTimeMs);
-                            // logger.debug(`[${LOG_NAME}-${request.internalId}] ----Sending data to peers: ${p2pMessage.data}`);
-                            // await this.p2p.send(`/send/data`, [
-                            //     fromString(JSON.stringify(p2pMessage)),
-                            // ]);
-
-                        }
-            }
-          
         }
+
 
         reconstructed_reports.add(message);
 
@@ -242,7 +278,8 @@ export default class P2PAggregator extends EventEmitter {
         // const requiredAmountOfSignatures: Big = await getMinSignersForPair(this.internalConfig, request.targetNetwork, reports.values().next().value.hashFeedId);
 
         // if (reports.size < Number(requiredAmountOfSignatures)) {
-        if (reports.size <= requiredAmountOfSignatures) {
+        // if (reports.size <= requiredAmountOfSignatures) {
+        if (reports.size < requiredAmountOfSignatures) {
 
             logger.debug(`[${LOG_NAME}-${id}] No enough signatures`);
             // setTimeout(() => this.reselectLeader(id), request.extraInfo.p2pReelectWaitTimeMs);

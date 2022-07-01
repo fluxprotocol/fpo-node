@@ -48,7 +48,7 @@ export function createNodeConfig(ownNode: NodeInfo, otherNodes: NodeInfo[], logF
                     //     ]
                     // },
                     {
-                        "pair": "Test+USD+++++++++++++++",
+                        "pair": "Test+USDTt///",
                         "decimals": 6,
                         "sources": [
                             {
