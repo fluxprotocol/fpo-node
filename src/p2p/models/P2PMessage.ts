@@ -1,4 +1,5 @@
 import BufferList from "bl/BufferList";
+import { Address } from "libp2p/src/dialer";
 import { fromString } from "uint8arrays/from-string";
 import logger from "../../services/LoggerService";
 
@@ -9,6 +10,7 @@ export interface P2PMessage {
     id: string;
     timestamp: number;
     round: number;
+    signer: string
 }
 
 export async function extractP2PMessage(source: AsyncIterable<Uint8Array | BufferList>): Promise<P2PMessage | undefined> {

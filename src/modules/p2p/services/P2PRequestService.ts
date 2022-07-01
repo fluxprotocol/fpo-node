@@ -42,6 +42,38 @@ export async function getRoundIdForPair(config: P2PInternalConfig, network: Netw
     }
 }
 
+export async function getMinSignersForPair(config: P2PInternalConfig, network: Network, computedId: string): Promise<Big> {
+    try {
+        if (network.type === 'evm') {
+            console.log('[] computedId -> ', computedId);
+
+            const latestRound: BigNumber = await network.view({
+                address: config.contractAddress,
+                method: 'getMinSigners',
+                params: {
+                    _id: computedId,
+                },
+                abi: FluxP2PFactory.abi,
+            });
+
+            return new Big(latestRound.toString());
+        }
+
+        // TODO: Near currently does not have a latest round...
+        return new Big(5);
+    } catch (error) {
+        if (error instanceof Error) {
+            // Price pair does not exist yet
+            if (error.message === 'NULL_ADDRESS') {
+                return new Big(0);
+            }
+        }
+
+        throw error;
+    }
+}
+
+
 export function createBatchFromPairs(config: P2PInternalConfig, targetNetwork: Network): P2PDataRequestBatch {
     const requests: P2PDataRequest[] = config.pairs.map((pairInfo) => {
 
@@ -88,8 +120,8 @@ export function createResolveP2PRequest(aggregateResult: AggregateResult, hashFe
     const reports = Array.from(aggregateResult.reports);
     console.log(`[${reports.length}] reports -> `, reports);
     reports.sort((a, b) => Number(a.data) - Number(b.data))
-    console.log("**sorted reports: ", reports)
-
+    // console.log("**sorted reports: ", reports)
+    
     if (request.targetNetwork.type === 'evm') {
         // const signatures = reports.map((report) => toString(fromString(report.signature, 'base64')));
         const signatures = reports.map((report) => toString(fromString(report.signature)));
