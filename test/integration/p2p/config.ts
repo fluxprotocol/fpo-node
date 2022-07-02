@@ -37,18 +37,18 @@ export function createNodeConfig(ownNode: NodeInfo, otherNodes: NodeInfo[], logF
                 "deviationPercentage": 0.5,
                 "minimumUpdateInterval": 1800000,
                 "pairs": [
-                    // {
-                    //     "pair": "NEAR-USDT",
-                    //     "decimals": 6,
-                    //     "sources": [
-                    //         {
-                    //             "source_path": "market_data.current_price.usd",
-                    //             "end_point": "https://api.coingecko.com/api/v3/coins/near"
-                    //         }
-                    //     ]
-                    // },
                     {
-                        "pair": "Test+USDTt///",
+                        "pair": "NEAR-------------------------------USDT",
+                        "decimals": 6,
+                        "sources": [
+                            {
+                                "source_path": "market_data.current_price.usd",
+                                "end_point": "https://api.coingecko.com/api/v3/coins/near"
+                            }
+                        ]
+                    },
+                    {
+                        "pair": "NEAR///////////////////////////////USD",
                         "decimals": 6,
                         "sources": [
                             {
