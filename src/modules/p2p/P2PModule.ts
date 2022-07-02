@@ -90,6 +90,12 @@ export class P2PModule extends Module {
                 remainingInterval = this.internalConfig.interval;
             }
 
+            if (this.p2p._connections.size === 0) {
+                logger.info(`Currently have 0 connected peers: waiting for other peers to connect...`);
+                setTimeout(this.processPairs.bind(this), remainingInterval);
+                return;
+            }
+
             logger.info(`[${this.id}] Processing job`);
             const job = this.appConfig.jobs.find(job => job.type === FetchJob.type);
             if (!job) throw new Error(`No job found with id ${FetchJob.type}`);
@@ -199,13 +205,18 @@ export class P2PModule extends Module {
             logger.info(`[${this.id}] Creating pairs if needed..`);
             
             // calling deployOracle for more than one pair without delay bet calls throw server error
-            let delay = 0; const delayIncrement = 20000;
+            let delay = 0; const delayIncrement = 20_000;
             await Promise.all(this.internalConfig.pairs.map(async (pair) => {
-                // await createPairIfNeeded(pair, this.internalConfig, this.network);        
-                
                 delay += delayIncrement;
                 return new Promise(resolve => setTimeout(resolve, delay)).then(
-                    () => createPairIfNeeded(pair, this.internalConfig, this.network)
+                    async () => {
+                        let pair_created = await createPairIfNeeded(pair, this.internalConfig, this.network);
+                        while (!pair_created) {
+                            setTimeout(async () => {
+                                pair_created = await createPairIfNeeded(pair, this.internalConfig, this.network);
+                            }, 5_000);
+                        }
+                    }
                 );
             }));
           

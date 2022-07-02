@@ -73,23 +73,17 @@ export default class Communicator {
             this._node_addr = `${node.multiaddrs[0]}/p2p/${node.peerId.toJSON().id}`;
 
 			console.log('Picked an address');
-			// TODO: Not sure if trying to connect to peers on startup would have adverse affects?
-			// we could always just call retry... but we don't know when the other nodes started...
-			// idk if we would want to wait for to be connected to all given peers in the list or
-			// maybe if they get put in the retry list remove them from the peers list for now
-			// that would allow us to operate over the currently connected peers...
-			// but if a peer suddenly connected mid aggregate operation then one of those peers
-			// has the incorrect number of peers
 			for (const peer of this._peers) {
 				if (!await this.connect(new Multiaddr(peer))) {
 					this._retry.add(peer);
 				}
 			}
 
-            // // It's good to let the node continuesly try to reconnect to peers it cannot connect to
+            // It's good to let the node continuously try to reconnect to peers it cannot connect to
             debouncedInterval(async () => {
                 await this.retry();
-            }, 5000);
+            }, 10_000); // TODO maybe this should be longer or user set?
+			// Because if there's a lot of nodes to turn on and etc it spams the logs.
 
 			return [
 				node.multiaddrs[0],

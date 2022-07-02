@@ -69,24 +69,22 @@ export default class P2PAggregator extends EventEmitter {
         const request = this.requests.get(message.id);
 
         let reports = this.requestReports.get(message.id) ?? new Set();
-        if(this.transmittedRound.get(message.id) == undefined || ((this.transmittedRound.get(message.id) != undefined) && (this.transmittedRound.get(message.id) == message.round))){
+        if (this.transmittedRound.get(message.id) == undefined || ((this.transmittedRound.get(message.id) != undefined) && (this.transmittedRound.get(message.id) == message.round))) {
             console.log("**Adding received msg")
             reports.add(message);
-        }else{
+        } else {
             console.log("**Discarding transmitted round")
             return;
         }
         
         if (!request) {
-            if(reports.size == 0){
+            if (reports.size == 0) {
                 return;
-            }else{
+            } else {
                 this.requestReports.set(message.id, reports);
                 logger.debug(`[${LOG_NAME}-${message.id}] Request could not be found yet, reports are being saved for future use.`);
                 return;
-
             }
-           
         }
 
         console.log("**previous reports: ", reports)
@@ -99,12 +97,11 @@ export default class P2PAggregator extends EventEmitter {
                     ]);
                     logger.debug(`[${LOG_NAME}-${request.internalId}] ***Sent data to peers`);
                     console.log("*****sent", r )
-
                 }
             }
-
         }
-        if(this.p2p._retry.size == 0){
+        
+        if (this.p2p._retry.size == 0) {
             this.sentToPeers.set(request.internalId, true)
         }
 
@@ -134,16 +131,14 @@ export default class P2PAggregator extends EventEmitter {
             const resolve = this.callbacks.get(id);
             this.clearRequest(id);
             // TODO: Not sure why sometimes resolve is undefined
-            if(resolve){
+            if (resolve) {
                 return resolve!({
                     leader: false,
                     reports: this.requestReports.get(id) ?? new Set(),
                 });
-
-            }else{
+            } else {
                 console.log("++REJECTED")
             }
-            
         }
 
         const roundId = this.roundIds.get(id);
@@ -160,16 +155,13 @@ export default class P2PAggregator extends EventEmitter {
 
         const roundId = this.roundIds.get(id);
         if (!roundId) return;
-
-        // assume all node sigs are needed
-        // const requiredAmountOfSignatures = this.p2p._peers.size + 1;
         
         // accept less signatures
         const requiredAmountOfSignatures = (Math.floor(this.p2p._peers.size / 2) + 1) > 1 ? (Math.floor(this.p2p._peers.size / 2) + 1) : 2 ;
-
+        console.log("requiredAmountOfSignatures: ", requiredAmountOfSignatures);
 
         if (reports.size < requiredAmountOfSignatures) {
-            logger.debug(`[${LOG_NAME}-${id}] No enough signatures --- `);
+            logger.info(`[${LOG_NAME}-${id}] Not enough signatures --- `);
             return;
         }
         console.log("**HANDLED REPORTS: ", reports)
@@ -189,12 +181,11 @@ export default class P2PAggregator extends EventEmitter {
                 leader: true,
                 reports,
             });
-        }else{
+        } else {
             return resolve!({
                 leader: false,
                 reports,
             });
-
         }
     }
     async aggregate(request: P2PDataRequest, hashFeedId: string, data: string, roundId: Big, isRequestResolved: () => Promise<boolean>): Promise<AggregateResult> {
@@ -221,21 +212,22 @@ export default class P2PAggregator extends EventEmitter {
             this.requests.set(request.internalId, request);
             this.roundIds.set(request.internalId, roundId);
             let reports = this.requestReports.get(request.internalId) ?? new Set();
-            console.log("previously recived reports", reports)
+            console.log("previously received reports", reports)
             reports.add(p2pMessage);
+
             // TODO: if we received a msg that added to this.requestReports it will be discarded
             this.requestReports.set(request.internalId, reports);
             console.log("**aggregated reports: ", reports)
-            if(this.p2p._retry.size > 0) {
+            if (this.p2p._retry.size > 0) {
                 console.log("++UNCONNECTED PEERS: ", this.p2p._retry.size)                
-            }else{
+            } else {
+                console.log("Sending to peers");
                 await this.p2p.send(`/send/data`, [
                     fromString(JSON.stringify(p2pMessage)),
                 ]);
-                logger.debug(`[${LOG_NAME}-${request.internalId}] Sent data to peers: ${data}`);
+                logger.info(`[${LOG_NAME}-${request.internalId}] Sent data to peers: ${data}`);
                 this.sentToPeers.set(request.internalId, true)
                 await this.handleReports(request.internalId);
-
             }
             
         });

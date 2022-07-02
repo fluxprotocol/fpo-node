@@ -58,7 +58,7 @@ export function createNodeConfig(ownNode: NodeInfo, otherNodes: NodeInfo[], logF
                         ]
                     }
                 ],
-                "interval": 60000,
+                "interval": 60_000,
                 "logFile": logFile,
                 "creator": "0xE19E8d5346Ade8294ec07c5431E5f6A1bb7F8ab2",
                 // "signers": ["0xE19E8d5346Ade8294ec07c5431E5f6A1bb7F8ab2", "0xD8FC00c7fe6e9a12d701192595abF425A6546E9A"],

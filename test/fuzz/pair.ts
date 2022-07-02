@@ -24,8 +24,8 @@ export default function createPairs(min: number, max: number): Pair[] {
 
 	return new Array(num_pairs).fill(null).map((_: null, index: number) => {
 		return {
-			"pair": randomString(10),
-			"decimals": randNumberFromRange(0, 255),
+			"pair": randomString(8),
+			"decimals": randNumberFromRange(1, 10),
 			"sources": [
 				sources[index]
 			] 
