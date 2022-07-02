@@ -11,8 +11,8 @@ export interface NodeConfig {
 }
 
 export interface P2PConfig {
-	min_nodes: number;
-	max_nodes: number;
+	min_nodes?: number;
+	max_nodes?: number;
 	generate_ports: boolean;
 	ports?: number[];
 	generate_pairs: boolean;
@@ -60,6 +60,12 @@ export function load_fuzz_config(path: string): P2PFuzzConfig {
 	if (fs.existsSync(path)) {
 		const file = fs.readFileSync(path, 'utf-8');
 		const config: P2PFuzzConfig = YAML.parse(file);
+
+		if (!config.node_config.generate_keys && config.node_config.keys === undefined) throw new Error("You must specify keys if the generate keys feature is turned off.");
+		if (!config.p2p_config.generate_pairs && config.p2p_config.pairs === undefined) throw new Error("You must specify pairs if the generate pairs feature is turned off.");
+		if (!config.p2p_config.generate_peer_ids && config.p2p_config.peer_ids === undefined) throw new Error("You must specify peer ids if the generate peer ids feature is turned off.");
+		if (!config.p2p_config.generate_ports && config.p2p_config.ports === undefined) throw new Error("You must specify ports if the generate ports feature is turned off.");
+
 		return config;
 	} else {
 		default_fuzz_config(path);

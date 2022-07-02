@@ -10,10 +10,7 @@ import createPairs from './pair';
 
 async function fuzz(fuzz_config_path: string) {
 	const config: P2PFuzzConfig = load_fuzz_config(fuzz_config_path);
-	const pairs: Pair[] = config.p2p_config.generate_pairs ?
-		createPairs(config.p2p_config.min_pairs ?? 1, config.p2p_config.max_pairs ?? 6)
-		: config.p2p_config.pairs!;
-	let node_configs = await generateP2PNodesConfigs(config, pairs);
+	let node_configs = await generateP2PNodesConfigs(config);
 	let creator = node_configs.shift();
 	// console.log(`configs:`, JSON.stringify(node_configs));
 	let alive_children: Worker[] = [];

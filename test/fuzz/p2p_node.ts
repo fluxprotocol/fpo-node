@@ -26,9 +26,6 @@ export class P2PNodeInfo {
 	}
 
 	createNodeConfig(creator: string, peers: P2PNodeInfo[], pairs: Pair[]): UnparsedAppConfig {
-		console.log(`peers:`, peers.map(peer => {
-					return `/ip4/127.0.0.1/tcp/${peer.port}/p2p/${peer.peerId.toB58String()}`;
-				}));
 		return {
 			"p2p": {
 				"peer_id": this.peerId.toJSON(),
@@ -74,51 +71,46 @@ async function grabFreePort(taken: Set<number>): Promise<number> {
 	while (await isPortReachable(port, {host: 'localhost'}) && !taken.has(port)) {
 		port = randNumberFromRange(8000, 12000);
 	}
+	taken.add(port);
 	
 	return port;
 }
 
-export async function generateP2PNodesConfigs(config: P2PFuzzConfig, pairs: Pair[]): Promise<UnparsedAppConfig[]> {
+export async function generateP2PNodesConfigs(config: P2PFuzzConfig): Promise<UnparsedAppConfig[]> {
 	// create of a random number of nodes
-	const max_nodes = randNumberFromRange(config.p2p_config.min_nodes - 1, config.p2p_config.max_nodes);
+	const max_nodes = randNumberFromRange(config.p2p_config.min_nodes ?? 2, config.p2p_config.max_nodes ?? 5);
 	let nodes: P2PNodeInfo[] = new Array(max_nodes).fill(null);
 	let taken_ports: Set<number> = new Set();
 	const ports: number[] = config.p2p_config.generate_ports ?
-		await Promise.all(new Array(max_nodes).fill(0).map(async (_: number) => {
-			const port = await grabFreePort(taken_ports);
-			taken_ports.add(port);
-			return port;
-		}))
+		await Promise.all(new Array(max_nodes).fill(0).map(async (_: number) => await grabFreePort(taken_ports)))
 		: config.p2p_config.ports!.slice(0, max_nodes);
 	const peerIds: PeerId[] = config.p2p_config.generate_peer_ids ?
 		await Promise.all(new Array(max_nodes).fill(null).map(async (_) => {
 			return await PeerId.create();
 		}))
 		: await Promise.all(config.p2p_config.peer_ids!.slice(0, max_nodes).map(async (json: JSONPeerId) => await PeerId.createFromJSON(json)));
-	console.log(`ports:`, ports);
+	const pairs: Pair[] = config.p2p_config.generate_pairs ?
+		createPairs(config.p2p_config.min_pairs ?? 1, config.p2p_config.max_pairs ?? 6)
+		: config.p2p_config.pairs!;
+		console.log(`ports:`, ports);
 	console.log(`peerIds:`, peerIds.map((p) => p.toB58String()));
 	console.log(`pairs:`, pairs.map((p) => JSON.stringify(p)));
 
-	// wait 3 seconds for everything to finish.
-	await sleep(3000);
-	// manually set our creator node.
-	nodes[0] = new P2PNodeInfo(0, ports[0], peerIds[0], config.creatorAddress, config.creatorPrivKeyEnv);
-	// randomly create the rest of the nodes
-	for (let id = 1; id < nodes.length; id++) {
+	nodes = nodes.map((_, id) => {
+		if (id === 0) {
+			// manually set our creator node.
+			return new P2PNodeInfo(0, ports[0], peerIds[0], config.creatorAddress, config.creatorPrivKeyEnv);
+		}
 		const wallet = ethers.Wallet.createRandom();
 		let privateKeyEnv = `EVM_PRIVATE_KEY${id}`;
 		process.env[privateKeyEnv] = wallet.privateKey;
-		nodes[id] = new P2PNodeInfo(id, ports[id], peerIds[id], wallet.address, privateKeyEnv);
-	}
+		return new P2PNodeInfo(id, ports[id], peerIds[id], wallet.address, privateKeyEnv);
+	});
 
-	let node_configs = new Array(max_nodes);
-	let index = 0;
-	for (const node of nodes) {
+	const node_configs = nodes.map((value, index) => {
 		const peers = [...nodes.slice(0, index), ...nodes.slice(index + 1)];
-		console.log(`ppeers:`, peers);
-		node_configs[index] = node.createNodeConfig(config.creatorAddress, peers, pairs);
-		index++;
-	}
+		return value.createNodeConfig(config.creatorAddress, peers, pairs);
+	});
 
 	return node_configs;
 }

@@ -30,7 +30,7 @@ export async function createPairIfNeeded(pair: Pair, config: P2PInternalConfig, 
             if ((feedAddress.toString() == ethers.constants.AddressZero) && (walletPublicAddress !== config.creator)) {
                 throw new Error(`No oracle found, can't deploy because given creator address ${config.creator}
                 doesn't match the used wallet public address ${walletPublicAddress}`);
-            }else if((feedAddress.toString() == ethers.constants.AddressZero) && (walletPublicAddress === config.creator)) {
+            } else if((feedAddress.toString() == ethers.constants.AddressZero) && (walletPublicAddress === config.creator)) {
                 logger.info(`**Deploying a new oracle`);
                 await network.call({
                     method: 'deployOracle',
@@ -44,7 +44,7 @@ export async function createPairIfNeeded(pair: Pair, config: P2PInternalConfig, 
                     abi: FluxP2PFactory.abi,
                 });
 
-            }else {
+            } else {
                 logger.info(`**Oracle already deployed`);
                 return;
             } 
