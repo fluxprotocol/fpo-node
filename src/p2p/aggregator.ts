@@ -46,6 +46,8 @@ export default class P2PAggregator extends EventEmitter {
     private callbacks: Map<string, (value: AggregateResult) => void> = new Map();
     private checkStatusCallback: Map<string, () => Promise<boolean>> = new Map();
     private sentToPeers: Map<string, boolean> = new Map();
+    private transmittedRound: Map<string, number> = new Map();
+
     constructor(p2p: Communicator) {
         super();
         this.p2p = p2p;
@@ -67,13 +69,24 @@ export default class P2PAggregator extends EventEmitter {
         const request = this.requests.get(message.id);
 
         let reports = this.requestReports.get(message.id) ?? new Set();
-
-        reports.add(message);
-
-        if (!request) {
-            this.requestReports.set(message.id, reports);
-            logger.debug(`[${LOG_NAME}-${message.id}] Request could not be found yet, reports are being saved for future use.`);
+        if(this.transmittedRound.get(message.id) == undefined || ((this.transmittedRound.get(message.id) != undefined) && (this.transmittedRound.get(message.id) == message.round))){
+            console.log("**Adding received msg")
+            reports.add(message);
+        }else{
+            console.log("**Discarding transmitted round")
             return;
+        }
+        
+        if (!request) {
+            if(reports.size == 0){
+                return;
+            }else{
+                this.requestReports.set(message.id, reports);
+                logger.debug(`[${LOG_NAME}-${message.id}] Request could not be found yet, reports are being saved for future use.`);
+                return;
+
+            }
+           
         }
 
         console.log("**previous reports: ", reports)
@@ -109,8 +122,6 @@ export default class P2PAggregator extends EventEmitter {
         this.callbacks.delete(id);
         this.checkStatusCallback.delete(id);
         this.sentToPeers.delete(id);
-
-
     }
 
     private async reselectLeader(id: string) {
@@ -151,7 +162,11 @@ export default class P2PAggregator extends EventEmitter {
         if (!roundId) return;
 
         // assume all node sigs are needed
-        const requiredAmountOfSignatures = this.p2p._peers.size + 1;
+        // const requiredAmountOfSignatures = this.p2p._peers.size + 1;
+        
+        // accept less signatures
+        const requiredAmountOfSignatures = (Math.floor(this.p2p._peers.size / 2) + 1) > 1 ? (Math.floor(this.p2p._peers.size / 2) + 1) : 2 ;
+
 
         if (reports.size < requiredAmountOfSignatures) {
             logger.debug(`[${LOG_NAME}-${id}] No enough signatures --- `);
@@ -167,7 +182,7 @@ export default class P2PAggregator extends EventEmitter {
 
         const resolve = this.callbacks.get(id);
         this.clearRequest(id);
-
+        this.transmittedRound.set(id, Number(roundId) + 1)
         if (this.thisNode.equals(leader)) {
             logger.debug(`[${LOG_NAME}-${request.internalId}] This node is the leader. Sending transaction across network and blockchain`);      
             return resolve!({
@@ -184,8 +199,6 @@ export default class P2PAggregator extends EventEmitter {
     }
     async aggregate(request: P2PDataRequest, hashFeedId: string, data: string, roundId: Big, isRequestResolved: () => Promise<boolean>): Promise<AggregateResult> {
         return new Promise(async (resolve) => {
-            // this.sentToPeers = false;
-
             // TODO: Maybe do a check where if the request already exist we should ignore it?
             const timestamp = Math.round(new Date().getTime() / 1000);
             const message = hashPairSignatureInfo(hashFeedId, roundId.toString(), data, timestamp);
@@ -220,7 +233,6 @@ export default class P2PAggregator extends EventEmitter {
                     fromString(JSON.stringify(p2pMessage)),
                 ]);
                 logger.debug(`[${LOG_NAME}-${request.internalId}] Sent data to peers: ${data}`);
-                // this.sentToPeers = true;
                 this.sentToPeers.set(request.internalId, true)
                 await this.handleReports(request.internalId);
 
