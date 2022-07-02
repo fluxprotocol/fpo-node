@@ -9,6 +9,7 @@ import { JsonRpcProvider } from "@ethersproject/providers";
 import EvmNetwork from "../../../networks/evm/EvmNetwork";
 import getWalletPublicAddress from "../../../networks/evm/EvmNetwork"
 import { exit } from "process";
+import { sleep } from "../../../services/TimerUtils";
 
 export async function createPairIfNeeded(pair: Pair, config: P2PInternalConfig, network: Network) {
     try {
@@ -42,12 +43,11 @@ export async function createPairIfNeeded(pair: Pair, config: P2PInternalConfig, 
                     },
                     abi: FluxP2PFactory.abi,
                 });
+
             }else {
                 logger.info(`**Oracle already deployed`);
                 return;
             } 
-
-            
            
         } else {
             throw new Error(`Network type ${network.type} is not supported for price pushing`);

@@ -18,7 +18,7 @@ const Mplex = require("libp2p-mplex"); // no ts support yet :/
 import { NOISE } from "@chainsafe/libp2p-noise";
 import Big from "big.js";
 import P2PAggregator, { AggregateResult } from "../../p2p/aggregator";
-import { prettySeconds } from "../../services/TimerUtils";
+import { prettySeconds, sleep } from "../../services/TimerUtils";
 import { getHashFeedIdForPair } from "../pushPair/services/utils";
 import DBLogger from "../../models/DBLoggerModule";
 
@@ -55,7 +55,7 @@ export class P2PModule extends Module {
                 connEncryption: [NOISE],
             },
         }, appConfig.p2p.peers);
-        this.aggregator = new P2PAggregator(this.p2p, moduleConfig);
+        this.aggregator = new P2PAggregator(this.p2p);
 
         this.db = new DBLogger(this.internalConfig.logFile);
     }
@@ -197,9 +197,18 @@ export class P2PModule extends Module {
             await this.aggregator.init();
 
             logger.info(`[${this.id}] Creating pairs if needed..`);
+            
+            // calling deployOracle for more than one pair without delay bet calls throw server error
+            let delay = 0; const delayIncrement = 20000;
             await Promise.all(this.internalConfig.pairs.map(async (pair) => {
-                return await createPairIfNeeded(pair, this.internalConfig, this.network);
+                // await createPairIfNeeded(pair, this.internalConfig, this.network);        
+                
+                delay += delayIncrement;
+                return new Promise(resolve => setTimeout(resolve, delay)).then(
+                    () => createPairIfNeeded(pair, this.internalConfig, this.network)
+                );
             }));
+          
             logger.info(`[${this.id}] Done creating pairs`);
 
             await this.processPairs();
