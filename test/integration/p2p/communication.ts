@@ -31,12 +31,12 @@ async function test(index: number) {
         privateKeyEnv: "EVM_PRIVATE_KEY3",
     }
     let nodeConfigs = []
-    nodeConfigs[0] = createNodeConfig(node1, [node2, node3], "node1_logs");
-    nodeConfigs[1] = createNodeConfig(node2, [node1, node3], "node2_logs");
-    nodeConfigs[2] = createNodeConfig(node3, [node1, node2], "node3_logs");
+    // nodeConfigs[0] = createNodeConfig(node1, [node2, node3], "node1_logs");
+    // nodeConfigs[1] = createNodeConfig(node2, [node1, node3], "node2_logs");
+    // nodeConfigs[2] = createNodeConfig(node3, [node1, node2], "node3_logs");
 
-    // nodeConfigs[0] = createNodeConfig(node1, [node2], "node1_logs");
-    // nodeConfigs[1] = createNodeConfig(node2, [node1], "node2_logs");
+    nodeConfigs[0] = createNodeConfig(node1, [node2], "node1_logs");
+    nodeConfigs[1] = createNodeConfig(node2, [node1], "node2_logs");
     
     main(nodeConfigs[index]);
   

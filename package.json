@@ -30,12 +30,12 @@
         "lodash.topath": "^4.5.2",
         "multiaddr": "^10.0.1",
         "near-api-js": "^0.44.2",
+        "node": "^16.4.0",
+        "peer-id": "^0.16.0",
         "uint8arrays": "^3.0.0",
         "web3": "^1.7.0",
         "winston-daily-rotate-file": "^4.6.0",
-        "winston-transport-sentry-node": "^2.3.0",
-        "node": "^16.4.0",
-        "peer-id": "^0.16.0"
+        "winston-transport-sentry-node": "^2.3.0"
     },
     "devDependencies": {
         "@types/better-sqlite3": "^7.5.0",
@@ -46,8 +46,10 @@
         "@types/jest": "^27.4.0",
         "@types/lodash.topath": "^4.5.6",
         "@types/node": "^17.0.21",
+        "@types/yaml": "^1.9.7",
         "jest": "^27.4.7",
         "ts-jest": "^27.1.3",
-        "typescript": "^4.6.2"
+        "typescript": "^4.6.2",
+        "yaml": "^2.1.1"
     }
 }

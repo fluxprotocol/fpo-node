@@ -198,7 +198,7 @@ export class P2PModule extends Module {
 
             logger.info(`[${this.id}] Creating pairs if needed..`);
             await Promise.all(this.internalConfig.pairs.map(async (pair) => {
-                return createPairIfNeeded(pair, this.internalConfig, this.network);
+                return await createPairIfNeeded(pair, this.internalConfig, this.network);
             }));
             logger.info(`[${this.id}] Done creating pairs`);
 
