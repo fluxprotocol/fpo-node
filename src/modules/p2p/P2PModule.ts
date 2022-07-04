@@ -55,7 +55,7 @@ export class P2PModule extends Module {
                 connEncryption: [NOISE],
             },
         }, appConfig.p2p.peers);
-        this.aggregator = new P2PAggregator(this.p2p);
+        this.aggregator = new P2PAggregator(this.p2p, this.internalConfig);
 
         this.db = new DBLogger(this.internalConfig.logFile);
     }
@@ -133,13 +133,13 @@ export class P2PModule extends Module {
 
                 // Round id is used to determine the leader in the network.
                 // All nodes are expected to run the same peer list
-                const roundId: Big = await getRoundIdForPair(this.internalConfig, this.network, unresolvedRequest.extraInfo.pair, unresolvedRequest.extraInfo.decimals, hashFeedId);
+                const roundId: Big = await getRoundIdForPair(this.internalConfig, this.network, hashFeedId);
                 logger.info(`[${this.id}] ${unresolvedRequest.extraInfo.pair} on round id ${roundId.toString()}`);
 
                 // Send the outcome through the p2p network to come to a consensus
                 const aggregateResult: AggregateResult = await this.aggregator.aggregate(unresolvedRequest, hashFeedId, outcome.answer, roundId, async () => {
                     // Check whether or not the transaction has been in the blockchain
-                    const newRoundId = await getRoundIdForPair(this.internalConfig, this.network, unresolvedRequest.extraInfo.pair, unresolvedRequest.extraInfo.decimals, hashFeedId);
+                    const newRoundId = await getRoundIdForPair(this.internalConfig, this.network,  hashFeedId);
 
                     // When the round id incremented we've updated the prices on chain
                     return !newRoundId.eq(roundId);

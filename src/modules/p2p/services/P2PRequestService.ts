@@ -11,7 +11,7 @@ import { BigNumber, ethers } from "ethers";
 import { AggregateResult } from "../../../p2p/aggregator";
 import { fromString, toString } from "uint8arrays";
 
-export async function getRoundIdForPair(config: P2PInternalConfig, network: Network, pairId: string, decimals: number, computedId: string): Promise<Big> {
+export async function getRoundIdForPair(config: P2PInternalConfig, network: Network,  computedId: string): Promise<Big> {
     try {
         if (network.type === 'evm') {
             console.log('[] computedId -> ', computedId);
