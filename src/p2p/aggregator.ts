@@ -9,8 +9,6 @@ import { P2PDataRequest } from "../modules/p2p/models/P2PDataRequest";
 import { arrayify, solidityKeccak256 } from "ethers/lib/utils";
 import { extractP2PMessage, P2PMessage } from './models/P2PMessage';
 import EventEmitter from "events";
-import { getRoundIdForPair } from "../modules/p2p/services/P2PRequestService";
-import { P2PInternalConfig } from "../modules/p2p/models/P2PConfig";
 
 
 
@@ -49,14 +47,10 @@ export default class P2PAggregator extends EventEmitter {
     private checkStatusCallback: Map<string, () => Promise<boolean>> = new Map();
     private sentToPeers: Map<string, boolean> = new Map();
     private transmittedRound: Map<string, number> = new Map();
-    private internalConfig : P2PInternalConfig;
-
-    constructor(p2p: Communicator, config: P2PInternalConfig) {
+    constructor(p2p: Communicator) {
         super();
         this.p2p = p2p;
         this.thisNode = new Multiaddr(this.p2p._node_addr);
-        this.internalConfig = config;
-
     }
 
     async init(): Promise<void> {
@@ -71,9 +65,12 @@ export default class P2PAggregator extends EventEmitter {
         console.log("**Received msg: ", message)
 
         const request = this.requests.get(message.id);
-
+        
         let reports = this.requestReports.get(message.id) ?? new Set();
-        if (this.transmittedRound.get(message.id) == undefined || ((this.transmittedRound.get(message.id) != undefined) && (this.transmittedRound.get(message.id) == message.round))) {
+
+        let roundId = this.transmittedRound.get(message.id)
+
+        if (this.transmittedRound.get(message.id) == undefined || ((roundId!= undefined) && (roundId <= message.round))) {
             console.log("**Adding received msg")
             reports.add(message);
         } else {
@@ -113,8 +110,7 @@ export default class P2PAggregator extends EventEmitter {
         console.log("**reconstructed reports: ", reports)
 
 
-        await this.handleReports(request);
-
+        await this.handleReports(message.id);
     }
 
     private clearRequest(id: string) {
@@ -126,62 +122,47 @@ export default class P2PAggregator extends EventEmitter {
         this.sentToPeers.delete(id);
     }
 
-
-    private async handleReports(request: P2PDataRequest) {
-        const reports = this.requestReports.get(request.internalId);
+    private async handleReports(id: string) {
+        const reports = this.requestReports.get(id);
         if (!reports) return;
 
+        const request = this.requests.get(id);
         if (!request) return;
 
-        const roundId = this.roundIds.get(request.internalId);
+        const roundId = this.roundIds.get(id);
         if (!roundId) return;
         
         // accept less signatures
         const requiredAmountOfSignatures = (Math.floor(this.p2p._peers.size / 2) + 1) > 1 ? (Math.floor(this.p2p._peers.size / 2) + 1) : 2 ;
         console.log("requiredAmountOfSignatures: ", requiredAmountOfSignatures);
-        let r: P2PMessage = reports.values().next().value
-        let round = await getRoundIdForPair(this.internalConfig, request.targetNetwork, r.hashFeedId)
-        for (let report of reports){
-            if(report.round != Number(round)){
-                reports.delete(report)
-            }
-        }
 
         if (reports.size < requiredAmountOfSignatures) {
-            logger.info(`[${LOG_NAME}-${request.internalId}] Not enough signatures --- `);
+            logger.info(`[${LOG_NAME}-${id}] Not enough signatures --- `);
             return;
         }
-       
         console.log("**HANDLED REPORTS: ", reports)
-        logger.debug(`[${LOG_NAME}-${request.internalId}] Received enough signatures`);
+
+        logger.debug(`[${LOG_NAME}-${id}] Received enough signatures`);
         // Round id can randomly be modified so we should only use it for reelecting a leader
         const leader = electLeader(this.p2p, roundId);
-        console.log(`**Chosen leader for round ${r.round} : ${leader}`)
+        console.log(`**Chosen leader for round ${reports.values().next().value.round} : ${leader}`)
         console.log("**thisNode", this.thisNode)
-    
-        const resolve = this.callbacks.get(request.internalId);
-        this.clearRequest(request.internalId);
-        this.transmittedRound.set(request.internalId, Number(round) + 1)
-        console.log("**resolve: ", resolve)
-        // resolve is sometimes undefined (if the node received enough sigs before aggregate() is called)
-        if( resolve != undefined){
-            if (this.thisNode.equals(leader)) {
-                logger.debug(`[${LOG_NAME}-${request.internalId}] This node is the leader. Sending transaction across network and blockchain`);      
-                return resolve!({
-                    leader: true,
-                    reports,
-                });
-            } else {
-                return resolve!({
-                    leader: false,
-                    reports,
-                });
-            }
 
-        }else{
-            return;
+        const resolve = this.callbacks.get(id);
+        this.clearRequest(id);
+        this.transmittedRound.set(id, Number(roundId) + 1)
+        if (this.thisNode.equals(leader)) {
+            logger.debug(`[${LOG_NAME}-${request.internalId}] This node is the leader. Sending transaction across network and blockchain`);      
+            return resolve!({
+                leader: true,
+                reports,
+            });
+        } else {
+            return resolve!({
+                leader: false,
+                reports,
+            });
         }
-       
     }
     async aggregate(request: P2PDataRequest, hashFeedId: string, data: string, roundId: Big, isRequestResolved: () => Promise<boolean>): Promise<AggregateResult> {
         return new Promise(async (resolve) => {
@@ -222,7 +203,7 @@ export default class P2PAggregator extends EventEmitter {
                 ]);
                 logger.info(`[${LOG_NAME}-${request.internalId}] Sent data to peers: ${data}`);
                 this.sentToPeers.set(request.internalId, true)
-                await this.handleReports(request);
+                await this.handleReports(request.internalId);
             }
             
         });
