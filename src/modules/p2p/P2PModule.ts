@@ -218,7 +218,7 @@ export class P2PModule extends Module {
                         while (!pair_created) {
                             setTimeout(async () => {
                                 pair_created = await createPairIfNeeded(pair, this.internalConfig, this.network);
-                            }, 5_000);
+                            }, 20_000);
                         }
                     }
                 );

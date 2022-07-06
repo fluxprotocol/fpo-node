@@ -4,8 +4,8 @@ import main from "../../src/main";
 
 process.on('disconnect', function() {
   console.log('parent exited')
-  process.exit();
+  process.
+exit();
 });
-
 
 main(workerData);

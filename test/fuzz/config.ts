@@ -28,6 +28,7 @@ export interface P2PConfig {
 export interface P2PFuzzConfig {
 	node_config: NodeConfig;
 	p2p_config: P2PConfig;
+	window?: number;
 	creatorAddress: string;
 	creatorPrivKeyEnv: string;
 }
@@ -65,6 +66,8 @@ export function load_fuzz_config(path: string): P2PFuzzConfig {
 		if (!config.p2p_config.generate_pairs && config.p2p_config.pairs === undefined) throw new Error("You must specify pairs if the generate pairs feature is turned off.");
 		if (!config.p2p_config.generate_peer_ids && config.p2p_config.peer_ids === undefined) throw new Error("You must specify peer ids if the generate peer ids feature is turned off.");
 		if (!config.p2p_config.generate_ports && config.p2p_config.ports === undefined) throw new Error("You must specify ports if the generate ports feature is turned off.");
+
+		if (config.window !== undefined && config.window <= 0) throw new Error("Window must be >= 1");
 
 		return config;
 	} else {
