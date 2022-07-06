@@ -10,6 +10,10 @@ import { arrayify, solidityKeccak256 } from "ethers/lib/utils";
 import { extractP2PMessage, P2PMessage } from './models/P2PMessage';
 import EventEmitter from "events";
 import { P2PVersion } from "../modules/p2p/models/P2PVersion";
+import { P2PInternalConfig } from "../modules/p2p/models/P2PConfig";
+import { Network } from "../models/Network";
+import { getRoundIdForPair } from "../modules/p2p/services/P2PRequestService";
+import { sleep } from "../services/TimerUtils";
 
 
 
@@ -48,10 +52,14 @@ export default class P2PAggregator extends EventEmitter {
     private checkStatusCallback: Map<string, () => Promise<boolean>> = new Map();
     private sentToPeers: Map<string, boolean> = new Map();
     private transmittedRound: Map<string, number> = new Map();
-    constructor(p2p: Communicator) {
+    private config: P2PInternalConfig;
+    private network: Network;
+    constructor(p2p: Communicator, config: P2PInternalConfig, net: Network) {
         super();
         this.p2p = p2p;
         this.thisNode = new Multiaddr(this.p2p._node_addr);
+        this.config = config;
+        this.network = net;
     }
 
     async init(): Promise<void> {
@@ -65,20 +73,30 @@ export default class P2PAggregator extends EventEmitter {
         logger.debug(`[${LOG_NAME}-${message.id}] Received message from ${peer} ${this.requestReports.size}/${this.p2p._peers.size}`);
         console.log("**Received msg: ", message)
 
-        const request = this.requests.get(message.id);
         
-        let reports = this.requestReports.get(message.id) ?? new Set();
 
         let roundId = this.transmittedRound.get(message.id)
+        let round = undefined;
+        try{
+            round = await getRoundIdForPair(this.config, this.network, message.hashFeedId);
 
-        if (this.transmittedRound.get(message.id) == undefined || ((roundId!= undefined) && (roundId <= message.round))) {
-            console.log("**Adding received msg")
+        }catch(err){
+            console.log("error fetching round -- trying again")
+            round = await getRoundIdForPair(this.config, this.network, message.hashFeedId);
+
+        }
+        console.log(`-- roundId = ${roundId}, round = ${round}`)
+        let reports = this.requestReports.get(message.id) ?? new Set();
+
+        if (roundId == undefined || ((roundId!= undefined) && ((message.round >= roundId) || (message.round == Number(round))))) {
+            console.log("**Adding received msg: ", message)
             reports.add(message);
         } else {
             console.log("**Discarding transmitted round")
             return;
         }
-        
+        const request = this.requests.get(message.id);
+
         if (!request) {
             if (reports.size == 0) {
                 return;
@@ -123,6 +141,7 @@ export default class P2PAggregator extends EventEmitter {
         this.sentToPeers.delete(id);
     }
 
+
     private async handleReports(id: string) {
         const reports = this.requestReports.get(id);
         if (!reports) return;
@@ -135,7 +154,12 @@ export default class P2PAggregator extends EventEmitter {
         
         // accept less signatures
         const requiredAmountOfSignatures = (Math.floor(this.p2p._peers.size / 2) + 1) > 1 ? (Math.floor(this.p2p._peers.size / 2) + 1) : 2 ;
-        console.log("requiredAmountOfSignatures: ", requiredAmountOfSignatures);
+        // console.log("requiredAmountOfSignatures: ", requiredAmountOfSignatures);
+        for(let r of reports){
+            if(r.round != Number(roundId)){
+                reports.delete(r)
+            }
+        }
 
         if (reports.size < requiredAmountOfSignatures) {
             logger.info(`[${LOG_NAME}-${id}] Not enough signatures --- `);
@@ -148,10 +172,28 @@ export default class P2PAggregator extends EventEmitter {
         const leader = electLeader(this.p2p, roundId);
         console.log(`**Chosen leader for round ${reports.values().next().value.round} : ${leader}`)
         console.log("**thisNode", this.thisNode)
+        // let round = await getRoundIdForPair(this.config, this.network, reports.values().next().value.hashFeedId);
+        let round = undefined
+        try{
+            round = await getRoundIdForPair(this.config, this.network, reports.values().next().value.hashFeedId);
+
+        }catch(err){
+            console.log("error fetching round -- trying again")
+            round = await getRoundIdForPair(this.config, this.network, reports.values().next().value.hashFeedId);
+
+        }
+        console.log(`******************* roundId = ${roundId}, round = ${round}`)
+        if(Number(round) != Number(roundId)) {
+            console.log("**Wrong round")
+            return
+        };
 
         const resolve = this.callbacks.get(id);
+        if(!resolve) return;
         this.clearRequest(id);
         this.transmittedRound.set(id, Number(roundId) + 1)
+        
+        
         if (this.thisNode.equals(leader)) {
             logger.debug(`[${LOG_NAME}-${request.internalId}] This node is the leader. Sending transaction across network and blockchain`);      
             return resolve!({
@@ -192,6 +234,11 @@ export default class P2PAggregator extends EventEmitter {
             this.roundIds.set(request.internalId, roundId);
             let reports = this.requestReports.get(request.internalId) ?? new Set();
             console.log("previously received reports", reports)
+            for(let r of reports){
+                if((r.round == p2pMessage.round) && (r.signer == p2pMessage.signer)){
+                    reports.delete(r)
+                }
+            }
             reports.add(p2pMessage);
 
             // TODO: if we received a msg that added to this.requestReports it will be discarded

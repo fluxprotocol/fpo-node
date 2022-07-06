@@ -59,7 +59,7 @@ export class P2PModule extends Module {
                 connEncryption: [NOISE],
             },
         }, appConfig.p2p.peers);
-        this.aggregator = new P2PAggregator(this.p2p);
+        this.aggregator = new P2PAggregator(this.p2p, this.internalConfig, this.network);
 
         this.db = new DBLogger(this.internalConfig.logFile);
     }
