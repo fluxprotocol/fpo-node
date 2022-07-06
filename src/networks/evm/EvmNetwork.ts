@@ -70,25 +70,28 @@ export default class EvmNetwork extends Network {
                 // Error messages (i.e. `error.body.error.message`) differ depending on the network.
                 //  - Aurora Testnet: `ERR_INCORRECT_NONCE`
                 //  - Goerli: `already known`
-                if (error.code === 'SERVER_ERROR' && error.body) {
-                    try {
-                        const body = JSON.parse(error.body);
-                        if (body.error && body.error.code && body.error.code === -32000 && body.error.message
-                            && (body.error.message === 'ERR_INCORRECT_NONCE' || body.error.message === 'already known')
-                        ) {
-                            logger.debug(`[${this.id}-onQueueBatch] [${request.internalId}] Request seems to be already pushed (${body.error.message})`);
-                            continue;
-                        }
-                    } catch (error) {
-                        // Do nothing as error will be logged in next lines
-                    }
-                }
+
+                // This assumes that the update was pushed but it wasn't
+                // if (error.code === 'SERVER_ERROR' && error.body) {
+                //     try {
+                //         const body = JSON.parse(error.body);
+                //         if (body.error && body.error.code && body.error.code === -32000 && body.error.message
+                //             && (body.error.message === 'ERR_INCORRECT_NONCE' || body.error.message === 'already known')
+                //         ) {
+                //             logger.debug(`[${this.id}-onQueueBatch] [${request.internalId}] Request seems to be already pushed (${body.error.message})`);
+                //             continue;
+                //         }
+                //     } catch (error) {
+                //         // Do nothing as error will be logged in next lines
+                //     }
+                // }
 
                 logger.error(`[${this.id}-onQueueBatch] [${request?.internalId}] On queue batch unknown error`, {
                     error,
                     config: this.networkConfig,
                     fingerprint: `${this.type}-${this.networkId}-onQueueBatch-unknown`,
                 });
+                return;
             }
         }
     }

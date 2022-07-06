@@ -24,7 +24,7 @@ export function parseUnparsedNetworkConfig(config: Partial<NetworkConfig>): Netw
         type: config.type,
         wssRpc: config.wssRpc,
         blockFetchingInterval: config.blockFetchingInterval ?? 5_000,
-        queueDelay: config.queueDelay ?? 1_000,
+        queueDelay: config.queueDelay ?? 10_000,
     };
 }
 

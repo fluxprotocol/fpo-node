@@ -48,12 +48,10 @@ export default class P2PAggregator extends EventEmitter {
     private checkStatusCallback: Map<string, () => Promise<boolean>> = new Map();
     private sentToPeers: Map<string, boolean> = new Map();
     private transmittedRound: Map<string, number> = new Map();
-
     constructor(p2p: Communicator) {
         super();
         this.p2p = p2p;
         this.thisNode = new Multiaddr(this.p2p._node_addr);
-
     }
 
     async init(): Promise<void> {
@@ -68,9 +66,12 @@ export default class P2PAggregator extends EventEmitter {
         console.log("**Received msg: ", message)
 
         const request = this.requests.get(message.id);
-
+        
         let reports = this.requestReports.get(message.id) ?? new Set();
-        if (this.transmittedRound.get(message.id) == undefined || ((this.transmittedRound.get(message.id) != undefined) && (this.transmittedRound.get(message.id) == message.round))) {
+
+        let roundId = this.transmittedRound.get(message.id)
+
+        if (this.transmittedRound.get(message.id) == undefined || ((roundId!= undefined) && (roundId <= message.round))) {
             console.log("**Adding received msg")
             reports.add(message);
         } else {
@@ -120,31 +121,6 @@ export default class P2PAggregator extends EventEmitter {
         this.callbacks.delete(id);
         this.checkStatusCallback.delete(id);
         this.sentToPeers.delete(id);
-    }
-
-    private async reselectLeader(id: string) {
-        const isRequestResolved = this.checkStatusCallback.get(id);
-        if (!isRequestResolved) return;
-
-        const resolved = await isRequestResolved();
-
-        if (resolved) {
-            const resolve = this.callbacks.get(id);
-            this.clearRequest(id);
-            // TODO: Not sure why sometimes resolve is undefined
-            if (resolve) {
-                return resolve!({
-                    leader: false,
-                    reports: this.requestReports.get(id) ?? new Set(),
-                });
-            } else {
-                console.log("++REJECTED")
-            }
-        }
-
-        const roundId = this.roundIds.get(id);
-        this.roundIds.set(id, roundId?.plus(1) ?? new Big(0));
-        await this.handleReports(id);
     }
 
     private async handleReports(id: string) {
