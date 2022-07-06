@@ -10,6 +10,8 @@ import logger from "../../../services/LoggerService";
 import { BigNumber, ethers } from "ethers";
 import { AggregateResult } from "../../../p2p/aggregator";
 import { fromString, toString } from "uint8arrays";
+import { lastestVersion, P2PVersion, rejectVersion } from "../models/P2PVersion";
+import { report } from "process";
 
 export async function getRoundIdForPair(config: P2PInternalConfig, network: Network, pairId: string, decimals: number, computedId: string): Promise<Big> {
     try {
@@ -109,7 +111,7 @@ export function createBatchFromPairs(config: P2PInternalConfig, targetNetwork: N
     return createDataRequestBatch(requests) as P2PDataRequestBatch;
 }
 
-export function createResolveP2PRequest(aggregateResult: AggregateResult, hashFeedId: string, roundId: Big, request: P2PDataRequest, config: P2PInternalConfig): P2PResolvedDataRequest {
+export function createResolveP2PRequest(node_version: P2PVersion, report_version: P2PVersion, aggregateResult: AggregateResult, hashFeedId: string, roundId: Big, request: P2PDataRequest, config: P2PInternalConfig): P2PResolvedDataRequest {
     let txCallParams: P2PResolvedDataRequest['txCallParams'] = {
         address: config.contractAddress,
         amount: '0',
@@ -118,6 +120,18 @@ export function createResolveP2PRequest(aggregateResult: AggregateResult, hashFe
     };
 
     const reports = Array.from(aggregateResult.reports);
+    const [latest_node_version, latest_report_version] = reports
+        .map((report) => [report.node_version, report.report_version])
+        .reduce((lhs, rhs) => [lastestVersion(lhs[0], rhs[0]), lastestVersion(lhs[1], rhs[1])]);
+
+    if (rejectVersion(node_version, latest_node_version)) {
+        throw new Error(`Node version '${node_version}' is out of date and needs to be updated to '${latest_node_version}'`);
+    }
+
+    if (rejectVersion(report_version, latest_report_version)) {
+        throw new Error(`Report version '${report_version}' is out of date and needs to be updated to '${latest_report_version}'`);
+    }
+
     console.log(`[${reports.length}] reports -> `, reports);
     reports.sort((a, b) => Number(a.data) - Number(b.data))
     // console.log("**sorted reports: ", reports)

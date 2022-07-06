@@ -21,9 +21,13 @@ import P2PAggregator, { AggregateResult } from "../../p2p/aggregator";
 import { prettySeconds, sleep } from "../../services/TimerUtils";
 import { getHashFeedIdForPair } from "../pushPair/services/utils";
 import DBLogger from "../../models/DBLoggerModule";
+import { newVersion } from "./models/P2PVersion";
 
 export class P2PModule extends Module {
     static type = "P2PModule";
+    static node_version = newVersion("0.0.1");
+    static report_version = newVersion("0.0.1");
+
     private internalConfig: P2PInternalConfig;
     private batch?: P2PDataRequestBatch;
     private p2p: Communicator;
@@ -91,7 +95,7 @@ export class P2PModule extends Module {
             }
 
             if (this.p2p._connections.size === 0) {
-                logger.info(`Currently have 0 connected peers: waiting for other peers to connect...`);
+                (`Currently have 0 connected peers: waiting for other peers to connect...`);
                 setTimeout(this.processPairs.bind(this), remainingInterval);
                 return;
             }
@@ -137,7 +141,7 @@ export class P2PModule extends Module {
                 logger.info(`[${this.id}] ${unresolvedRequest.extraInfo.pair} on round id ${roundId.toString()}`);
 
                 // Send the outcome through the p2p network to come to a consensus
-                const aggregateResult: AggregateResult = await this.aggregator.aggregate(unresolvedRequest, hashFeedId, outcome.answer, roundId, async () => {
+                const aggregateResult: AggregateResult = await this.aggregator.aggregate(P2PModule.node_version, P2PModule.report_version, unresolvedRequest, hashFeedId, outcome.answer, roundId, async () => {
                     // Check whether or not the transaction has been in the blockchain
                     const newRoundId = await getRoundIdForPair(this.internalConfig, this.network, unresolvedRequest.extraInfo.pair, unresolvedRequest.extraInfo.decimals, hashFeedId);
 
@@ -155,7 +159,7 @@ export class P2PModule extends Module {
                 }
 
                 // We are the leader and we should send the transaction
-                return createResolveP2PRequest(aggregateResult, hashFeedId, roundId, unresolvedRequest, this.internalConfig);
+                return createResolveP2PRequest(P2PModule.node_version, P2PModule.report_version, aggregateResult, hashFeedId, roundId, unresolvedRequest, this.internalConfig);
             }));
 
             let requests: P2PResolvedDataRequest[] = resolvedRequests.filter(r => r !== null) as P2PResolvedDataRequest[];

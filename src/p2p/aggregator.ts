@@ -9,6 +9,7 @@ import { P2PDataRequest } from "../modules/p2p/models/P2PDataRequest";
 import { arrayify, solidityKeccak256 } from "ethers/lib/utils";
 import { extractP2PMessage, P2PMessage } from './models/P2PMessage';
 import EventEmitter from "events";
+import { P2PVersion } from "../modules/p2p/models/P2PVersion";
 
 
 
@@ -188,7 +189,7 @@ export default class P2PAggregator extends EventEmitter {
             });
         }
     }
-    async aggregate(request: P2PDataRequest, hashFeedId: string, data: string, roundId: Big, isRequestResolved: () => Promise<boolean>): Promise<AggregateResult> {
+    async aggregate(node_version: P2PVersion, report_version: P2PVersion, request: P2PDataRequest, hashFeedId: string, data: string, roundId: Big, isRequestResolved: () => Promise<boolean>): Promise<AggregateResult> {
         return new Promise(async (resolve) => {
             // TODO: Maybe do a check where if the request already exist we should ignore it?
             const timestamp = Math.round(new Date().getTime() / 1000);
@@ -204,7 +205,9 @@ export default class P2PAggregator extends EventEmitter {
                 id: request.internalId,
                 timestamp,
                 round: Number(roundId),
-                signer: request.targetNetwork.getWalletPublicAddress()
+                signer: request.targetNetwork.getWalletPublicAddress(),
+                node_version,
+                report_version,
             };
     
             this.callbacks.set(request.internalId, resolve);
