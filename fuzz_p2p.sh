@@ -4,4 +4,5 @@
 
 yarn build
 
-node --max_old_space_size=16384 'dist/test/fuzz/fuzz.js' p2p_fuzz_config.yaml
+# node --max_old_space_size=16384 'dist/test/fuzz/fuzz.js' p2p_fuzz_config.yaml
+node 'dist/test/fuzz/fuzz.js' p2p_fuzz_config.yaml

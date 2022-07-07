@@ -21,12 +21,12 @@ import P2PAggregator, { AggregateResult } from "../../p2p/aggregator";
 import { prettySeconds, sleep } from "../../services/TimerUtils";
 import { getHashFeedIdForPair } from "../pushPair/services/utils";
 import DBLogger from "../../models/DBLoggerModule";
-import { newVersion } from "./models/P2PVersion";
+import { P2PVersion } from "./models/P2PVersion";
 
 export class P2PModule extends Module {
     static type = "P2PModule";
-    static node_version = newVersion("0.0.1");
-    static report_version = newVersion("0.0.1");
+    static node_version = new P2PVersion("0.0.1");
+    static report_version = new P2PVersion("0.0.1");
 
     private internalConfig: P2PInternalConfig;
     private batch?: P2PDataRequestBatch;
@@ -158,8 +158,23 @@ export class P2PModule extends Module {
                     return null;
                 }
 
+                const reports = Array.from(aggregateResult.reports);
+                const [latest_node_version, latest_report_version] = reports
+                    .map((report) => [report.node_version, report.report_version])
+                    .reduce((lhs, rhs) => [lhs[0].latestVersion(rhs[0]), lhs[1].latestVersion(rhs[1])]);
+
+                if (P2PModule.node_version.rejectVersion(latest_node_version)) {
+                    logger.error(`Node version '${P2PModule.node_version}' is out of date and needs to be updated to '${latest_node_version}'`);
+                    return null;
+                }
+                
+                if (P2PModule.report_version.rejectVersion(latest_report_version)) {
+                    logger.error(`Report version '${P2PModule.report_version}' is out of date and needs to be updated to '${latest_report_version}'`);
+                    return null;
+                }
+
                 // We are the leader and we should send the transaction
-                return createResolveP2PRequest(P2PModule.node_version, P2PModule.report_version, aggregateResult, hashFeedId, roundId, unresolvedRequest, this.internalConfig);
+                return createResolveP2PRequest(aggregateResult, hashFeedId, roundId, unresolvedRequest, this.internalConfig);
             }));
 
             let requests: P2PResolvedDataRequest[] = resolvedRequests.filter(r => r !== null) as P2PResolvedDataRequest[];
@@ -216,9 +231,8 @@ export class P2PModule extends Module {
                     async () => {
                         let pair_created = await createPairIfNeeded(pair, this.internalConfig, this.network);
                         while (!pair_created) {
-                            setTimeout(async () => {
-                                pair_created = await createPairIfNeeded(pair, this.internalConfig, this.network);
-                            }, 20_000);
+                            await sleep(20_000);
+                            pair_created = await createPairIfNeeded(pair, this.internalConfig, this.network);
                         }
                     }
                 );

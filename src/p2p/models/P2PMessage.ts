@@ -20,6 +20,8 @@ export async function extractP2PMessage(source: AsyncIterable<Uint8Array | Buffe
 
         for await (const msg of source) {
             p2pMessage = JSON.parse(msg.toString());
+            console.log(`p2pMessage nv: ${p2pMessage?.node_version} ${typeof p2pMessage?.node_version}`);
+            console.log(`p2pMessage nv: ${p2pMessage?.node_version} ${typeof p2pMessage?.node_version}`);
         }
 
         return p2pMessage;

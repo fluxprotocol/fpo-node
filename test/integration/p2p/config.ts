@@ -39,7 +39,7 @@ export function createNodeConfig(ownNode: NodeInfo, otherNodes: NodeInfo[], logF
                 "minimumUpdateInterval": 1800000,
                 "pairs": [
                     {
-                        "pair": "NEAR/SDT",
+                        "pair": "QWERTY_NEAR/SDT",
                         "decimals": 13,
                         "sources": [
                             {
@@ -49,7 +49,7 @@ export function createNodeConfig(ownNode: NodeInfo, otherNodes: NodeInfo[], logF
                         ]
                     },
                     {
-                        "pair": "NEAR-USD",
+                        "pair": "QWERTY-NEAR-USD",
                         "decimals": 13,
                         "sources": [
                             {

@@ -3,7 +3,6 @@ import cluster, { Worker} from 'node:cluster';
 import { cpus } from 'node:os';
 import { exit } from 'process';
 import main from '../../src/main';
-import logger from '../../src/services/LoggerService';
 
 import { load_fuzz_config, P2PFuzzConfig } from "./config";
 import { generateP2PNodesConfigs } from "./p2p_node";
@@ -23,6 +22,7 @@ async function fuzz(fuzz_config_path: string) {
 		if (window_size > 0) {
 			const windowed = window(node_configs, window_size);
 			windowed.forEach((window, index) => {
+				console.log('window', window);
 				fs.writeFileSync(
 					`.fuzz/window_${index}.json`,
 					JSON.stringify({
@@ -70,7 +70,6 @@ if (cluster.isPrimary) {
 } else {
 	const config_str = fs.readFileSync(`.fuzz/window_${process.env["CHILD_INDEX"]}.json`, 'utf8');
 	const config_json = JSON.parse(config_str);
-	console.log(`child number? ${process.env["CHILD_INDEX"]}`);
 	for (const config of config_json.configs) {
 		main(config)
 	}
