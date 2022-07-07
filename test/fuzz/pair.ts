@@ -9,23 +9,19 @@ const end_points = [
 	"https://api.coingecko.com/api/v3/coins/near"
 ];
 
-function selectRandomArrayElement<T>(array: T[]): T {
-	return array[Math.floor(Math.random() * array.length)];
-}
-
-export default function createPairs(min: number, max: number): Pair[] {
+export default function createPairs(min: number, max: number, max_decimals: number, string_bytes: number): Pair[] {
 	const num_pairs = randNumberFromRange(min, max);
 	const sources = new Array(num_pairs).fill(null).map(() => {
 		return {
-			"source_path": selectRandomArrayElement(source_paths),
-			"end_point": selectRandomArrayElement(end_points),
+			"source_path": source_paths.random_element(),
+			"end_point": end_points.random_element(),
 		}
 	});
 
 	return new Array(num_pairs).fill(null).map((_: null, index: number) => {
 		return {
-			"pair": randomString(8),
-			"decimals": randNumberFromRange(1, 10),
+			"pair": randomString(string_bytes),
+			"decimals": randNumberFromRange(1, max_decimals),
 			"sources": [
 				sources[index]
 			] 

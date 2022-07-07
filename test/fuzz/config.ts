@@ -20,8 +20,11 @@ export interface P2PConfig {
 	max_pairs?: number;
 	pairs?: Pair[];
 	generate_peer_ids: boolean;
+	max_decimals?: number;
+	string_bytes?: number;
 	peer_ids?: JSONPeerId[];
 	allow_disconnects: boolean;
+	random_disconnect_chance?: number;
 	randomly_update_nodes: boolean;
 }
 

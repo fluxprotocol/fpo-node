@@ -11,23 +11,55 @@ export function randomString(size: number): string {
 	return crypto.randomBytes(size).toString('hex');
 }
 
-export function window<T>(array: T[], window_size: number): Array<Array<T>> {
-	if (window_size < 2) {
-		return [array];
+declare global {
+	interface Array<T> {
+		randomize(): T[];
+		random_element(): T;
+		random_index(): number;
+		window(window_size: number): Array<Array<T>>;
+	}
+}
+
+Array.prototype.randomize = function<T>(): T[] {
+	let current = this.length;
+	let random: number;
+
+	while (current != 0) {
+		random = Math.floor(Math.random() * current);
+		current--;
+
+		[this[current], this[random]] = [
+      		this[random], this[current]];
 	}
 
-	const len = array.length;
+	return this;
+}
+
+Array.prototype.random_element = function<T>(): T {
+	return this[Math.floor(Math.random() * this.length)];
+}
+
+Array.prototype.random_index = function(): number {
+	return Math.floor(Math.random() * this.length);
+}
+
+Array.prototype.window = function<T>(window_size: number): Array<Array<T>> {
+	if (window_size < 2) {
+		return [this];
+	}
+
+	const len = this.length;
 	let windowed = new Array();
 	
 	if (len % window_size === 0) {
 		const size = Math.floor(len / window_size);
 		for (let i = 0; i < len;) {
-			windowed.push(array.slice(i, i+= size));
+			windowed.push(this.slice(i, i+= size));
 		}
 	} else {
 		for (let i = 0; i < len;) {
 			const size = Math.ceil((len - i) / window_size--);
-			windowed.push(array.slice(i, i+= size));
+			windowed.push(this.slice(i, i+= size));
 		}
 	}
 
