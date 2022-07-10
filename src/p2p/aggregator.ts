@@ -81,14 +81,23 @@ export default class P2PAggregator extends EventEmitter {
             round = await getRoundIdForPair(this.config, this.network, message.hashFeedId);
 
         }catch(err){
-            console.log("error fetching round -- trying again")
-            round = await getRoundIdForPair(this.config, this.network, message.hashFeedId);
+            // console.log("error fetching round -- trying again")
+            // round = await getRoundIdForPair(this.config, this.network, message.hashFeedId);
+            console.log("error fetching round -- ")
+            return
+
 
         }
         console.log(`-- roundId = ${roundId}, round = ${round}`)
         let reports = this.requestReports.get(message.id) ?? new Set();
 
         if (roundId == undefined || ((roundId!= undefined) && ((message.round >= roundId) || (message.round == Number(round))))) {
+            for (let r of reports){
+                if((r.signer == message.signer) && (r.round == message.round)){
+                    console.log("---deleting old unsuccessful signatures")
+                    reports.delete(r)
+                }
+            }
             console.log("**Adding received msg: ", message)
             reports.add(message);
         } else {
@@ -178,8 +187,10 @@ export default class P2PAggregator extends EventEmitter {
             round = await getRoundIdForPair(this.config, this.network, reports.values().next().value.hashFeedId);
 
         }catch(err){
-            console.log("error fetching round -- trying again")
-            round = await getRoundIdForPair(this.config, this.network, reports.values().next().value.hashFeedId);
+            // console.log("error fetching round -- trying again")
+            // round = await getRoundIdForPair(this.config, this.network, reports.values().next().value.hashFeedId);
+            console.log("**error fetching round -- ")
+            return
 
         }
         console.log(`******************* roundId = ${roundId}, round = ${round}`)
