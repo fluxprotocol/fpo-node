@@ -15,7 +15,6 @@ declare global {
 	interface Array<T> {
 		randomize(): T[];
 		random_element(): T;
-		random_index(): number;
 		window(window_size: number): Array<Array<T>>;
 	}
 }
@@ -39,10 +38,6 @@ Array.prototype.random_element = function<T>(): T {
 	return this[Math.floor(Math.random() * this.length)];
 }
 
-Array.prototype.random_index = function(): number {
-	return Math.floor(Math.random() * this.length);
-}
-
 Array.prototype.window = function<T>(window_size: number): Array<Array<T>> {
 	if (window_size < 2) {
 		return [this];
@@ -64,4 +59,8 @@ Array.prototype.window = function<T>(window_size: number): Array<Array<T>> {
 	}
 
 	return windowed;
+}
+
+export function random_item<T>(dict: NodeJS.Dict<T>): T {
+	return dict[Object.keys(dict).random_element()]!;
 }

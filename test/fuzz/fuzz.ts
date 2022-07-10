@@ -7,7 +7,7 @@ import { sleep } from '../../src/services/TimerUtils';
 
 import { load_fuzz_config, P2PFuzzConfig } from "./config";
 import { generateP2PNodesConfigs } from "./p2p_node";
-import { randNumberFromRange } from './utils';
+import { randNumberFromRange, random_item } from './utils';
 
 async function fuzz(fuzz_config_path: string) {
 	try {
@@ -19,7 +19,7 @@ async function fuzz(fuzz_config_path: string) {
 			fs.mkdirSync('.fuzz');
 		}
 
-		let workers: Worker[] = new Array();
+		let workers: NodeJS.Dict<string> = {};
 		if (window_size > 0) {
 			const windowed = node_configs.window(window_size);
 			windowed.forEach((window, index) => {
@@ -32,47 +32,42 @@ async function fuzz(fuzz_config_path: string) {
 					2
 				));
 				process.env["CHILD_INDEX"] = index.toString();
-				workers.push(cluster.fork(process.env));
+				let new_worker = cluster.fork(process.env).on('reconnect', (child: Worker) => cluster.emit('reconnect', child));
+				workers[new_worker.id] =  index.toString();
 			});
 		}
 
-		cluster.on('exit', async (dead_child) => {
-			const oldPID = dead_child.process.pid;
-			console.log('worker '+oldPID+' died.');
-
-			// if (config.p2p_config.allow_disconnects) {
-			// 	await sleep(120_000);
-
-			// 	const worker = cluster.fork();
-			// 	const newPID = worker.process.pid;
-
-			// 	// Log the event
-			// 	console.log('worker '+newPID+' born.');
-			// }
-		});
+		// cluster.on('exit', async (dead_child) => {
+		// 	const oldPID = dead_child.process.pid;
+		// 	console.log('worker '+oldPID+' died.');
+		// });
 
 		process.on('SIGINT', () => {
-			for (const worker of workers) {
-				worker.process.kill();
+			const workers = cluster.workers!;
+			for (const worker in workers) {
+				workers[worker]!.kill();
 			}
 			exit(0);
 		});
 
-		cluster.on('reconnect', async (worker) => {
-			await sleep(30_000);
-			process.env["CHILD_INDEX"] = process.env["DC_INDEX"];
+		cluster.on('reconnect', async (child: Worker) => {
+			console.log(`in reconnect`);
+			child.process.kill();
+			await sleep(config.p2p_config.reconnect_interval ?? 300_000);
+			process.env["CHILD_INDEX"] = workers[child.id];
+			delete workers[child.id];
 			console.log(`Reconnecting nodes in thread: ${process.env["CHILD_INDEX"]}`);
-			cluster.fork();
+			let new_worker = cluster.fork().on('reconnect', (child: Worker) => cluster.emit('reconnect', child));
+			workers[new_worker.id] = process.env["CHILD_INDEX"];
 		});
 
-		await sleep(300_000);
 		while (true) {
-			await sleep(30_000);
+			await sleep(60_000);
 			if (config.p2p_config.allow_disconnects && (randNumberFromRange(90, 100) > (config.p2p_config.random_disconnect_chance ?? 15))) {
-				const index = workers.random_index();
-				console.log(`Disconnecting nodes in thread: ${index}`);
-				process.env["DC_INDEX"] = index.toString();
-				workers[index].kill('reconnect');
+				const worker = random_item(cluster.workers!);
+				process.env["DC_INDEX"] = workers[worker.id];
+				console.log(`Disconnecting nodes in thread: ${process.env["DC_INDEX"]}`);
+				worker.emit('reconnect', worker);
 			}
 		}
 

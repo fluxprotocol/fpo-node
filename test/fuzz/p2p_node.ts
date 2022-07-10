@@ -89,7 +89,7 @@ export async function generateP2PNodesConfigs(config: P2PFuzzConfig): Promise<Un
 		}))
 		: await Promise.all(config.p2p_config.peer_ids!.slice(0, max_nodes).map(async (json: JSONPeerId) => await PeerId.createFromJSON(json)));
 	const pairs: Pair[] = config.p2p_config.generate_pairs ?
-		createPairs(config.p2p_config.min_pairs ?? 1, config.p2p_config.max_pairs ?? 6, config.p2p_config.max_decimals ?? 20, config.p2p_config.string_bytes ?? 8)
+		createPairs(config.p2p_config.min_pairs ?? 1, config.p2p_config.max_pairs ?? 6, config.p2p_config.max_decimals ?? 8, config.p2p_config.string_bytes ?? 8)
 		: config.p2p_config.pairs!;
 		console.log(`ports:`, ports);
 	console.log(`peerIds:`, peerIds.map((p) => p.toB58String()));

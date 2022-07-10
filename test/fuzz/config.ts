@@ -25,6 +25,7 @@ export interface P2PConfig {
 	peer_ids?: JSONPeerId[];
 	allow_disconnects: boolean;
 	random_disconnect_chance?: number;
+	reconnect_interval?: number;
 	randomly_update_nodes: boolean;
 }
 

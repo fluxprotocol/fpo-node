@@ -181,8 +181,13 @@ export default class Communicator {
 	async send(protocol: string, data: Uint8Array[]): Promise<void> {
 		attempt(this, null, async () => {
 			for (const connection of this._connections) {
-				const { stream } = await connection.newStream(protocol);
-				await stream.sink(createAsyncIterable(data));
+				try {
+					const { stream } = await connection.newStream(protocol);
+					await stream.sink(createAsyncIterable(data));
+				} catch (err) {
+					this._connections.delete(connection);					
+					this._retry.add( `${connection.remoteAddr}/p2p/${connection.remotePeer.toJSON().id}`);
+				}
 			}
 		});
 	}
