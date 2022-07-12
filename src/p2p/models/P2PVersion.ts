@@ -1,3 +1,5 @@
+import BufferList from "bl/BufferList";
+import logger from "../../services/LoggerService";
 
 export interface P2PVersion {
 	readonly major: number;
@@ -48,4 +50,24 @@ export function rejectVersion(lhs: P2PVersion, rhs: P2PVersion): boolean {
 }
 
 
+export interface P2PVersionMessage {
+    node_version: P2PVersion;
+    report_version: P2PVersion;
+}
 
+export async function extractP2PVersionMessage(source: AsyncIterable<Uint8Array | BufferList>): Promise<P2PVersionMessage | undefined> {
+    try {
+        let p2pMessage: P2PVersionMessage | undefined;
+
+        for await (const msg of source) {
+            p2pMessage = JSON.parse(msg.toString());
+        }
+
+        return p2pMessage;
+    } catch (error) {
+        logger.error(`[extractP2PVersionMessage] unknown error`, {
+            error,
+        });
+        return undefined;
+    }
+}

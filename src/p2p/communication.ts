@@ -8,6 +8,8 @@ import BufferList from "bl/BufferList";
 
 import logger from "../services/LoggerService";
 import { debouncedInterval } from "../services/TimerUtils";
+import { extractP2PVersionMessage, latestVersion, P2PVersion, P2PVersionMessage } from "./models/P2PVersion";
+import { fromString } from "uint8arrays/from-string";
 
 async function* createAsyncIterable(syncIterable: Uint8Array[]) {
 	for (const elem of syncIterable) {
@@ -31,8 +33,12 @@ export default class Communicator {
 	_node_addr: string;
 	_peers: Set<string> = new Set();
 	_retry: Set<string> = new Set();
+	latest_node_version: P2PVersion;
+	latest_report_version: P2PVersion;
+	node_version: P2PVersion;
+	report_version: P2PVersion;
 
-	constructor(config?: Libp2pOptions & CreateOptions, preloadedPeersAddresses: Set<string> = new Set()) {
+	constructor(node_version: P2PVersion, report_version: P2PVersion, config?: Libp2pOptions & CreateOptions, preloadedPeersAddresses: Set<string> = new Set()) {
 		if (config === undefined) {
 			this._options = {
 				addresses: {
@@ -48,12 +54,24 @@ export default class Communicator {
 			this._options = config;
 		}
 
+		this.node_version = node_version;
+		this.latest_node_version = node_version;
+		this.report_version = report_version;
+		this.latest_report_version = report_version;
         this._peers = preloadedPeersAddresses;
 		this._node_addr = '';
 	}
 
 	async init(): Promise<void> {
         this._node = await create(this._options);
+		this.handle_incoming('/report/version', async (peer: Multiaddr, source: AsyncIterable<Uint8Array | BufferList>) => {
+			const versions = await extractP2PVersionMessage(source);
+			if (!versions) return;
+			logger.info(`[VERSION-AGGREGATOR] Received versions from ${peer}`);
+
+			this.latest_node_version = latestVersion(this.node_version, versions.node_version);
+			this.latest_report_version = latestVersion(this.report_version, versions.report_version);
+		});
 	}
 
 	async retry(): Promise<void> {
@@ -117,6 +135,13 @@ export default class Communicator {
 				this._peers.add(ma.toString());
 				const conn = await node.dial(ma);
 				if (conn !== undefined) {
+					const { stream } = await node.dialProtocol(ma, '/report/version');
+					const version_message: P2PVersionMessage = {
+						node_version: this.node_version,
+						report_version: this.report_version,
+					};
+					await stream.sink(createAsyncIterable([fromString(JSON.stringify(version_message))]));
+
 					this._connections.add(conn);
 					return true;
 				}

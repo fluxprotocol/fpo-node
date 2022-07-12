@@ -1,5 +1,5 @@
 import BufferList from "bl/BufferList";
-import { P2PVersion } from "../../modules/p2p/models/P2PVersion";
+import { P2PVersion } from "./P2PVersion";
 import logger from "../../services/LoggerService";
 
 export interface P2PMessage {
@@ -10,8 +10,6 @@ export interface P2PMessage {
     timestamp: number;
     round: number;
     signer: string;
-    node_version: P2PVersion;
-    report_version: P2PVersion;
 }
 
 export async function extractP2PMessage(source: AsyncIterable<Uint8Array | BufferList>): Promise<P2PMessage | undefined> {

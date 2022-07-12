@@ -21,12 +21,12 @@ import P2PAggregator, { AggregateResult } from "../../p2p/aggregator";
 import { prettySeconds, sleep } from "../../services/TimerUtils";
 import { getHashFeedIdForPair } from "../pushPair/services/utils";
 import DBLogger from "../../models/DBLoggerModule";
-import { latestVersion, new_version, P2PVersion, rejectVersion } from "./models/P2PVersion";
+import { latestVersion, new_version, P2PVersion, rejectVersion, toString as versionToString } from "../../p2p/models/P2PVersion";
 
 export class P2PModule extends Module {
     static type = "P2PModule";
-    static node_version = new_version("0.0.1");
-    static report_version = new_version("0.0.1");
+    static node_version = new_version(process.env.NODE_ENV?.toLowerCase() === 'test' ? process.env.P2P_NODE_VERSION ?? "1.0.4" : "0.0.1");
+    static report_version = new_version(process.env.NODE_ENV?.toLowerCase() === 'test' ? process.env.P2P_REPORT_VERSION ?? "1.2.0" : "0.0.1");
 
     private internalConfig: P2PInternalConfig;
     private batch?: P2PDataRequestBatch;
@@ -49,7 +49,10 @@ export class P2PModule extends Module {
 
         this.internalConfig = parseP2PConfig(moduleConfig);
         this.id = this.internalConfig.id;
-        this.p2p = new Communicator({
+        this.p2p = new Communicator(
+            P2PModule.node_version,
+            P2PModule.report_version,
+            {
             peerId: appConfig.p2p.peer_id,
             addresses: appConfig.p2p.addresses,
             ...appConfig.p2p.p2p_node,
@@ -158,22 +161,13 @@ export class P2PModule extends Module {
                     return null;
                 }
 
-                const reports = Array.from(aggregateResult.reports);
-                console.log(`reports [${reports.length}]`);
-                const [latest_node_version, latest_report_version] = [
-                        ...reports
-                            .map((report) => [report.node_version, report.report_version]),
-                        [P2PModule.node_version, P2PModule.report_version]
-                    ]
-                    .reduce((lhs: P2PVersion[], rhs: P2PVersion[]) => [latestVersion(lhs[0], rhs[0]), latestVersion(lhs[1], rhs[1])]);
-
-                if (rejectVersion(P2PModule.node_version, latest_node_version)) {
-                    logger.error(`Node version '${P2PModule.node_version}' is out of date and needs to be updated to '${latest_node_version}'`);
+                if (rejectVersion(P2PModule.node_version, this.p2p.latest_node_version)) {
+                    logger.error(`Node version '${versionToString(P2PModule.node_version)}' is out of date and needs to be updated to '${versionToString(this.p2p.latest_node_version)}'`);
                     return null;
                 }
                 
-                if (rejectVersion(P2PModule.report_version, latest_report_version)) {
-                    logger.error(`Report version '${P2PModule.report_version}' is out of date and needs to be updated to '${latest_report_version}'`);
+                if (rejectVersion(P2PModule.report_version, this.p2p.latest_report_version)) {
+                    logger.error(`Report version '${P2PModule.report_version}' is out of date and needs to be updated to '${versionToString(this.p2p.latest_report_version)}'`);
                     return null;
                 }
 
@@ -224,7 +218,7 @@ export class P2PModule extends Module {
             logger.info(`Starting p2p node...`);
             await this.p2p.start();
             await this.aggregator.init();
-
+            
             logger.info(`[${this.id}] Creating pairs if needed..`);
             
             // calling deployOracle for more than one pair without delay bet calls throw server error
@@ -241,7 +235,7 @@ export class P2PModule extends Module {
                     }
                 );
             }));
-          
+                
             logger.info(`[${this.id}] Done creating pairs`);
 
             await this.processPairs();

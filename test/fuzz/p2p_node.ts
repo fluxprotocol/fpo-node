@@ -11,10 +11,10 @@ import { randNumberFromRange } from './utils';
 
 export class P2PNodeInfo {
 	id: number;
-    port: number;
-    peerId: PeerId;
+	port: number;
+	peerId: PeerId;
 	address: string;
-    privateKeyEnv: string;
+	privateKeyEnv: string;
 
 	constructor(id: number, port: number, peerId: PeerId, address: string, privateKeyEnv: string) {
 		this.id = id;
@@ -67,11 +67,11 @@ export class P2PNodeInfo {
 async function grabFreePort(taken: Set<number>): Promise<number> {
 	let port: number = randNumberFromRange(8000, 12000);
 
-	while (await isPortReachable(port, {host: 'localhost'}) && !taken.has(port)) {
+	while (await isPortReachable(port, { host: 'localhost' }) && !taken.has(port)) {
 		port = randNumberFromRange(8000, 12000);
 	}
 	taken.add(port);
-	
+
 	return port;
 }
 
@@ -91,7 +91,7 @@ export async function generateP2PNodesConfigs(config: P2PFuzzConfig): Promise<Un
 	const pairs: Pair[] = config.p2p_config.generate_pairs ?
 		createPairs(config.p2p_config.min_pairs ?? 1, config.p2p_config.max_pairs ?? 6, config.p2p_config.max_decimals ?? 8, config.p2p_config.string_bytes ?? 8)
 		: config.p2p_config.pairs!;
-		console.log(`ports:`, ports);
+	console.log(`ports:`, ports);
 	console.log(`peerIds:`, peerIds.map((p) => p.toB58String()));
 	console.log(`pairs:`, pairs.map((p) => JSON.stringify(p)));
 

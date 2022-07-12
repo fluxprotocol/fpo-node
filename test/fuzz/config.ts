@@ -24,9 +24,15 @@ export interface P2PConfig {
 	string_bytes?: number;
 	peer_ids?: JSONPeerId[];
 	allow_disconnects: boolean;
+	attempt_disconnect_interval?: number;
 	random_disconnect_chance?: number;
 	reconnect_interval?: number;
 	randomly_update_nodes: boolean;
+	randomly_update_reports: boolean;
+	outdated_rounds_allowed?: number;
+	random_update_chance?: number;
+	major_update_chance?: number;
+	minor_update_chance?: number;
 }
 
 export interface P2PFuzzConfig {
@@ -44,7 +50,7 @@ function default_fuzz_config(path: string) {
 			generate_keys: true,
 		},
 		p2p_config: {
-			min_nodes: 1,
+			min_nodes: 3,
 			max_nodes: 10,
 			generate_ports: true,
 			generate_pairs: true,
@@ -53,6 +59,7 @@ function default_fuzz_config(path: string) {
 			generate_peer_ids: true,
 			allow_disconnects: false,
 			randomly_update_nodes: false,
+			randomly_update_reports: false,
 		},
 		creatorAddress: "fill me in",
 		creatorPrivKeyEnv: "fill me in",

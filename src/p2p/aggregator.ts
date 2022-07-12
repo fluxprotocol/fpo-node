@@ -9,7 +9,7 @@ import { P2PDataRequest } from "../modules/p2p/models/P2PDataRequest";
 import { arrayify, solidityKeccak256 } from "ethers/lib/utils";
 import { extractP2PMessage, P2PMessage } from './models/P2PMessage';
 import EventEmitter from "events";
-import { P2PVersion } from "../modules/p2p/models/P2PVersion";
+import { P2PVersion } from "./models/P2PVersion";
 import { P2PInternalConfig } from "../modules/p2p/models/P2PConfig";
 import { Network } from "../models/Network";
 import { getRoundIdForPair } from "../modules/p2p/services/P2PRequestService";
@@ -77,10 +77,10 @@ export default class P2PAggregator extends EventEmitter {
 
         let roundId = this.transmittedRound.get(message.id)
         let round = undefined;
-        try{
+        try {
             round = await getRoundIdForPair(this.config, this.network, message.hashFeedId);
 
-        }catch(err){
+        } catch(err) {
             // console.log("error fetching round -- trying again")
             // round = await getRoundIdForPair(this.config, this.network, message.hashFeedId);
             console.log("error fetching round -- ")
@@ -235,8 +235,6 @@ export default class P2PAggregator extends EventEmitter {
                 timestamp,
                 round: Number(roundId),
                 signer: request.targetNetwork.getWalletPublicAddress(),
-                node_version,
-                report_version,
             };
     
             this.callbacks.set(request.internalId, resolve);
