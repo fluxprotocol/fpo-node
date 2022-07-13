@@ -5,8 +5,11 @@ const source_paths = [
 	"market_data.current_price.aud",
 	"market_data.current_price.btc",
 	"market_data.current_price.cad",
+	"market_data.current_price.czk",
+	"market_data.current_price.dot",
 	"market_data.current_price.jpy",
 	"market_data.current_price.usd",
+	"market_data.current_price.xlm",
 ];
 
 const end_points = [
@@ -18,6 +21,10 @@ const end_points = [
 	"https://api.coingecko.com/api/v3/coins/hedera-hashgraph",
 	"https://api.coingecko.com/api/v3/coins/chain-2",
 	"https://api.coingecko.com/api/v3/coins/near",
+	"https://api.coingecko.com/api/v3/coins/dai",
+	"https://api.coingecko.com/api/v3/coins/avalanche-2",
+	"https://api.coingecko.com/api/v3/coins/algorand",
+	"https://api.coingecko.com/api/v3/coins/theta-token",
 ];
 
 export default function createPairs(min: number, max: number, max_decimals: number, string_bytes: number): Pair[] {
