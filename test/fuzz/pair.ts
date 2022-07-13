@@ -36,20 +36,20 @@ export default function createPairs(min: number, max: number, max_decimals: numb
 		}
 	});
 
-	return new Array(num_pairs).fill(null).map((_: null, index: number) => {
-		return {
+	return Array(num_pairs).fill(null).map((_: null, index: number) =>
+		({
 			"pair": randomString(string_bytes),
 			"decimals": randNumberFromRange(1, max_decimals),
 			"sources": [
 				sources[index]
 			]
-		}
-	}).filter((pair, index, self) => {
-		index === self.findIndex((t) => (
+		})
+	).filter((pair, index, self) => {
+		return index === self.findIndex((t) => 
 			t.pair === pair.pair
 			&& t.decimals === pair.decimals
 			&& t.sources[0].source_path === pair.sources[0].source_path
 			&& t.sources[0].end_point === pair.sources[0].end_point
-		))
+		)
 	});
 }

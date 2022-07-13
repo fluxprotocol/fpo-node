@@ -157,7 +157,7 @@ async function fuzz(fuzz_config_path: string) {
 		let reports_rounds_outdated = 0;
 		while (true) {
 			await sleep(randNumberFromRange(config.p2p_config.disconnect_interval_min ?? 180_000, config.p2p_config.disconnect_interval_max ?? 200_000));
-
+			// await sleep(300_000);
 			if (config.p2p_config.allow_disconnects && randNumberFromRange(0, 100) <= (config.p2p_config.random_disconnect_chance ?? 15)) {
 				const worker = random_item(cluster.workers!);
 				process.env.DC_INDEX = workers[worker.id].index;
