@@ -24,7 +24,7 @@ export class P2PNodeInfo {
 		this.privateKeyEnv = privateKeyEnv;
 	}
 
-	createNodeConfig(creator: string, peers: P2PNodeInfo[], pairs: Pair[]): UnparsedAppConfig {
+	createNodeConfig(creator: string, interval: number, deviation: number, peers: P2PNodeInfo[], pairs: Pair[]): UnparsedAppConfig {
 		return {
 			"p2p": {
 				"peer_id": this.peerId.toJSON(),
@@ -50,10 +50,10 @@ export class P2PNodeInfo {
 					"networkId": 1313161555,
 					// @ts-ignore
 					"contractAddress": "0xcE8edAc0318D8e70B3fdA57Cd63596Bc147618D3",
-					"deviationPercentage": 0.5,
+					"deviationPercentage": deviation,
 					"minimumUpdateInterval": 1800000,
 					"pairs": pairs,
-					"interval": 60000,
+					"interval": interval,
 					"logFile": `node${this.id}_logs`,
 					"creator": creator,
 					"signers": [creator, ...peers.map(peer => peer.address)],
@@ -108,7 +108,7 @@ export async function generateP2PNodesConfigs(config: P2PFuzzConfig): Promise<Un
 
 	const node_configs = nodes.map((value, index) => {
 		const peers = [...nodes.slice(0, index), ...nodes.slice(index + 1)];
-		return value.createNodeConfig(config.creatorAddress, peers, pairs);
+		return value.createNodeConfig(config.creatorAddress, config.node_config.interval, config.node_config.interval, peers, pairs);
 	});
 
 	return node_configs;

@@ -44,5 +44,12 @@ export default function createPairs(min: number, max: number, max_decimals: numb
 				sources[index]
 			]
 		}
+	}).filter((pair, index, self) => {
+		index === self.findIndex((t) => (
+			t.pair === pair.pair
+			&& t.decimals === pair.decimals
+			&& t.sources[0].source_path === pair.sources[0].source_path
+			&& t.sources[0].end_point === pair.sources[0].end_point
+		))
 	});
 }

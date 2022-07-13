@@ -137,7 +137,7 @@ async function fuzz(fuzz_config_path: string) {
 				const new_v = new_version(`${major}.${minor}.${patch}`);
 				process.env.P2P_REPORT_VERSION = toString(new_v);
 				latest_report_version = latestVersion(new_v, report_version);
-				console.log(`Updating nodes in thread: ${process.env.CHILD_INDEX} to version ${process.env.P2P_REPORT_VERSION}`);
+				console.log(`Updating reports in thread: ${process.env.CHILD_INDEX} to version ${process.env.P2P_REPORT_VERSION}`);
 			}
 
 			console.log(`Reconnecting nodes in thread: ${process.env.CHILD_INDEX}`);
