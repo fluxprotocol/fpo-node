@@ -24,11 +24,15 @@ export interface P2PConfig {
 	string_bytes?: number;
 	peer_ids?: JSONPeerId[];
 	allow_disconnects: boolean;
-	attempt_disconnect_interval?: number;
+	disconnect_interval_min?: number;
+	disconnect_interval_max?: number;
 	random_disconnect_chance?: number;
-	reconnect_interval?: number;
+	reconnect_interval_min?: number;
+	reconnect_interval_max?: number;
 	randomly_update_nodes: boolean;
+	update_nodes_chance?: number;
 	randomly_update_reports: boolean;
+	update_reports_chance?: number;
 	outdated_rounds_allowed?: number;
 	random_update_chance?: number;
 	major_update_chance?: number;

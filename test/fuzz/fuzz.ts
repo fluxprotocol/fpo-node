@@ -26,9 +26,11 @@ async function fuzz(fuzz_config_path: string) {
 		let node_version = new_version(`${randNumberFromRange(0, 3)}.${randNumberFromRange(2, 8)}.${randNumberFromRange(3, 11)}`);
 		let latest_node_version = node_version;
 		let report_version = new_version(`${randNumberFromRange(2, 4)}.${randNumberFromRange(0, 1)}.${randNumberFromRange(1, 6)}`);
+		let latest_report_version = node_version;
 		process.env.P2P_NODE_VERSION = toString(node_version);
 		process.env.P2P_REPORT_VERSION = toString(report_version);
 		let nodes_version_mismatch = false;
+		let reports_version_mismatch = false;
 
 		if (!fs.existsSync('.fuzz')) {
 			fs.mkdirSync('.fuzz');
@@ -65,10 +67,12 @@ async function fuzz(fuzz_config_path: string) {
 		});
 
 		let resetting_node_version = false;
+		let resetting_report_version = false;
 		cluster.on('reconnect', async (child: Worker) => {
 			console.log(`in reconnect`);
 			child.process.kill();
-			await sleep(config.p2p_config.reconnect_interval ?? 300_000);
+			// Remain disconnected for a random interval
+			await sleep(randNumberFromRange(config.p2p_config.reconnect_interval_min ?? 180_000, config.p2p_config.reconnect_interval_max ?? 300_000));
 			const node_cluster = workers[child.id];
 			delete workers[child.id];
 			process.env.CHILD_INDEX = node_cluster.index;
@@ -82,7 +86,7 @@ async function fuzz(fuzz_config_path: string) {
 				prev_node_version = process.env.P2P_NODE_VERSION;
 				resetting_node_version = false;
 				nodes_version_mismatch = false;
-			} else if (config.p2p_config.randomly_update_nodes && randNumberFromRange(0, 100) <= (config.p2p_config.random_disconnect_chance ?? 15)) {
+			} else if (config.p2p_config.randomly_update_nodes && randNumberFromRange(0, 100) <= (config.p2p_config.update_nodes_chance ?? 15)) {
 				let major = node_cluster.node_version.major;
 				let minor = node_cluster.node_version.minor;
 				let patch = node_cluster.node_version.patch;
@@ -102,11 +106,38 @@ async function fuzz(fuzz_config_path: string) {
 				} else {
 					patch += 1;
 				}
+			}
+
+			let prev_report_version = process.env.P2P_REPORT_VERSION;
+			if (resetting_report_version) {
+				process.env.P2P_REPORT_VERSION = toString(latest_report_version);
+				prev_node_version = process.env.P2P_REPORT_VERSION;
+				resetting_report_version = false;
+				reports_version_mismatch = false;
+			} else if (config.p2p_config.randomly_update_reports && randNumberFromRange(0, 100) <= (config.p2p_config.update_reports_chance ?? 15)) {
+				let major = node_cluster.report_version.major;
+				let minor = node_cluster.report_version.minor;
+				let patch = node_cluster.report_version.patch;
+
+				let num = randNumberFromRange(0, 100);
+				if (num <= (config.p2p_config.major_update_chance ?? 15)) {
+					major += 1;
+					minor = 0;
+					patch = 0;
+					// we only care if there is a major version mismatch.
+					// as the others should still function.
+					reports_version_mismatch = true;
+				} else if (randNumberFromRange(0, 100) <= (config.p2p_config.minor_update_chance ?? 20)) {
+					minor += 1;
+					patch = 0;
+				} else {
+					patch += 1;
+				}
 				
 				const new_v = new_version(`${major}.${minor}.${patch}`);
-				process.env.P2P_NODE_VERSION = toString(new_v);
-				latest_node_version = latestVersion(new_v, node_version);
-				console.log(`Updating nodes in thread: ${process.env.CHILD_INDEX} to version ${process.env.P2P_NODE_VERSION}`);
+				process.env.P2P_REPORT_VERSION = toString(new_v);
+				latest_report_version = latestVersion(new_v, report_version);
+				console.log(`Updating nodes in thread: ${process.env.CHILD_INDEX} to version ${process.env.P2P_REPORT_VERSION}`);
 			}
 
 			console.log(`Reconnecting nodes in thread: ${process.env.CHILD_INDEX}`);
@@ -119,11 +150,13 @@ async function fuzz(fuzz_config_path: string) {
 				report_version: new_version(process.env.P2P_REPORT_VERSION!),
 			};
 			process.env.P2P_NODE_VERSION = prev_node_version;
+			process.env.P2P_REPORT_VERSION = prev_report_version;
 		});
 
 		let node_rounds_outdated = 0;
+		let reports_rounds_outdated = 0;
 		while (true) {
-			await sleep(config.p2p_config.attempt_disconnect_interval ?? 180_000);
+			await sleep(randNumberFromRange(config.p2p_config.disconnect_interval_min ?? 180_000, config.p2p_config.disconnect_interval_max ?? 200_000));
 
 			if (config.p2p_config.allow_disconnects && randNumberFromRange(0, 100) <= (config.p2p_config.random_disconnect_chance ?? 15)) {
 				const worker = random_item(cluster.workers!);
@@ -134,7 +167,7 @@ async function fuzz(fuzz_config_path: string) {
 
 			if (nodes_version_mismatch) {
 				// TODO need a way to redo remaining nodes at latest version after a few runs
-				if (node_rounds_outdated <= (config.p2p_config.outdated_rounds_allowed ?? 5)) {
+				if (node_rounds_outdated <= (config.p2p_config.outdated_rounds_allowed ?? 3)) {
 					node_rounds_outdated++;
 					console.log(`node_rounds_outdated: ${node_rounds_outdated}`);
 				} else {
@@ -142,6 +175,25 @@ async function fuzz(fuzz_config_path: string) {
 					const workers = cluster.workers!;
 					resetting_node_version = true;
 					console.log(`Resetting all nodes to latest version: ${toString(latest_node_version)}`);
+					for (const worker in workers) {
+						const non_null = workers[worker]!;
+						non_null.emit('reconnect', non_null);
+					}
+					
+					continue;
+				}
+			}
+
+			if (reports_version_mismatch) {
+				// TODO need a way to redo remaining nodes at latest version after a few runs
+				if (reports_rounds_outdated <= (config.p2p_config.outdated_rounds_allowed ?? 3)) {
+					reports_rounds_outdated++;
+					console.log(`node_rounds_outdated: ${reports_rounds_outdated}`);
+				} else {
+					reports_rounds_outdated = 0;
+					const workers = cluster.workers!;
+					resetting_report_version = true;
+					console.log(`Resetting all reports to latest version: ${toString(latest_node_version)}`);
 					for (const worker in workers) {
 						const non_null = workers[worker]!;
 						non_null.emit('reconnect', non_null);
