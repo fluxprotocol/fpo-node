@@ -58,20 +58,20 @@ export default class Communicator {
 		this.latest_node_version = node_version;
 		this.report_version = report_version;
 		this.latest_report_version = report_version;
-        this._peers = preloadedPeersAddresses;
+		this._peers = preloadedPeersAddresses;
 		this._node_addr = '';
 	}
 
 	async init(): Promise<void> {
-        this._node = await create(this._options);
-		this.handle_incoming('/report/version', async (peer: Multiaddr, source: AsyncIterable<Uint8Array | BufferList>) => {
-			const versions = await extractP2PVersionMessage(source);
-			if (!versions) return;
-			logger.info(`[VERSION-AGGREGATOR] Received versions from ${peer}`);
+		this._node = await create(this._options);
+		// this.handle_incoming('/report/version', async (peer: Multiaddr, source: AsyncIterable<Uint8Array | BufferList>) => {
+		// 	const versions = await extractP2PVersionMessage(source);
+		// 	if (!versions) return;
+		// 	logger.info(`[VERSION-AGGREGATOR] Received versions from ${peer}`);
 
-			this.latest_node_version = latestVersion(this.node_version, versions.node_version);
-			this.latest_report_version = latestVersion(this.report_version, versions.report_version);
-		});
+		// 	this.latest_node_version = latestVersion(this.node_version, versions.node_version);
+		// 	this.latest_report_version = latestVersion(this.report_version, versions.report_version);
+		// });
 	}
 
 	async retry(): Promise<void> {
@@ -88,27 +88,29 @@ export default class Communicator {
 		return attempt(this, undefined, async (node: Libp2p) => {
 
 			await node.start();
-            this._node_addr = `${node.multiaddrs[0]}/p2p/${node.peerId.toJSON().id}`;
+			this._node_addr = `${node.multiaddrs[0]}/p2p/${node.peerId.toJSON().id}`;
+			logger.info(`node ${this._node_addr} started`);
+			const annouce_addrs = node.addressManager.getAnnounceAddrs();
+			console.log(`Node addrs [${node.multiaddrs.length}] ->`, node.multiaddrs.map((addr) => addr.toString()).join(', '));
 
-			console.log('Picked an address', this._node_addr);
 			for (const peer of this._peers) {
 				if (!await this.connect(new Multiaddr(peer))) {
 					this._retry.add(peer);
 				}
 			}
 
-            // It's good to let the node continuously try to reconnect to peers it cannot connect to
-            debouncedInterval(async () => {
-                await this.retry();
-            }, 10_000); // TODO maybe this should be longer or user set?
+			// It's good to let the node continuously try to reconnect to peers it cannot connect to
+			debouncedInterval(async () => {
+				await this.retry();
+			}, 10_000); // TODO maybe this should be longer or user set?
 			// Because if there's a lot of nodes to turn on and etc it spams the logs.
 
 			return [
 				node.multiaddrs[0],
 				node.peerId,
 			];
-		
-			
+
+
 		})
 	}
 
@@ -134,13 +136,15 @@ export default class Communicator {
 			try {
 				this._peers.add(ma.toString());
 				const conn = await node.dial(ma);
+				logger.info
 				if (conn !== undefined) {
-					// const { stream } = await node.dialProtocol(ma, '/report/version');
+					// const { stream } = await conn.newStream(protocol);
 					// const version_message: P2PVersionMessage = {
 					// 	node_version: this.node_version,
 					// 	report_version: this.report_version,
 					// };
 					// await stream.sink(createAsyncIterable([fromString(JSON.stringify(version_message))]));
+					// stream.close();
 
 					this._connections.add(conn);
 					return true;
@@ -186,10 +190,10 @@ export default class Communicator {
 		});
 	}
 
-	async handle_incoming(protocol: string, callback: (peer: Multiaddr, source: AsyncIterable<Uint8Array | BufferList>) => Promise<void>): Promise<void> {
+	async handle_incoming(protocol: string, callback: (peer: Multiaddr, connection: Multiaddr, source: AsyncIterable<Uint8Array | BufferList>) => Promise<void>): Promise<void> {
 		await attempt(this, null, async (node: Libp2p) => {
 			await node.handle(protocol, async ({ connection, stream }) => {
-				await callback(connection.remoteAddr, stream.source);
+				await callback(connection.localAddr!, connection.remoteAddr, stream.source);
 			});
 		});
 	}
@@ -209,9 +213,10 @@ export default class Communicator {
 				try {
 					const { stream } = await connection.newStream(protocol);
 					await stream.sink(createAsyncIterable(data));
+					stream.close();
 				} catch (err) {
-					this._connections.delete(connection);					
-					this._retry.add( `${connection.remoteAddr}/p2p/${connection.remotePeer.toJSON().id}`);
+					this._connections.delete(connection);
+					this._retry.add(`${connection.remoteAddr}/p2p/${connection.remotePeer.toJSON().id}`);
 				}
 			}
 		});

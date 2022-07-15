@@ -104,6 +104,14 @@ export class P2PModule extends Module {
                 return;
             }
 
+            if (rejectVersion(P2PModule.node_version, this.p2p.latest_node_version)) {
+                throw new Error(`Node version '${versionToString(P2PModule.node_version)}' is out of date and needs to be updated to '${versionToString(this.p2p.latest_node_version)}'`);
+            }
+            
+            if (rejectVersion(P2PModule.report_version, this.p2p.latest_report_version)) {
+                throw new Error(`Report version '${P2PModule.report_version}' is out of date and needs to be updated to '${versionToString(this.p2p.latest_report_version)}'`);
+            }
+
             logger.info(`[${this.id}] Processing job`);
             const job = this.appConfig.jobs.find(job => job.type === FetchJob.type);
             if (!job) throw new Error(`No job found with id ${FetchJob.type}`);
@@ -167,16 +175,6 @@ export class P2PModule extends Module {
                 // At this stage everything should already be fully handled by the leader
                 // and if not at least submitted by this node. We can safely move on
                 if (!aggregateResult.leader) {
-                    return null;
-                }
-
-                if (rejectVersion(P2PModule.node_version, this.p2p.latest_node_version)) {
-                    logger.error(`Node version '${versionToString(P2PModule.node_version)}' is out of date and needs to be updated to '${versionToString(this.p2p.latest_node_version)}'`);
-                    return null;
-                }
-                
-                if (rejectVersion(P2PModule.report_version, this.p2p.latest_report_version)) {
-                    logger.error(`Report version '${P2PModule.report_version}' is out of date and needs to be updated to '${versionToString(this.p2p.latest_report_version)}'`);
                     return null;
                 }
 

@@ -66,28 +66,28 @@ export default class P2PAggregator extends EventEmitter {
         this.thisNode = new Multiaddr(this.p2p._node_addr);
     }
 
-    private async handleIncomingData(peer: Multiaddr, source: AsyncIterable<Uint8Array | BufferList>) {
+    private async handleIncomingData(peer: Multiaddr, connection: Multiaddr, source: AsyncIterable<Uint8Array | BufferList>) {
         const message = await extractP2PMessage(source);
         if (!message) return;
         logger.debug(`[${LOG_NAME}-${message.id}] Received message from ${peer} ${this.requestReports.size}/${this.p2p._peers.size}`);
         console.log("**Received msg: ", message)
-       
+
         let round = await getRoundIdForPair(this.config, this.network, message.hashFeedId);
-        while(Number(round) == -1){
+        while (Number(round) == -1) {
             await sleep(5_000)
             round = await getRoundIdForPair(this.config, this.network, message.hashFeedId);
         }
         let roundId = this.toBeTransmittedRound.get(message.id)
-        if(roundId == undefined || ((roundId!= undefined) && (Number(round) != roundId))){
+        if (roundId == undefined || ((roundId != undefined) && (Number(round) != roundId))) {
             this.toBeTransmittedRound.set(message.id, Number(round))
             roundId = Number(round)
         }
-       
+
         console.log(`-- roundId = ${roundId}, round = ${round}`)
         let reports = this.requestReports.get(message.id) ?? new Set();
         if (message.round >= roundId) {
-            for (let r of reports){
-                if(((r.signer == message.signer) && (r.round == message.round))){
+            for (let r of reports) {
+                if (((r.signer == message.signer) && (r.round == message.round))) {
                     console.log("---deleting old unsuccessful signatures")
                     reports.delete(r)
                 }
@@ -112,18 +112,18 @@ export default class P2PAggregator extends EventEmitter {
 
         console.log("**previous reports: ", reports)
 
-        if(!this.sentToPeers.get(message.id)){
-            for (let r of reports){
-                if (r.signer == request.targetNetwork.getWalletPublicAddress()){                    
+        if (!this.sentToPeers.get(message.id)) {
+            for (let r of reports) {
+                if (r.signer == request.targetNetwork.getWalletPublicAddress()) {
                     await this.p2p.send(`/send/data`, [
                         fromString(JSON.stringify(r)),
                     ]);
                     logger.debug(`[${LOG_NAME}-${request.internalId}] ***Sent data to peers`);
-                    console.log("*****sent", r )
+                    console.log("*****sent", r)
                 }
             }
         }
-        
+
         if (this.p2p._retry.size == 0) {
             this.sentToPeers.set(request.internalId, true)
         }
@@ -151,10 +151,10 @@ export default class P2PAggregator extends EventEmitter {
         const request = this.requests.get(id);
         if (!request) return;
         let resolve = this.callbacks.get(id);
-        if(!resolve) return;
+        if (!resolve) return;
 
         let round = await getRoundIdForPair(this.config, this.network, reports.values().next().value.hashFeedId);
-        while(Number(round) == -1) {
+        while (Number(round) == -1) {
             console.log("+++retrying fetching round");
             await sleep(5_000)
             round = await getRoundIdForPair(this.config, this.network, reports.values().next().value.hashFeedId);
@@ -162,20 +162,20 @@ export default class P2PAggregator extends EventEmitter {
         const roundId = this.toBeTransmittedRound.get(id)
         if (!roundId) return;
         console.log(`******************* roundId = ${roundId}, round = ${round}`)
-       
-        if(Number(round) != Number(roundId)){
+
+        if (Number(round) != Number(roundId)) {
             console.log("Wrong round")
             return
         }
 
-        for(let r of reports){
-            if(r.round != Number(round)){
+        for (let r of reports) {
+            if (r.round != Number(round)) {
                 reports.delete(r)
             }
         }
 
         // accept less signatures
-        const requiredAmountOfSignatures = (Math.floor(this.p2p._peers.size / 2) + 1) > 1 ? (Math.floor(this.p2p._peers.size / 2) + 1) : 2 ;
+        const requiredAmountOfSignatures = (Math.floor(this.p2p._peers.size / 2) + 1) > 1 ? (Math.floor(this.p2p._peers.size / 2) + 1) : 2;
         if (reports.size < requiredAmountOfSignatures) {
             logger.info(`[${LOG_NAME}-${id}] Not enough signatures --- `);
             console.log("---filtered reports", reports)
@@ -191,7 +191,7 @@ export default class P2PAggregator extends EventEmitter {
 
         this.clearRequest(id);
         if (this.thisNode.equals(leader)) {
-            logger.debug(`[${LOG_NAME}-${request.internalId}] This node is the leader. Sending transaction across network and blockchain`);      
+            logger.debug(`[${LOG_NAME}-${request.internalId}] This node is the leader. Sending transaction across network and blockchain`);
             return resolve!({
                 leader: true,
                 reports,
@@ -221,21 +221,21 @@ export default class P2PAggregator extends EventEmitter {
                 round: Number(roundId),
                 signer: request.targetNetwork.getWalletPublicAddress(),
             };
-    
+
             this.callbacks.set(request.internalId, resolve);
             this.checkStatusCallback.set(request.internalId, isRequestResolved);
             this.requests.set(request.internalId, request);
             console.log(`from aggregate fn: rnd1 = ${Number(this.toBeTransmittedRound.get(request.internalId))}, rnd2 = ${Number(roundId)}`)
-            
-            if(!this.toBeTransmittedRound.get(request.internalId) || Number(this.toBeTransmittedRound.get(request.internalId)) < Number(roundId)){
+
+            if (!this.toBeTransmittedRound.get(request.internalId) || Number(this.toBeTransmittedRound.get(request.internalId)) < Number(roundId)) {
                 this.toBeTransmittedRound.set(request.internalId, Number(roundId));
 
             }
-           
+
             let reports = this.requestReports.get(request.internalId) ?? new Set();
             console.log("previously received reports", reports)
-            for(let r of reports){
-                if((r.round == p2pMessage.round) && (r.signer == p2pMessage.signer)){
+            for (let r of reports) {
+                if ((r.round == p2pMessage.round) && (r.signer == p2pMessage.signer)) {
                     console.log("+++deleting old unsuccessful signatures")
                     reports.delete(r)
                 }
@@ -246,7 +246,7 @@ export default class P2PAggregator extends EventEmitter {
             this.requestReports.set(request.internalId, reports);
             console.log("**aggregated reports: ", reports)
             if (this.p2p._retry.size > 0) {
-                console.log("++UNCONNECTED PEERS: ", this.p2p._retry.size)                
+                console.log("++UNCONNECTED PEERS: ", this.p2p._retry.size)
             } else {
                 console.log("Sending to peers");
                 await this.p2p.send(`/send/data`, [
@@ -256,7 +256,7 @@ export default class P2PAggregator extends EventEmitter {
                 this.sentToPeers.set(request.internalId, true)
                 await this.handleReports(request.internalId);
             }
-            
+
         });
     }
 }
