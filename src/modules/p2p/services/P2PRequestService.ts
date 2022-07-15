@@ -40,41 +40,43 @@ export async function getRoundIdForPair(config: P2PInternalConfig, network: Netw
                 return new Big(0);
             }
         }
+        console.log("----------err fetching round --", error)
+        return new Big(-1)
 
-        throw error;
+        // throw error;
     }
 }
 
-export async function getMinSignersForPair(config: P2PInternalConfig, network: Network, computedId: string): Promise<Big> {
-    try {
-        if (network.type === 'evm') {
-            console.log('[] computedId -> ', computedId);
+// export async function getMinSignersForPair(config: P2PInternalConfig, network: Network, computedId: string): Promise<Big> {
+//     try {
+//         if (network.type === 'evm') {
+//             console.log('[] computedId -> ', computedId);
 
-            const latestRound: BigNumber = await network.view({
-                address: config.contractAddress,
-                method: 'getMinSigners',
-                params: {
-                    _id: computedId,
-                },
-                abi: FluxP2PFactory.abi,
-            });
+//             const latestRound: BigNumber = await network.view({
+//                 address: config.contractAddress,
+//                 method: 'getMinSigners',
+//                 params: {
+//                     _id: computedId,
+//                 },
+//                 abi: FluxP2PFactory.abi,
+//             });
 
-            return new Big(latestRound.toString());
-        }
+//             return new Big(latestRound.toString());
+//         }
 
-        // TODO: Near currently does not have a latest round...
-        return new Big(5);
-    } catch (error) {
-        if (error instanceof Error) {
-            // Price pair does not exist yet
-            if (error.message === 'NULL_ADDRESS') {
-                return new Big(0);
-            }
-        }
+//         // TODO: Near currently does not have a latest round...
+//         return new Big(5);
+//     } catch (error) {
+//         if (error instanceof Error) {
+//             // Price pair does not exist yet
+//             if (error.message === 'NULL_ADDRESS') {
+//                 return new Big(0);
+//             }
+//         }
 
-        throw error;
-    }
-}
+//         throw error;
+//     }
+// }
 
 
 export function createBatchFromPairs(config: P2PInternalConfig, targetNetwork: Network): P2PDataRequestBatch {

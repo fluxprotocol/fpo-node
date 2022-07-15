@@ -90,7 +90,7 @@ export default class Communicator {
 			await node.start();
             this._node_addr = `${node.multiaddrs[0]}/p2p/${node.peerId.toJSON().id}`;
 
-			console.log('Picked an address');
+			console.log('Picked an address', this._node_addr);
 			for (const peer of this._peers) {
 				if (!await this.connect(new Multiaddr(peer))) {
 					this._retry.add(peer);
@@ -135,12 +135,12 @@ export default class Communicator {
 				this._peers.add(ma.toString());
 				const conn = await node.dial(ma);
 				if (conn !== undefined) {
-					const { stream } = await node.dialProtocol(ma, '/report/version');
-					const version_message: P2PVersionMessage = {
-						node_version: this.node_version,
-						report_version: this.report_version,
-					};
-					await stream.sink(createAsyncIterable([fromString(JSON.stringify(version_message))]));
+					// const { stream } = await node.dialProtocol(ma, '/report/version');
+					// const version_message: P2PVersionMessage = {
+					// 	node_version: this.node_version,
+					// 	report_version: this.report_version,
+					// };
+					// await stream.sink(createAsyncIterable([fromString(JSON.stringify(version_message))]));
 
 					this._connections.add(conn);
 					return true;

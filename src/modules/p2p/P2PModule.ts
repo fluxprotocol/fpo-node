@@ -81,6 +81,7 @@ export class P2PModule extends Module {
 
     private async processPairs() {
         try {
+            console.log("-----processPairs")
             const timestampUpdateReport = await this.fetchLastUpdate();
             // Fetch elapsed time (in milliseconds) since last pair(s) update
             const timeSinceUpdate = Date.now() - timestampUpdateReport.oldestTimestamp;
@@ -140,18 +141,26 @@ export class P2PModule extends Module {
 
                 // Round id is used to determine the leader in the network.
                 // All nodes are expected to run the same peer list
-                const roundId: Big = await getRoundIdForPair(this.internalConfig, this.network, hashFeedId);
+                
+                // Round id is used to determine the leader in the network.
+                // All nodes are expected to run the same peer list
+                let roundId: Big = await getRoundIdForPair(this.internalConfig, this.network, hashFeedId);
+                while(Number(roundId) == -1){
+                    await sleep(5_000)
+                    roundId = await getRoundIdForPair(this.internalConfig, this.network, hashFeedId);
+                }
                 logger.info(`[${this.id}] ${unresolvedRequest.extraInfo.pair} on round id ${roundId.toString()}`);
 
-                // Send the outcome through the p2p network to come to a consensus
                 const aggregateResult: AggregateResult = await this.aggregator.aggregate(P2PModule.node_version, P2PModule.report_version, unresolvedRequest, hashFeedId, outcome.answer, roundId, async () => {
                     // Check whether or not the transaction has been in the blockchain
-                    const newRoundId = await getRoundIdForPair(this.internalConfig, this.network,  hashFeedId);
-
+                    let newRoundId = await getRoundIdForPair(this.internalConfig, this.network,  hashFeedId);
+                    while(Number(roundId) == -1){
+                        await sleep(5_000)
+                        newRoundId = await getRoundIdForPair(this.internalConfig, this.network, hashFeedId);
+                    }
                     // When the round id incremented we've updated the prices on chain
                     return !newRoundId.eq(roundId);
                 });
-
                 this.processing.delete(unresolvedRequest.internalId);
 
                 this.medians.set(unresolvedRequest.internalId, new Big(outcome.answer));

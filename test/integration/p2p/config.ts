@@ -26,21 +26,21 @@ export function createNodeConfig(ownNode: NodeInfo, otherNodes: NodeInfo[], logF
                 "networkId": 1313161555,
                 "chainId": 1313161555,
                 "privateKeyEnvKey": ownNode.privateKeyEnv,
-                "rpc": "https://aurora-testnet.infura.io/v3/c74faac46a3f4b7f855851aab2292f8b",
+                "rpc": "https://aurora-testnet.infura.io/v3/ddb4137ee8ec4059a9ded8386a4ba900",
             }
         ],
         "modules": [
             {
                 "networkId": 1313161555,
                 // @ts-ignore
-                "contractAddress": "0x398F04Db383ffFC97B31D191C1708ff81a286781",
+                "contractAddress": "0x6920dD48f5dbd4EEFac12DAB9a0c131ACdbD9aAA",
                 // "contractAddress": "0xcE8edAc0318D8e70B3fdA57Cd63596Bc147618D3",
                 "deviationPercentage": 0.5,
                 "minimumUpdateInterval": 1800000,
                 "pairs": [
                     {
-                        "pair": "QWERTY_NEAR/SDT",
-                        "decimals": 13,
+                        "pair": "aaa//ccc",
+                        "decimals": 14,
                         "sources": [
                             {
                                 "source_path": "market_data.current_price.usd",
@@ -49,8 +49,28 @@ export function createNodeConfig(ownNode: NodeInfo, otherNodes: NodeInfo[], logF
                         ]
                     },
                     {
-                        "pair": "QWERTY-NEAR-USD",
-                        "decimals": 13,
+                        "pair": "xxx//yyy",
+                        "decimals": 14,
+                        "sources": [
+                            {
+                                "source_path": "market_data.current_price.usd",
+                                "end_point": "https://api.coingecko.com/api/v3/coins/near"
+                            }
+                        ]
+                    },
+                    {
+                        "pair": "mmm//nnn",
+                        "decimals": 14,
+                        "sources": [
+                            {
+                                "source_path": "market_data.current_price.usd",
+                                "end_point": "https://api.coingecko.com/api/v3/coins/near"
+                            }
+                        ]
+                    },
+                    {
+                        "pair": "ggg//hhh",
+                        "decimals": 14,
                         "sources": [
                             {
                                 "source_path": "market_data.current_price.usd",

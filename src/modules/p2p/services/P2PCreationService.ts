@@ -49,6 +49,8 @@ export async function createPairIfNeeded(pair: Pair, config: P2PInternalConfig, 
             throw new Error(`Network type ${network.type} is not supported for price pushing`);
         }
     } catch (err) {
-        throw err;
+         // throw err;
+         console.log("--createPairIfNeeded failed -- should retry: ", err)
+         return false
     }
 }
