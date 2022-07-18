@@ -4,6 +4,7 @@ import FluxP2PFactory from '../FluxP2PFactory.json';
 import { getHashFeedIdForPair } from "../../pushPair/services/utils";
 import logger from "../../../services/LoggerService";
 import { ethers } from "ethers";
+import { sleep } from "../../../services/TimerUtils";
 
 export async function createPairIfNeeded(pair: Pair, config: P2PInternalConfig, network: Network): Promise<boolean> {
     try {
@@ -51,6 +52,7 @@ export async function createPairIfNeeded(pair: Pair, config: P2PInternalConfig, 
     } catch (err) {
          // throw err;
          console.log("--createPairIfNeeded failed -- should retry: ", err)
+         await sleep(5_000)
          return false
     }
 }

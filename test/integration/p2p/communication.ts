@@ -8,32 +8,41 @@ import { createNodeConfig, NodeInfo } from './config';
 import peer1Key from './peer1.json';
 import peer2Key from './peer2.json';
 import peer3Key from './peer3.json';
+import peer4Key from './peer4.json';
+
 
 import { sleep } from "../../../src/services/TimerUtils";
 
 async function test(index: number) {
     const node1: NodeInfo = {
         peerId: await PeerId.createFromJSON(peer1Key),
-        port: 1337,
-        privateKeyEnv: "EVM_PRIVATE_KEY",
+        port: 1346,
+        privateKeyEnv: "EVM_PRIVATE_KEY1",
     };
 
 
     const node2: NodeInfo = {
         peerId: await PeerId.createFromJSON(peer2Key),
-        port: 1338,
+        port: 1347,
         privateKeyEnv: "EVM_PRIVATE_KEY2",
     }
 
     const node3: NodeInfo = {
         peerId: await PeerId.createFromJSON(peer3Key),
-        port: 1339,
+        port: 1348,
         privateKeyEnv: "EVM_PRIVATE_KEY3",
     }
+    const node4: NodeInfo = {
+        peerId: await PeerId.createFromJSON(peer4Key),
+        port: 1349,
+        privateKeyEnv: "EVM_PRIVATE_KEY4",
+    }
     let nodeConfigs = []
-    nodeConfigs[0] = createNodeConfig(node1, [node2, node3], "node1_logs");
-    nodeConfigs[1] = createNodeConfig(node2, [node1, node3], "node2_logs");
-    nodeConfigs[2] = createNodeConfig(node3, [node1, node2], "node3_logs");
+    nodeConfigs[0] = createNodeConfig(node1, [node2, node3, node4], "node1_logs");
+    nodeConfigs[1] = createNodeConfig(node2, [node1, node3, node4], "node2_logs");
+    nodeConfigs[2] = createNodeConfig(node3, [node1, node2, node4], "node3_logs");
+    nodeConfigs[3] = createNodeConfig(node4, [node1, node2, node3], "node4_logs");
+
 
     // nodeConfigs[0] = createNodeConfig(node1, [node2], "node1_logs");
     // nodeConfigs[1] = createNodeConfig(node2, [node1], "node2_logs");

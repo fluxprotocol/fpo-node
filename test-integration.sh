@@ -7,3 +7,5 @@ yarn build
 # node 'dist/test/integration/p2p/communication.js' 2
 
 node 'dist/test/integration/p2p/communication.js' $1
+
+

@@ -32,6 +32,7 @@
         "multiaddr": "^10.0.1",
         "near-api-js": "^0.44.2",
         "node": "^16.4.0",
+        "nodemon": "^2.0.19",
         "peer-id": "^0.14.8",
         "uint8arrays": "^3.0.0",
         "web3": "^1.7.0",

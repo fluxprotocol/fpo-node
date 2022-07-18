@@ -14,38 +14,41 @@ import { report } from "process";
 import { sleep } from "../../../services/TimerUtils";
 
 export async function getRoundIdForPair(config: P2PInternalConfig, network: Network,  computedId: string): Promise<Big> {
-    try {
         if (network.type === 'evm') {
             console.log('[] computedId -> ', computedId);
-            await sleep(2_000)
+            let latestRound: BigNumber = BigNumber.from(-1)
+            while(Number(latestRound) == -1){
+                try{
+                    latestRound = await network.view({
+                        address: config.contractAddress,
+                        method: 'latestRoundOfPricePair',
+                        params: {
+                            _id: computedId,
+                        },
+                        abi: FluxP2PFactory.abi,
+                    });
 
-            const latestRound: BigNumber = await network.view({
-                address: config.contractAddress,
-                method: 'latestRoundOfPricePair',
-                params: {
-                    _id: computedId,
-                },
-                abi: FluxP2PFactory.abi,
-            });
+                }catch(error){
+                    if (error instanceof Error) {
+                        // Price pair does not exist yet
+                        if (error.message === 'NULL_ADDRESS') {
+                            return new Big(0);
+                        }
+                    }
+                    console.log("------err fetching latestRoundOfPricePair -- will retry", error);
+                    await sleep(2_000)
 
+                }
+            }
+            console.log("**latestround = ", Number(latestRound))
             return new Big(latestRound.toString()).add(1);
         }
 
         // TODO: Near currently does not have a latest round...
         return new Big(5);
-    } catch (error) {
-        if (error instanceof Error) {
-            // Price pair does not exist yet
-            if (error.message === 'NULL_ADDRESS') {
-                return new Big(0);
-            }
-        }
-        console.log("----------err fetching round --", error)
-        return new Big(-1)
-
-        // throw error;
-    }
+       
 }
+
 
 // export async function getMinSignersForPair(config: P2PInternalConfig, network: Network, computedId: string): Promise<Big> {
 //     try {
@@ -115,6 +118,7 @@ export function createBatchFromPairs(config: P2PInternalConfig, targetNetwork: N
 }
 
 export function createResolveP2PRequest(aggregateResult: AggregateResult, hashFeedId: string, roundId: Big, request: P2PDataRequest, config: P2PInternalConfig): P2PResolvedDataRequest {
+    console.log(`---------createResolveP2PRequest ${request.internalId} round: ${roundId}`)
     let txCallParams: P2PResolvedDataRequest['txCallParams'] = {
         address: config.contractAddress,
         amount: '0',

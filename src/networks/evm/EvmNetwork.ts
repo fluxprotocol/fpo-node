@@ -10,6 +10,7 @@ import { EvmNetworkConfig, InternalEvmNetworkConfig, parseEvmNetworkConfig } fro
 import { Network } from "../../models/Network";
 import { TxCallParams, TxViewParams } from "../../models/TxCallParams";
 import { DataRequestResolved } from "../../models/DataRequest";
+import { sleep } from "../../services/TimerUtils";
 
 export default class EvmNetwork extends Network {
     static type: string = "evm";
@@ -44,55 +45,38 @@ export default class EvmNetwork extends Network {
     }
 
     async onQueueBatch(batch: DataRequestBatchResolved): Promise<void> {
+        console.log("@@@@@onQueueBatch")
         for await (const request of batch.requests) {
-            try {
-                if (!request.txCallParams.abi) {
-                    logger.warn(`[${this.id}] Tx ${request.internalId} was not processed due to missing ABI`);
-                    continue;
-                }
+            console.log("@@@@@onQueueBatch submitting requests", request.internalId)
 
-                const contract = new Contract(request.txCallParams.address, request.txCallParams.abi, this.wallet);
-                if (!contract[request.txCallParams.method]) {
-                    logger.warn(`[${this.id}] Tx ${request.internalId} was not processed due to missing method ${request.txCallParams.method}`);
-                    continue;
-                }
-
-                const args = Object.values(request.txCallParams.params);
-                console.log("**sent args", args)
-                const result = await contract[request.txCallParams.method](...args);
-
-                if (batch.db !== undefined) {
-                    batch.db.log(result.hash, request.txCallParams.params._answers.join(','));
-                }
-            } catch (error: any) {
-                // Try to check if SERVER ERROR was because a node already pushed the same update
-                //
-                // Error messages (i.e. `error.body.error.message`) differ depending on the network.
-                //  - Aurora Testnet: `ERR_INCORRECT_NONCE`
-                //  - Goerli: `already known`
-
-                // This assumes that the update was pushed but it wasn't
-                // if (error.code === 'SERVER_ERROR' && error.body) {
-                //     try {
-                //         const body = JSON.parse(error.body);
-                //         if (body.error && body.error.code && body.error.code === -32000 && body.error.message
-                //             && (body.error.message === 'ERR_INCORRECT_NONCE' || body.error.message === 'already known')
-                //         ) {
-                //             logger.debug(`[${this.id}-onQueueBatch] [${request.internalId}] Request seems to be already pushed (${body.error.message})`);
-                //             continue;
-                //         }
-                //     } catch (error) {
-                //         // Do nothing as error will be logged in next lines
-                //     }
-                // }
-
-                logger.error(`[${this.id}-onQueueBatch] [${request?.internalId}] On queue batch unknown error`, {
-                    error,
-                    config: this.networkConfig,
-                    fingerprint: `${this.type}-${this.networkId}-onQueueBatch-unknown`,
-                });
-                return;
+            if (!request.txCallParams.abi) {
+                logger.warn(`[${this.id}] Tx ${request.internalId} was not processed due to missing ABI`);
+                continue;
             }
+
+            const contract = new Contract(request.txCallParams.address, request.txCallParams.abi, this.wallet);
+            if (!contract[request.txCallParams.method]) {
+                logger.warn(`[${this.id}] Tx ${request.internalId} was not processed due to missing method ${request.txCallParams.method}`);
+                continue;
+            }
+
+            const args = Object.values(request.txCallParams.params);
+            console.log("**sent args", args)
+
+            // const result = await contract[request.txCallParams.method](...args);
+            let result = null;
+          
+            try{
+                result = await contract[request.txCallParams.method](...args);
+            }catch(err){
+                console.log("-------err submitting request -- ", err)
+                continue
+            }
+
+            if (batch.db !== undefined) {
+                batch.db.log(result.hash, request.txCallParams.params._answers.join(','));
+            }
+            
         }
     }
 

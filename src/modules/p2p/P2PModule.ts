@@ -81,7 +81,7 @@ export class P2PModule extends Module {
 
     private async processPairs() {
         try {
-            console.log("-----processPairs")
+            console.log("-------processPairs")
             const timestampUpdateReport = await this.fetchLastUpdate();
             // Fetch elapsed time (in milliseconds) since last pair(s) update
             const timeSinceUpdate = Date.now() - timestampUpdateReport.oldestTimestamp;
@@ -152,37 +152,31 @@ export class P2PModule extends Module {
                 
                 // Round id is used to determine the leader in the network.
                 // All nodes are expected to run the same peer list
-                let roundId: Big = await getRoundIdForPair(this.internalConfig, this.network, hashFeedId);
-                while(Number(roundId) == -1){
-                    await sleep(5_000)
-                    roundId = await getRoundIdForPair(this.internalConfig, this.network, hashFeedId);
-                }
-                logger.info(`[${this.id}] ${unresolvedRequest.extraInfo.pair} on round id ${roundId.toString()}`);
+                const roundId: Big = await getRoundIdForPair(this.internalConfig, this.network, hashFeedId);
+               
+                logger.info(`[${this.id}] @@processpairs ${unresolvedRequest.extraInfo.pair} on round id ${roundId.toString()}`);
 
                 const aggregateResult: AggregateResult = await this.aggregator.aggregate(P2PModule.node_version, P2PModule.report_version, unresolvedRequest, hashFeedId, outcome.answer, roundId, async () => {
                     // Check whether or not the transaction has been in the blockchain
-                    let newRoundId = await getRoundIdForPair(this.internalConfig, this.network,  hashFeedId);
-                    while(Number(roundId) == -1){
-                        await sleep(5_000)
-                        newRoundId = await getRoundIdForPair(this.internalConfig, this.network, hashFeedId);
-                    }
+                    const newRoundId = await getRoundIdForPair(this.internalConfig, this.network,  hashFeedId);
                     // When the round id incremented we've updated the prices on chain
                     return !newRoundId.eq(roundId);
                 });
                 this.processing.delete(unresolvedRequest.internalId);
-
+                console.log("@@processPairs:  deleted unresolvedRequest.internalId", unresolvedRequest.internalId)
                 this.medians.set(unresolvedRequest.internalId, new Big(outcome.answer));
                 // At this stage everything should already be fully handled by the leader
                 // and if not at least submitted by this node. We can safely move on
                 if (!aggregateResult.leader) {
                     return null;
                 }
-
                 // We are the leader and we should send the transaction
                 return createResolveP2PRequest(aggregateResult, hashFeedId, roundId, unresolvedRequest, this.internalConfig);
             }));
+            console.log("@@processPairs:  resolved requests len", resolvedRequests.length)
 
             let requests: P2PResolvedDataRequest[] = resolvedRequests.filter(r => r !== null) as P2PResolvedDataRequest[];
+            console.log("@@processPairs: filtered resolved requests len", requests.length)
 
             if (requests.length === 0) {
                 logger.log(`[${this.id}] Node did not have to send anything`, {
@@ -236,7 +230,7 @@ export class P2PModule extends Module {
                     async () => {
                         let pair_created = await createPairIfNeeded(pair, this.internalConfig, this.network);
                         while (!pair_created) {
-                            await sleep(20_000);
+                            await sleep(10_000);
                             pair_created = await createPairIfNeeded(pair, this.internalConfig, this.network);
                         }
                     }

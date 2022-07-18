@@ -4,6 +4,8 @@ import { P2PInternalConfig } from "../models/P2PConfig";
 import { BigNumber } from 'ethers';
 import { computeFactoryPairId } from '../../pushPair/services/utils';
 import FluxP2PFactory from '../FluxP2PFactory.json';
+import Big from 'big.js';
+import { sleep } from '../../../services/TimerUtils';
 
 interface TimestampUpdateReport {
     oldestTimestamp: number;
@@ -18,16 +20,24 @@ export async function fetchEvmLastUpdate(config: P2PInternalConfig, network: Evm
 
     for await (let pair of config.pairs) {
         // Contract returns [answer, updatedAt, statusCode]
-        const pairTimestamp: BigNumber = (await network.view({
-            method: 'valueFor',
-            address: config.contractAddress,
-            amount: '0',
-            params: {
-                id: computeFactoryPairId(pair.pair, pair.decimals),
-            },
-            abi: FluxP2PFactory.abi,
-        }))[1];
+        let pairTimestamp: BigNumber = BigNumber.from(-1)
+        while(Number(pairTimestamp) == -1){
+            try{
+                pairTimestamp = (await network.view({
+                    method: 'valueFor',
+                    address: config.contractAddress,
+                    amount: '0',
+                    params: {
+                        id: computeFactoryPairId(pair.pair, pair.decimals),
+                    },
+                    abi: FluxP2PFactory.abi,
+                }))[1]
+            }catch(err){
+                console.log("**Err calling valueFor -- should retry ", err)
+                await sleep(5_000)
+            }
 
+        }
         pairTimestamps.push(pairTimestamp);
     }
 
