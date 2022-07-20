@@ -22,7 +22,7 @@ interface UnparsedP2PConfig {
     peer_id: JSONPeerId;
     networkId: number;
     p2p_node?: CreateOptions;
-    peers: Set<string>;
+    peers: string[];
     addresses: {
         listen: string[];
     }
