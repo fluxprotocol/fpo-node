@@ -126,7 +126,6 @@ export class P2PModule extends Module {
                     return null;
                 }
 
-                this.processing.add(unresolvedRequest.internalId);
                 const outcome = await job.executeRequest(unresolvedRequest);
 
                 if (outcome.type === OutcomeType.Invalid) {
@@ -143,6 +142,8 @@ export class P2PModule extends Module {
                     remainingInterval = this.internalConfig.interval;
                     return null;
                 }
+                this.processing.add(unresolvedRequest.internalId);
+
 
                 // The hash feed id for the pair.
                 const hashFeedId: string = await getHashFeedIdForPair(this.internalConfig, unresolvedRequest.extraInfo.pair, unresolvedRequest.extraInfo.decimals);
@@ -155,15 +156,31 @@ export class P2PModule extends Module {
                 const roundId: Big = await getRoundIdForPair(this.internalConfig, this.network, hashFeedId);
                
                 logger.info(`[${this.id}] @@processpairs ${unresolvedRequest.extraInfo.pair} on round id ${roundId.toString()}`);
+                let aggregateResult: AggregateResult;
+                try{
+                    aggregateResult = await this.aggregator.aggregate(P2PModule.node_version, P2PModule.report_version, unresolvedRequest, hashFeedId, outcome.answer, roundId, async () => {
+                        // Check whether or not the transaction has been in the blockchain
+                        const newRoundId = await getRoundIdForPair(this.internalConfig, this.network,  hashFeedId);
+                        // When the round id incremented we've updated the prices on chain
+                        return !newRoundId.eq(roundId);
+                    });
+                }catch (err){
 
-                const aggregateResult: AggregateResult = await this.aggregator.aggregate(P2PModule.node_version, P2PModule.report_version, unresolvedRequest, hashFeedId, outcome.answer, roundId, async () => {
-                    // Check whether or not the transaction has been in the blockchain
-                    const newRoundId = await getRoundIdForPair(this.internalConfig, this.network,  hashFeedId);
-                    // When the round id incremented we've updated the prices on chain
-                    return !newRoundId.eq(roundId);
-                });
+                    console.log("@@processPairs: aggregateResult error", (err as Error).message)
+                    this.processing.delete(unresolvedRequest.internalId);
+                    console.log(`@@processPairs:  deleted unresolvedRequest.internalId ${unresolvedRequest.internalId}, hashId = ${hashFeedId}`)
+                    this.medians.set(unresolvedRequest.internalId, new Big(outcome.answer));
+                    return null
+
+                }
+                // const aggregateResult: AggregateResult = await this.aggregator.aggregate(P2PModule.node_version, P2PModule.report_version, unresolvedRequest, hashFeedId, outcome.answer, roundId, async () => {
+                //     // Check whether or not the transaction has been in the blockchain
+                //     const newRoundId = await getRoundIdForPair(this.internalConfig, this.network,  hashFeedId);
+                //     // When the round id incremented we've updated the prices on chain
+                //     return !newRoundId.eq(roundId);
+                // });
                 this.processing.delete(unresolvedRequest.internalId);
-                console.log("@@processPairs:  deleted unresolvedRequest.internalId", unresolvedRequest.internalId)
+                console.log(`@@processPairs:  deleted unresolvedRequest.internalId ${unresolvedRequest.internalId}, hashId = ${hashFeedId}`)
                 this.medians.set(unresolvedRequest.internalId, new Big(outcome.answer));
                 // At this stage everything should already be fully handled by the leader
                 // and if not at least submitted by this node. We can safely move on

@@ -26,7 +26,7 @@ export function createNodeConfig(ownNode: NodeInfo, otherNodes: NodeInfo[], logF
                 "networkId": 1313161555,
                 "chainId": 1313161555,
                 "privateKeyEnvKey": ownNode.privateKeyEnv,
-                "rpc": "https://aurora-testnet.infura.io/v3/c74faac46a3f4b7f855851aab2292f8b",
+                "rpc": "https://aurora-testnet.infura.io/v3/78012479aec54308b14e8d7da00eb6cc",
             }
         ],
         "modules": [
@@ -39,8 +39,19 @@ export function createNodeConfig(ownNode: NodeInfo, otherNodes: NodeInfo[], logF
                 "minimumUpdateInterval": 1800000,
                 "pairs": [
                     {
-                        "pair": "gggggggggggggggggggggggg",
-                        "decimals": 10,
+                        "pair": "iiiiiiiiiiiiiiiiiiiiiii",
+                        "decimals": 6,
+                        "sources": [
+                            {
+                                "source_path": "market_data.current_price.usd",
+                                "end_point": "https://api.coingecko.com/api/v3/coins/near"
+                            }
+                        ]
+                    },
+                   
+                    {
+                        "pair": "hhhhhhhhhhhhhhhhhhhh",
+                        "decimals": 6,
                         "sources": [
                             {
                                 "source_path": "market_data.current_price.usd",
@@ -49,8 +60,8 @@ export function createNodeConfig(ownNode: NodeInfo, otherNodes: NodeInfo[], logF
                         ]
                     },
                     {
-                        "pair": "fffffffffffffffffffffffff",
-                        "decimals": 10,
+                        "pair": "ggggggggggggggggggggggggggg",
+                        "decimals": 6,
                         "sources": [
                             {
                                 "source_path": "market_data.current_price.usd",
@@ -59,8 +70,8 @@ export function createNodeConfig(ownNode: NodeInfo, otherNodes: NodeInfo[], logF
                         ]
                     },
                     {
-                        "pair": "eeeeeeeeeeeeeeeeeeeeeeeee",
-                        "decimals": 10,
+                        "pair": "ffffffffffffffffffffffffffff",
+                        "decimals": 6,
                         "sources": [
                             {
                                 "source_path": "market_data.current_price.usd",
@@ -69,8 +80,8 @@ export function createNodeConfig(ownNode: NodeInfo, otherNodes: NodeInfo[], logF
                         ]
                     },
                     {
-                        "pair": "ddddddddddddddddddddddddddddd",
-                        "decimals": 10,
+                        "pair": "eeeeeeeeeeeeeeeeeeeeeeeeeeee",
+                        "decimals": 6,
                         "sources": [
                             {
                                 "source_path": "market_data.current_price.usd",
@@ -79,8 +90,8 @@ export function createNodeConfig(ownNode: NodeInfo, otherNodes: NodeInfo[], logF
                         ]
                     },
                     {
-                        "pair": "ccccccccccccccccccccccccccccc",
-                        "decimals": 10,
+                        "pair": "dddddddddddddddddddddddddddddddd",
+                        "decimals": 6,
                         "sources": [
                             {
                                 "source_path": "market_data.current_price.usd",
@@ -89,8 +100,8 @@ export function createNodeConfig(ownNode: NodeInfo, otherNodes: NodeInfo[], logF
                         ]
                     },
                     {
-                        "pair": "bbbbbbbbbbbbbbbbbbbbbbbbb",
-                        "decimals": 10,
+                        "pair": "cccccccccccccccccccccccccccccccc",
+                        "decimals": 6,
                         "sources": [
                             {
                                 "source_path": "market_data.current_price.usd",
@@ -99,8 +110,18 @@ export function createNodeConfig(ownNode: NodeInfo, otherNodes: NodeInfo[], logF
                         ]
                     },
                     {
-                        "pair": "aaaaaaaaaaaaaaaaaaaaaaaaaa",
-                        "decimals": 10,
+                        "pair": "bbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+                        "decimals": 6,
+                        "sources": [
+                            {
+                                "source_path": "market_data.current_price.usd",
+                                "end_point": "https://api.coingecko.com/api/v3/coins/near"
+                            }
+                        ]
+                    },
+                    {
+                        "pair": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                        "decimals": 6,
                         "sources": [
                             {
                                 "source_path": "market_data.current_price.usd",
