@@ -1,3 +1,6 @@
+import fs from 'fs';
+
+
 import { ethers } from 'ethers';
 import PeerId, { JSONPeerId } from 'peer-id';
 
@@ -45,7 +48,7 @@ export class P2PNodeInfo {
 					"networkId": 1313161555,
 					"chainId": 1313161555,
 					"privateKeyEnvKey": this.privateKeyEnv,
-					"rpc": "https://aurora-testnet.infura.io/v3/c74faac46a3f4b7f855851aab2292f8b",
+					"rpc": "https://aurora-testnet.infura.io/v3/228d5a3d31114f54be363b8bb786d228",
 				}
 			],
 			"modules": [
@@ -94,6 +97,17 @@ export async function generateP2PNodesConfigs(config: P2PFuzzConfig): Promise<Un
 	const pairs: Pair[] = config.p2p_config.generate_pairs ?
 		createPairs(config.p2p_config.min_pairs ?? 1, config.p2p_config.max_pairs ?? 6, config.p2p_config.max_decimals ?? 8, config.p2p_config.string_bytes ?? 8)
 		: config.p2p_config.pairs!;
+	fs.writeFileSync(
+		`.fuzz/config_info.json`,
+		JSON.stringify({
+			num_nodes: max_nodes,
+			ports: ports,
+			peer_ids: peerIds,
+			pairs: pairs,
+		},
+			null,
+			2
+		));
 	console.log(`ports:`, ports);
 	console.log(`peerIds:`, peerIds.map((p) => p.toB58String()));
 	console.log(`pairs:`, pairs.map((p) => JSON.stringify(p)));
