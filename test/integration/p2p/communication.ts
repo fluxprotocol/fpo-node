@@ -16,25 +16,25 @@ import { sleep } from "../../../src/services/TimerUtils";
 async function test(index: number) {
     const node1: NodeInfo = {
         peerId: await PeerId.createFromJSON(peer1Key),
-        port: 1346,
+        port: 1356,
         privateKeyEnv: "EVM_PRIVATE_KEY1",
     };
 
 
     const node2: NodeInfo = {
         peerId: await PeerId.createFromJSON(peer2Key),
-        port: 1347,
+        port: 1357,
         privateKeyEnv: "EVM_PRIVATE_KEY2",
     }
 
     const node3: NodeInfo = {
         peerId: await PeerId.createFromJSON(peer3Key),
-        port: 1348,
+        port: 1358,
         privateKeyEnv: "EVM_PRIVATE_KEY3",
     }
     const node4: NodeInfo = {
         peerId: await PeerId.createFromJSON(peer4Key),
-        port: 1349,
+        port: 1359,
         privateKeyEnv: "EVM_PRIVATE_KEY4",
     }
     let nodeConfigs = []

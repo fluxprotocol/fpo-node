@@ -40,7 +40,7 @@ export async function getRoundIdForPair(config: P2PInternalConfig, network: Netw
 
                 }
             }
-            console.log("**latestround = ", Number(latestRound))
+            console.log(`@@getRoundIdForPair: latestround =  ${Number(latestRound)}, id = ${computedId}`)
             return new Big(latestRound.toString()).add(1);
         }
 
