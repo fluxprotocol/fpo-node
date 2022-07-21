@@ -1,4 +1,3 @@
-import { Database } from "better-sqlite3";
 import { DataRequest, DataRequestResolved } from "../../../models/DataRequest";
 import { DataRequestBatch, DataRequestBatchResolved } from "../../../models/DataRequestBatch";
 

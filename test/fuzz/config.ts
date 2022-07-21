@@ -54,7 +54,7 @@ function default_fuzz_config(path: string) {
 		node_config: {
 			networks: ["evm"],
 			generate_keys: true,
-			interval: 300_000,
+			interval: 180_000,
 			deviation: 0.3,
 		},
 		p2p_config: {

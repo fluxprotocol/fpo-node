@@ -53,15 +53,15 @@ export class P2PModule extends Module {
             P2PModule.node_version,
             P2PModule.report_version,
             {
-            peerId: appConfig.p2p.peer_id,
-            addresses: appConfig.p2p.addresses,
-            ...appConfig.p2p.p2p_node,
-            modules: {
-                transport: [TCP],
-                streamMuxer: [Mplex],
-                connEncryption: [NOISE],
-            },
-        }, appConfig.p2p.peers);
+                peerId: appConfig.p2p.peer_id,
+                addresses: appConfig.p2p.addresses,
+                ...appConfig.p2p.p2p_node,
+                modules: {
+                    transport: [TCP],
+                    streamMuxer: [Mplex],
+                    connEncryption: [NOISE],
+                },
+            }, appConfig.p2p.peers);
         this.aggregator = new P2PAggregator(this.p2p, this.internalConfig, this.network);
 
         this.db = new DBLogger(this.internalConfig.logFile);
@@ -107,7 +107,7 @@ export class P2PModule extends Module {
             if (rejectVersion(P2PModule.node_version, this.p2p.latest_node_version)) {
                 throw new Error(`Node version '${versionToString(P2PModule.node_version)}' is out of date and needs to be updated to '${versionToString(this.p2p.latest_node_version)}'`);
             }
-            
+
             if (rejectVersion(P2PModule.report_version, this.p2p.latest_report_version)) {
                 throw new Error(`Report version '${P2PModule.report_version}' is out of date and needs to be updated to '${versionToString(this.p2p.latest_report_version)}'`);
             }
@@ -128,8 +128,9 @@ export class P2PModule extends Module {
 
                 this.processing.add(unresolvedRequest.internalId);
                 const outcome = await job.executeRequest(unresolvedRequest);
+                console.log(`~~~outcome: ${JSON.stringify(outcome)}`);
 
-                if (outcome.type === OutcomeType.Invalid) {
+                if (outcome.type === OutcomeType.Invalid || outcome.answer === '0') {
                     logger.error(`[${this.id}] Could not resolve ${unresolvedRequest.internalId}`, {
                         config: createSafeAppConfigString(this.appConfig),
                         logs: outcome.logs,
@@ -149,16 +150,16 @@ export class P2PModule extends Module {
 
                 // Round id is used to determine the leader in the network.
                 // All nodes are expected to run the same peer list
-                
+
                 // Round id is used to determine the leader in the network.
                 // All nodes are expected to run the same peer list
                 const roundId: Big = await getRoundIdForPair(this.internalConfig, this.network, hashFeedId);
-               
+
                 logger.info(`[${this.id}] @@processpairs ${unresolvedRequest.extraInfo.pair} on round id ${roundId.toString()}`);
 
                 const aggregateResult: AggregateResult = await this.aggregator.aggregate(P2PModule.node_version, P2PModule.report_version, unresolvedRequest, hashFeedId, outcome.answer, roundId, async () => {
                     // Check whether or not the transaction has been in the blockchain
-                    const newRoundId = await getRoundIdForPair(this.internalConfig, this.network,  hashFeedId);
+                    const newRoundId = await getRoundIdForPair(this.internalConfig, this.network, hashFeedId);
                     // When the round id incremented we've updated the prices on chain
                     return !newRoundId.eq(roundId);
                 });
@@ -219,9 +220,9 @@ export class P2PModule extends Module {
             logger.info(`Starting p2p node...`);
             await this.p2p.start();
             await this.aggregator.init();
-            
+
             logger.info(`[${this.id}] Creating pairs if needed..`);
-            
+
             // calling deployOracle for more than one pair without delay bet calls throw server error
             let delay = 0; const delayIncrement = 20_000;
             await Promise.all(this.internalConfig.pairs.map(async (pair) => {
@@ -236,7 +237,7 @@ export class P2PModule extends Module {
                     }
                 );
             }));
-                
+
             logger.info(`[${this.id}] Done creating pairs`);
 
             await this.processPairs();
