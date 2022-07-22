@@ -27,7 +27,7 @@ async function attempt<R>(comm: Communicator, def: R, attempt: (node: Libp2p) =>
 }
 
 export default class Communicator {
-	_connections: Set<Connection> = new Set();
+	_connections: Map<string, Connection> = new Map();
 	_options: Libp2pOptions & CreateOptions;
 	_node?: Libp2p;
 	_node_addr: string;
@@ -134,7 +134,8 @@ export default class Communicator {
 	async connect(ma: Multiaddr): Promise<boolean> {
 		return attempt(this, false, async (node: Libp2p) => {
 			try {
-				this._peers.add(ma.toString());
+				const ma_string = ma.toString();
+				this._peers.add(ma_string);
 				const conn = await node.dial(ma);
 				logger.info
 				if (conn !== undefined) {
@@ -146,7 +147,7 @@ export default class Communicator {
 					// await stream.sink(createAsyncIterable([fromString(JSON.stringify(version_message))]));
 					// stream.close();
 
-					this._connections.add(conn);
+					this._connections.set(ma_string, conn);
 					return true;
 				}
 
@@ -171,7 +172,7 @@ export default class Communicator {
 
 				const conn = await node.dial(ma);
 				if (conn !== undefined) {
-					this._connections.add(conn);
+					this._connections.set(mas, conn);
 					return true;
 				}
 
@@ -208,15 +209,17 @@ export default class Communicator {
 	}
 
 	async send(protocol: string, data: Uint8Array[]): Promise<void> {
-		attempt(this, null, async () => {
+		attempt(this, null, async (node: Libp2p) => {
 			for (const connection of this._connections) {
+				const ma_string = connection[0];
+				const conn = connection[1];
 				try {
-					const { stream } = await connection.newStream(protocol);
+					const { stream } = await conn.newStream(protocol);
 					await stream.sink(createAsyncIterable(data));
 					stream.close();
 				} catch (err) {
-					this._connections.delete(connection);
-					this._retry.add(`${connection.remoteAddr}/p2p/${connection.remotePeer.toJSON().id}`);
+					this._connections.delete(ma_string);
+					this._retry.add(ma_string);
 				}
 			}
 		});
