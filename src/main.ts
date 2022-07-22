@@ -30,7 +30,7 @@ export default async function main(config: UnparsedAppConfig) {
     }
 }
 
-if (process.env.NODE_ENV !== 'test') {
+if (process.env.NODE_ENV !== 'test' && process.env.NODE_ENV !== 'fuzz') {
     async function boot() {
         const config: UnparsedAppConfig = JSON.parse((await readFile(APP_CONFIG_LOCATION)).toString('utf-8'));
         main(config);

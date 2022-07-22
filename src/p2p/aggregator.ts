@@ -12,10 +12,7 @@ import EventEmitter from "events";
 import { P2PVersion } from "./models/P2PVersion";
 import { P2PInternalConfig } from "../modules/p2p/models/P2PConfig";
 import { Network } from "../models/Network";
-import { getRoundIdForPair } from "../modules/p2p/services/P2PRequestService";
 import { sleep } from "../services/TimerUtils";
-
-
 
 const LOG_NAME = 'p2p-aggregator';
 
@@ -71,7 +68,7 @@ export default class P2PAggregator extends EventEmitter {
         if (!message) return;
         logger.debug(`[${LOG_NAME}-${message.id}] Received message from ${peer} ${this.requestReports.size}/${this.p2p._peers.size}`);
         let roundId = this.toBeTransmittedRound.get(message.id)
-        
+
         let reports = this.requestReports.get(message.id) ?? new Set();
         console.log("@@@@@handleIncomingData: prev reports", reports)
         console.log(`@@@handleIncomingData: roundId = ${roundId}, msg.round = ${message.round}`)
@@ -84,13 +81,13 @@ export default class P2PAggregator extends EventEmitter {
         }
         console.log("@@@@@handleIncomingData: Adding received msg: ", message)
         reports.add(message);
-      
+
         this.requestReports.set(message.id, reports);
         console.log("@@@@@handleIncomingData reconstructed reports", reports)
     }
 
 
-    private async handleReports(id: string) : Promise<AggregateResult>{
+    private async handleReports(id: string): Promise<AggregateResult> {
         const reports = this.requestReports.get(id);
         if (!reports) {
             throw new Error("Reports not found")
@@ -103,7 +100,7 @@ export default class P2PAggregator extends EventEmitter {
         if (!request) {
             throw new Error("Request not found")
         };
-        
+
         console.log("@@@handleReports: received reports", reports)
 
         for (let r of reports) {
@@ -116,18 +113,17 @@ export default class P2PAggregator extends EventEmitter {
         if (reports.size < requiredAmountOfSignatures) {
             console.log("@@@handleReports:  filtered reports", reports)
             throw new Error("@@@handleReports: Not enough signatures --- ");
-            
+
         }
 
         logger.debug(`[${LOG_NAME}-${id}] Received enough signatures`);
-        const isResolved = await this.checkStatusCallback.get(id)
-        if(isResolved && (await isResolved())){
+        const isResolved = this.checkStatusCallback.get(id)
+        if (isResolved && (await isResolved())) {
             throw new Error(`@@@@@handleReports: already resolveddd ${roundId} , ${request.internalId}`)
-            
         }
         // Round id can randomly be modified so we should only use it for reelecting a leader
         const leader = electLeader(this.p2p, Big(roundId));
-        console.log(`**Chosen leader for round ${roundId} : ${leader} : ${id}`)
+        logger.info(`**Chosen leader for round ${roundId} : ${leader} : ${id}`)
         console.log("**thisNode", this.thisNode)
         console.log("@@@handleReports:  HANDLED REPORTS: ", reports)
 
@@ -147,97 +143,97 @@ export default class P2PAggregator extends EventEmitter {
 
     }
     async aggregate(node_version: P2PVersion, report_version: P2PVersion, request: P2PDataRequest, hashFeedId: string, data: string, roundId: Big, isRequestResolved: () => Promise<boolean>): Promise<AggregateResult> {
-            // TODO: Maybe do a check where if the request already exist we should ignore it?
-            const timestamp = Math.round(new Date().getTime() / 1000);
-            const message = hashPairSignatureInfo(hashFeedId, roundId.toString(), data, timestamp);
-            const signature = await request.targetNetwork.sign(arrayify(message));
-            console.log(`+++++++++SIG = ${toString(signature)} , answer = ${data} , signer = ${request.targetNetwork.getWalletPublicAddress()},
+        // TODO: Maybe do a check where if the request already exist we should ignore it?
+        const timestamp = Math.round(new Date().getTime() / 1000);
+        const message = hashPairSignatureInfo(hashFeedId, roundId.toString(), data, timestamp);
+        const signature = await request.targetNetwork.sign(arrayify(message));
+        console.log(`+++++++++SIG = ${toString(signature)} , answer = ${data} , signer = ${request.targetNetwork.getWalletPublicAddress()},
             timestamp ${timestamp}, round ${roundId.toString()}, id ${request.internalId}`)
-            const p2pMessage: P2PMessage = {
-                data,
-                signature: toString(signature),
-                hashFeedId,
-                id: request.internalId,
-                timestamp,
-                round: Number(roundId),
-                signer: request.targetNetwork.getWalletPublicAddress(),
-            };
-            this.checkStatusCallback.set(request.internalId, isRequestResolved);
-            this.requests.set(request.internalId, request);
-            console.log(`@@@aggregate:  ${this.toBeTransmittedRound.get(request.internalId)} , ${Number(roundId)}`)
-            if((this.toBeTransmittedRound.get(request.internalId) == undefined) || Number(roundId) > Number(this.toBeTransmittedRound.get(request.internalId))){
-                console.log("@@@@@@@@aggregate ----setting roundid")
-                this.toBeTransmittedRound.set(request.internalId, Number(roundId))
+        const p2pMessage: P2PMessage = {
+            data,
+            signature: toString(signature),
+            hashFeedId,
+            id: request.internalId,
+            timestamp,
+            round: Number(roundId),
+            signer: request.targetNetwork.getWalletPublicAddress(),
+        };
+        this.checkStatusCallback.set(request.internalId, isRequestResolved);
+        this.requests.set(request.internalId, request);
+        console.log(`@@@aggregate:  ${this.toBeTransmittedRound.get(request.internalId)} , ${Number(roundId)}`)
+        if ((this.toBeTransmittedRound.get(request.internalId) == undefined) || Number(roundId) > Number(this.toBeTransmittedRound.get(request.internalId))) {
+            console.log("@@@@@@@@aggregate ----setting roundid")
+            this.toBeTransmittedRound.set(request.internalId, Number(roundId))
 
-            }else{
-                console.log("@@@@@@@@aggregate ----got the same round")
-                await sleep(10_000)
-                    if(await isRequestResolved()){
-                        throw new Error(`@@@@@aggregate: already resolved ${roundId} , ${request.internalId}`)
-                }
-                // for(let trial = 0; trial < 3; trial++){
-                //     await sleep(10_000)
-                //     if(await isRequestResolved()){
-                //         throw new Error(`@@@@@aggregate: already resolveddd ${roundId} , ${request.internalId}`)
-                //     }
-                // }                
+        } else {
+            console.log("@@@@@@@@aggregate ----got the same round")
+            await sleep(10_000)
+            if (await isRequestResolved()) {
+                throw new Error(`@@@@@aggregate: already resolved ${roundId} , ${request.internalId}`)
             }
-            await this.p2p.send(`/send/data`, [
-                fromString(JSON.stringify(p2pMessage)),
-            ]);
-            logger.info(`[${LOG_NAME}-${request.internalId}] Sent data to peers: ${data}`);
+            // for(let trial = 0; trial < 3; trial++){
+            //     await sleep(10_000)
+            //     if(await isRequestResolved()){
+            //         throw new Error(`@@@@@aggregate: already resolveddd ${roundId} , ${request.internalId}`)
+            //     }
+            // }                
+        }
+        await this.p2p.send(`/send/data`, [
+            fromString(JSON.stringify(p2pMessage)),
+        ]);
+        logger.info(`[${LOG_NAME}-${request.internalId}] Sent data to peers: ${data}`);
 
-            let reports = this.requestReports.get(request.internalId) ?? new Set()
+        let reports = this.requestReports.get(request.internalId) ?? new Set()
 
 
-            console.log("@@@aggregate: previously received reports", reports)
-            for (let r of reports) {
-                if (((r.round == p2pMessage.round) && (r.signer == p2pMessage.signer)) || (r.round < Number(roundId))) {
-                    console.log("@@@aggregate:  deleting old unsuccessful signatures or already transmitted round", r)
-                    reports.delete(r)
-                }
+        console.log("@@@aggregate: previously received reports", reports)
+        for (let r of reports) {
+            if (((r.round == p2pMessage.round) && (r.signer == p2pMessage.signer)) || (r.round < Number(roundId))) {
+                console.log("@@@aggregate:  deleting old unsuccessful signatures or already transmitted round", r)
+                reports.delete(r)
             }
-            reports.add(p2pMessage);
-            this.requestReports.set(request.internalId, reports);
+        }
+        reports.add(p2pMessage);
+        this.requestReports.set(request.internalId, reports);
 
 
-            const requiredAmountOfSignatures = Math.floor((this.p2p._peers.size + 1) / 2) + 1;
-           
-            await this.receivedEnoughSigs(() => {
-                console.log(`waitng for enough sigs ${request.internalId}`)
-                let temp = this.requestReports.get(request.internalId);
-                console.log("@@@@@temp", temp)
-                if((temp != undefined) && (temp.size >= requiredAmountOfSignatures)){
-                    return true;
-                }else{
-                    return false
-                }
+        const requiredAmountOfSignatures = Math.floor((this.p2p._peers.size + 1) / 2) + 1;
 
-            })
-           
-            console.log("-----aggregated reports: ", this.requestReports.get(request.internalId))
-            try{
-                return await this.handleReports(request.internalId)
-
-            }catch(err){
-                throw err
+        await this.receivedEnoughSigs(() => {
+            console.log(`waitng for enough sigs ${request.internalId}`)
+            let temp = this.requestReports.get(request.internalId);
+            console.log("@@@@@temp", temp)
+            if ((temp != undefined) && (temp.size >= requiredAmountOfSignatures)) {
+                return true;
+            } else {
+                return false
             }
-          
+
+        })
+
+        console.log("-----aggregated reports: ", this.requestReports.get(request.internalId))
+        try {
+            return await this.handleReports(request.internalId)
+
+        } catch (err) {
+            throw err
+        }
+
 
     }
 
-    async receivedEnoughSigs(cond: () => any){
+    async receivedEnoughSigs(cond: () => any) {
         return new Promise<void>((resolve) => {
             let interval = setInterval(() => {
                 if (!cond()) {
                     return
                 }
-    
+
                 clearInterval(interval)
                 resolve()
             }, 2000)
         })
     }
-  
-    
+
+
 }

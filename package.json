@@ -12,7 +12,7 @@
         "dev": "yarn build && node 'dist/src/main.js'",
         "start": "node 'dist/src/main.js'",
         "build": "tsc -p .",
-        "fuzz:p2p": "cross-env NODE_ENV=test node dist/test/fuzz/fuzz.js p2p_fuzz_config.yaml"
+        "fuzz:p2p": "cross-env NODE_ENV=fuzz node dist/test/fuzz/fuzz.js p2p_fuzz_config.yaml"
     },
     "dependencies": {
         "@chainsafe/libp2p-noise": "^5.0.3",

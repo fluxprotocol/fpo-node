@@ -1,27 +1,50 @@
 import fs from 'fs';
-import cluster, { Worker} from 'node:cluster';
+import cluster, { Worker } from 'node:cluster';
 import { cpus } from 'node:os';
-import { exit } from 'process';
+
 import main from '../../src/main';
 import { latestVersion, new_version, P2PVersion, toString } from '../../src/p2p/models/P2PVersion';
 import { sleep } from '../../src/services/TimerUtils';
 
 import { load_fuzz_config, P2PFuzzConfig } from "./config";
 import { generateP2PNodesConfigs } from "./p2p_node";
-import { randNumberFromRange, random_item } from './utils';
+import { randNumberFromRange, randomString, random_item } from './utils';
 
 interface NodeCluster {
 	[id: number]: {
 		index: string,
 		node_version: P2PVersion,
 		report_version: P2PVersion,
+		output_dir: string,
 	}
 }
 
 async function fuzz(fuzz_config_path: string) {
 	try {
+		if (!fs.existsSync('.fuzz')) {
+			fs.mkdirSync('.fuzz');
+		}
+
+		process.env.OUTPUT_DIR = `.fuzz/${randomString(8)}-${randomString(8)}-${randomString(8)}-${randomString(8)}/`;
+		process.env.FUZZ_LOGS = process.env.OUTPUT_DIR;
+		fs.mkdirSync(process.env.OUTPUT_DIR);
+
+		function exitHandler(code: number) {
+			console.log(`exited with code: ${code}`)
+
+			if (cluster.worker) {
+				const workers = cluster.workers;
+				for (const worker in workers) {
+					workers[worker]!.kill();
+				}
+			}
+		}
+		process.on('exit', exitHandler);
+		process.on('SIGINT', exitHandler);
+
+
 		const config: P2PFuzzConfig = load_fuzz_config(fuzz_config_path);
-		const node_configs = (await generateP2PNodesConfigs(config)).randomize();
+		const node_configs = (await generateP2PNodesConfigs(config, process.env.OUTPUT_DIR)).randomize();
 		const window_size = config.window ?? cpus().length;
 		let node_version = new_version(`${randNumberFromRange(0, 3)}.${randNumberFromRange(2, 8)}.${randNumberFromRange(3, 11)}`);
 		let latest_node_version = node_version;
@@ -32,39 +55,30 @@ async function fuzz(fuzz_config_path: string) {
 		let nodes_version_mismatch = false;
 		let reports_version_mismatch = false;
 
-		if (!fs.existsSync('.fuzz')) {
-			fs.mkdirSync('.fuzz');
-		}
-
 		let workers: NodeCluster = {};
 		if (window_size > 0) {
 			const windowed = node_configs.window(window_size);
 			windowed.forEach((window, index) => {
+				const window_file = `${process.env.OUTPUT_DIR}/window_${index}.json`;
 				fs.writeFileSync(
-					`.fuzz/window_${index}.json`,
+					window_file,
 					JSON.stringify({
 						configs: window,
 					},
-					null,
-					2
-				));
+						null,
+						2
+					));
 				process.env.CHILD_INDEX = index.toString();
 				let new_worker = cluster.fork(process.env).on('reconnect', (child: Worker) => cluster.emit('reconnect', child));
-				workers[new_worker.id] =  {
+				workers[new_worker.id] = {
 					index: process.env.CHILD_INDEX,
 					node_version,
-					report_version
+					report_version,
+					output_dir: process.env.OUTPUT_DIR!,
 				};
 			});
 		}
 
-		process.on('SIGINT', () => {
-			const workers = cluster.workers!;
-			for (const worker in workers) {
-				workers[worker]!.kill();
-			}
-			exit(0);
-		});
 
 		let resetting_node_version = false;
 		let resetting_report_version = false;
@@ -92,7 +106,7 @@ async function fuzz(fuzz_config_path: string) {
 				let patch = node_cluster.node_version.patch;
 
 				let num = randNumberFromRange(0, 100);
-				console.log(`update major ${num}, ${num <= 100}`)
+				console.log(`update major ${num}, ${num <= 100} `)
 				if (num <= (config.p2p_config.major_update_chance ?? 15)) {
 					major += 1;
 					minor = 0;
@@ -133,21 +147,22 @@ async function fuzz(fuzz_config_path: string) {
 				} else {
 					patch += 1;
 				}
-				
-				const new_v = new_version(`${major}.${minor}.${patch}`);
+
+				const new_v = new_version(`${major}.${minor}.${patch} `);
 				process.env.P2P_REPORT_VERSION = toString(new_v);
 				latest_report_version = latestVersion(new_v, report_version);
-				console.log(`Updating reports in thread: ${process.env.CHILD_INDEX} to version ${process.env.P2P_REPORT_VERSION}`);
+				console.log(`Updating reports in thread: ${process.env.CHILD_INDEX} to version ${process.env.P2P_REPORT_VERSION} `);
 			}
 
-			console.log(`Reconnecting nodes in thread: ${process.env.CHILD_INDEX}`);
+			console.log(`Reconnecting nodes in thread: ${process.env.CHILD_INDEX} `);
 			let new_worker = cluster.fork(process.env).on('reconnect', (child: Worker) => cluster.emit('reconnect', child));
-			
+
 			// restore version if not major change
 			workers[new_worker.id] = {
 				index: process.env.CHILD_INDEX,
 				node_version: new_version(process.env.P2P_NODE_VERSION!),
 				report_version: new_version(process.env.P2P_REPORT_VERSION!),
+				output_dir: node_cluster.output_dir,
 			};
 			process.env.P2P_NODE_VERSION = prev_node_version;
 			process.env.P2P_REPORT_VERSION = prev_report_version;
@@ -161,7 +176,7 @@ async function fuzz(fuzz_config_path: string) {
 			if (config.p2p_config.allow_disconnects && randNumberFromRange(0, 100) <= (config.p2p_config.random_disconnect_chance ?? 15)) {
 				const worker = random_item(cluster.workers!);
 				process.env.DC_INDEX = workers[worker.id].index;
-				console.log(`Disconnecting nodes in thread: ${process.env.DC_INDEX}`);
+				console.log(`Disconnecting nodes in thread: ${process.env.DC_INDEX} `);
 				worker.emit('reconnect', worker);
 			}
 
@@ -169,17 +184,17 @@ async function fuzz(fuzz_config_path: string) {
 				// TODO need a way to redo remaining nodes at latest version after a few runs
 				if (node_rounds_outdated <= (config.p2p_config.outdated_rounds_allowed ?? 3)) {
 					node_rounds_outdated++;
-					console.log(`node_rounds_outdated: ${node_rounds_outdated}`);
+					console.log(`node_rounds_outdated: ${node_rounds_outdated} `);
 				} else {
 					node_rounds_outdated = 0;
 					const workers = cluster.workers!;
 					resetting_node_version = true;
-					console.log(`Resetting all nodes to latest version: ${toString(latest_node_version)}`);
+					console.log(`Resetting all nodes to latest version: ${toString(latest_node_version)} `);
 					for (const worker in workers) {
 						const non_null = workers[worker]!;
 						non_null.emit('reconnect', non_null);
 					}
-					
+
 					continue;
 				}
 			}
@@ -188,25 +203,25 @@ async function fuzz(fuzz_config_path: string) {
 				// TODO need a way to redo remaining nodes at latest version after a few runs
 				if (reports_rounds_outdated <= (config.p2p_config.outdated_rounds_allowed ?? 3)) {
 					reports_rounds_outdated++;
-					console.log(`node_rounds_outdated: ${reports_rounds_outdated}`);
+					console.log(`node_rounds_outdated: ${reports_rounds_outdated} `);
 				} else {
 					reports_rounds_outdated = 0;
 					const workers = cluster.workers!;
 					resetting_report_version = true;
-					console.log(`Resetting all reports to latest version: ${toString(latest_node_version)}`);
+					console.log(`Resetting all reports to latest version: ${toString(latest_node_version)} `);
 					for (const worker in workers) {
 						const non_null = workers[worker]!;
 						non_null.emit('reconnect', non_null);
 					}
-					
+
 					continue;
 				}
 			}
-			
+
 		}
 
 	} catch (err) {
-		console.log(`err:`, err);
+		console.log(`err: `, err);
 	}
 }
 
@@ -215,7 +230,8 @@ if (cluster.isPrimary) {
 		await fuzz(process.argv.slice(2)[0]);
 	})();
 } else {
-	const config_str = fs.readFileSync(`.fuzz/window_${process.env.CHILD_INDEX}.json`, 'utf8');
+	process.env.FUZZ_LOGS = process.env.OUTPUT_DIR!;
+	const config_str = fs.readFileSync(`${process.env.OUTPUT_DIR!}/window_${process.env.CHILD_INDEX!}.json`, 'utf8');
 	const config_json = JSON.parse(config_str);
 	for (const config of config_json.configs) {
 		main(config)

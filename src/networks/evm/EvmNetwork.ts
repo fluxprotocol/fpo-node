@@ -61,14 +61,14 @@ export default class EvmNetwork extends Network {
             }
 
             const args = Object.values(request.txCallParams.params);
-            console.log("**sent args", args)
+            logger.info(`**sent args ${JSON.stringify(args)}`)
 
             // const result = await contract[request.txCallParams.method](...args);
             let result = null;
-          
-            try{
+
+            try {
                 result = await contract[request.txCallParams.method](...args);
-            }catch(err){
+            } catch (err) {
                 console.log("-------err submitting request -- ", err)
                 continue
             }
@@ -76,7 +76,7 @@ export default class EvmNetwork extends Network {
             if (batch.db !== undefined) {
                 batch.db.log(result.hash, request.txCallParams.params._answers.join(','));
             }
-            
+
         }
     }
 

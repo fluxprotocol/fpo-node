@@ -11,7 +11,7 @@ export default class DBLogger {
 		logger.info("Setting up log file...");
 
 		const db_opts = DEBUG ? { verbose: logger.info } : { verbose: logger.debug };
-		this.db = new DatabaseConstructor(`logs/${logFile}`, db_opts);
+		this.db = new DatabaseConstructor(`${process.env.FUZZ_LOGS ?? 'logs'}/${logFile}`, db_opts);
 
 
 		this.db.exec(`CREATE TABLE IF NOT EXISTS logs (

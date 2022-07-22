@@ -78,7 +78,7 @@ async function grabFreePort(taken: Set<number>): Promise<number> {
 	return port;
 }
 
-export async function generateP2PNodesConfigs(config: P2PFuzzConfig): Promise<UnparsedAppConfig[]> {
+export async function generateP2PNodesConfigs(config: P2PFuzzConfig, output_dir: string): Promise<UnparsedAppConfig[]> {
 	// create of a random number of nodes
 	const max_nodes = randNumberFromRange(config.p2p_config.min_nodes ?? 2, config.p2p_config.max_nodes ?? 5);
 	let nodes: P2PNodeInfo[] = new Array(max_nodes).fill(null);
@@ -95,7 +95,7 @@ export async function generateP2PNodesConfigs(config: P2PFuzzConfig): Promise<Un
 		createPairs(config.p2p_config.min_pairs ?? 1, config.p2p_config.max_pairs ?? 6, config.p2p_config.max_decimals ?? 8, config.p2p_config.string_bytes ?? 8)
 		: config.p2p_config.pairs!;
 	fs.writeFileSync(
-		`.fuzz/config_info.json`,
+		`${output_dir}/config_info.json`,
 		JSON.stringify({
 			num_nodes: max_nodes,
 			ports: ports,

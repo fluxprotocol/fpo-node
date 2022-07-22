@@ -158,21 +158,19 @@ export class P2PModule extends Module {
 
                 logger.info(`[${this.id}] @@processpairs ${unresolvedRequest.extraInfo.pair} on round id ${roundId.toString()}`);
                 let aggregateResult: AggregateResult;
-                try{
+                try {
                     aggregateResult = await this.aggregator.aggregate(P2PModule.node_version, P2PModule.report_version, unresolvedRequest, hashFeedId, outcome.answer, roundId, async () => {
                         // Check whether or not the transaction has been in the blockchain
-                        const newRoundId = await getRoundIdForPair(this.internalConfig, this.network,  hashFeedId);
+                        const newRoundId = await getRoundIdForPair(this.internalConfig, this.network, hashFeedId);
                         // When the round id incremented we've updated the prices on chain
                         return !newRoundId.eq(roundId);
                     });
-                }catch (err){
-
-                    console.log("@@processPairs: aggregateResult error", (err as Error).message)
+                } catch (err) {
+                    logger.error(`@@processPairs: aggregateResult error ${(err as Error).message}`)
                     this.processing.delete(unresolvedRequest.internalId);
-                    console.log(`@@processPairs:  deleted unresolvedRequest.internalId ${unresolvedRequest.internalId}, hashId = ${hashFeedId}`)
+                    logger.info(`@@processPairs:  deleted unresolvedRequest.internalId ${unresolvedRequest.internalId}, hashId = ${hashFeedId}`)
                     this.medians.set(unresolvedRequest.internalId, new Big(outcome.answer));
-                    return null
-
+                    return null;
                 }
                 // const aggregateResult: AggregateResult = await this.aggregator.aggregate(P2PModule.node_version, P2PModule.report_version, unresolvedRequest, hashFeedId, outcome.answer, roundId, async () => {
                 //     // Check whether or not the transaction has been in the blockchain
