@@ -39,8 +39,19 @@ export function createNodeConfig(ownNode: NodeInfo, otherNodes: NodeInfo[], logF
                 "minimumUpdateInterval": 1800000,
                 "pairs": [
                     {
-                        "pair": "iiiiiiiiiiiiiiiiiiiiiii",
-                        "decimals": 6,
+                        "pair": "jjjjjjjjjjjjjjjjjjjjjj",
+                        "decimals": 2,
+                        "sources": [
+                            {
+                                "source_path": "market_data.current_price.usd",
+                                "end_point": "https://api.coingecko.com/api/v3/coins/near"
+                            }
+                        ]
+                    },
+                   
+                    {
+                        "pair": "iiiiiiiiiiiiiiiiiiiiiiii",
+                        "decimals": 2,
                         "sources": [
                             {
                                 "source_path": "market_data.current_price.usd",
@@ -51,7 +62,7 @@ export function createNodeConfig(ownNode: NodeInfo, otherNodes: NodeInfo[], logF
                    
                     {
                         "pair": "hhhhhhhhhhhhhhhhhhhh",
-                        "decimals": 6,
+                        "decimals": 2,
                         "sources": [
                             {
                                 "source_path": "market_data.current_price.usd",
@@ -61,7 +72,7 @@ export function createNodeConfig(ownNode: NodeInfo, otherNodes: NodeInfo[], logF
                     },
                     {
                         "pair": "ggggggggggggggggggggggggggg",
-                        "decimals": 6,
+                        "decimals": 2,
                         "sources": [
                             {
                                 "source_path": "market_data.current_price.usd",
@@ -71,7 +82,7 @@ export function createNodeConfig(ownNode: NodeInfo, otherNodes: NodeInfo[], logF
                     },
                     {
                         "pair": "ffffffffffffffffffffffffffff",
-                        "decimals": 6,
+                        "decimals": 2,
                         "sources": [
                             {
                                 "source_path": "market_data.current_price.usd",
@@ -81,7 +92,7 @@ export function createNodeConfig(ownNode: NodeInfo, otherNodes: NodeInfo[], logF
                     },
                     {
                         "pair": "eeeeeeeeeeeeeeeeeeeeeeeeeeee",
-                        "decimals": 6,
+                        "decimals": 2,
                         "sources": [
                             {
                                 "source_path": "market_data.current_price.usd",
@@ -91,7 +102,7 @@ export function createNodeConfig(ownNode: NodeInfo, otherNodes: NodeInfo[], logF
                     },
                     {
                         "pair": "dddddddddddddddddddddddddddddddd",
-                        "decimals": 6,
+                        "decimals": 2,
                         "sources": [
                             {
                                 "source_path": "market_data.current_price.usd",
@@ -101,7 +112,7 @@ export function createNodeConfig(ownNode: NodeInfo, otherNodes: NodeInfo[], logF
                     },
                     {
                         "pair": "cccccccccccccccccccccccccccccccc",
-                        "decimals": 6,
+                        "decimals": 2,
                         "sources": [
                             {
                                 "source_path": "market_data.current_price.usd",
@@ -111,7 +122,7 @@ export function createNodeConfig(ownNode: NodeInfo, otherNodes: NodeInfo[], logF
                     },
                     {
                         "pair": "bbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-                        "decimals": 6,
+                        "decimals": 2,
                         "sources": [
                             {
                                 "source_path": "market_data.current_price.usd",
@@ -121,7 +132,7 @@ export function createNodeConfig(ownNode: NodeInfo, otherNodes: NodeInfo[], logF
                     },
                     {
                         "pair": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-                        "decimals": 6,
+                        "decimals": 2,
                         "sources": [
                             {
                                 "source_path": "market_data.current_price.usd",

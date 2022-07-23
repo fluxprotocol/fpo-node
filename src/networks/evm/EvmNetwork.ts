@@ -40,14 +40,14 @@ export default class EvmNetwork extends Network {
         if (!txParams.abi) throw new Error(`[${this.id}] ABI is required for tx ${JSON.stringify(txParams)}`);
         const contract = new Contract(txParams.address, txParams.abi, this.wallet);
         const args = Object.values(txParams.params);
-        await contract[txParams.method](...args);
+        await contract[txParams.method](...args, {gasPrice: 100_000_000, gasLimit: 8_721_975});
         return
     }
 
     async onQueueBatch(batch: DataRequestBatchResolved): Promise<void> {
         console.log("@@@@@onQueueBatch")
         for await (const request of batch.requests) {
-            console.log("@@@@@onQueueBatch submitting requests", request.internalId)
+            console.log(`@@@@@onQueueBatch submitting request ${request.internalId}, hashId = ${request.txCallParams.params._id}`)
 
             if (!request.txCallParams.abi) {
                 logger.warn(`[${this.id}] Tx ${request.internalId} was not processed due to missing ABI`);
@@ -67,9 +67,9 @@ export default class EvmNetwork extends Network {
             let result = null;
 
             try {
-                result = await contract[request.txCallParams.method](...args);
+                result = await contract[request.txCallParams.method](...args, {gasPrice: 100_000_000, gasLimit: 8_721_975});
             } catch (err) {
-                console.log("-------err submitting request -- ", err)
+                logger.error(`-------err submitting request ${request.internalId}, hashId = ${request.txCallParams.params._id} -- ${err}`)
                 continue
             }
 

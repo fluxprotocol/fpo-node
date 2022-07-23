@@ -79,6 +79,7 @@ export default class Communicator {
 			for (const peer of this._retry) {
 				if (await this.connect(new Multiaddr(peer))) {
 					this._retry.delete(peer);
+					this._peers.add(peer)
 				}
 			}
 		});
@@ -96,6 +97,7 @@ export default class Communicator {
 			for (const peer of this._peers) {
 				if (!await this.connect(new Multiaddr(peer))) {
 					this._retry.add(peer);
+					this._peers.delete(peer)
 				}
 			}
 
@@ -136,8 +138,9 @@ export default class Communicator {
 			try {
 				const ma_string = ma.toString();
 				this._peers.add(ma_string);
+				this._retry.delete(ma_string);
 				const conn = await node.dial(ma);
-				logger.info
+				console.log(`@@@@@@@@@@@@@@@@@@@@@connect dialed ma: ${ma_string} , conn.local ${conn.localAddr}, conn.remote ${conn.remoteAddr}`)
 				if (conn !== undefined) {
 					// const { stream } = await conn.newStream(protocol);
 					// const version_message: P2PVersionMessage = {
@@ -160,30 +163,30 @@ export default class Communicator {
 
 	}
 
-	async connect_from_details(ip: string, address: string, transport: string, port: string, peerID: string): Promise<boolean> {
-		return attempt(this, false, async (node: Libp2p) => {
-			const mas = `/${ip}/${address}/${transport}/${port}/p2p/${peerID}`;
-			const ma = new Multiaddr(`/${ip}/${address}/${transport}/${port}/p2p/${peerID}`);
+	// async connect_from_details(ip: string, address: string, transport: string, port: string, peerID: string): Promise<boolean> {
+	// 	return attempt(this, false, async (node: Libp2p) => {
+	// 		const mas = `/${ip}/${address}/${transport}/${port}/p2p/${peerID}`;
+	// 		const ma = new Multiaddr(`/${ip}/${address}/${transport}/${port}/p2p/${peerID}`);
 
-			try {
-				if (!this._peers.has(mas)) {
-					this._peers.add(mas);
-				}
+	// 		try {
+	// 			if (!this._peers.has(mas)) {
+	// 				this._peers.add(mas);
+	// 			}
 
-				const conn = await node.dial(ma);
-				if (conn !== undefined) {
-					this._connections.set(mas, conn);
-					return true;
-				}
+	// 			const conn = await node.dial(ma);
+	// 			if (conn !== undefined) {
+	// 				this._connections.set(mas, conn);
+	// 				return true;
+	// 			}
 
-				return false;
-			} catch (error) {
-				this._peers.delete(mas);
-				logger.error(`Node failed to connect to ${ma} with error '${error}'.`);
-				return false;
-			}
-		});
-	}
+	// 			return false;
+	// 		} catch (error) {
+	// 			this._peers.delete(mas);
+	// 			logger.error(`Node failed to connect to ${ma} with error '${error}'.`);
+	// 			return false;
+	// 		}
+	// 	});
+	// }
 
 	async unhandle(protocol: string): Promise<void> {
 		await attempt(this, null, async (node: Libp2p) => {
@@ -199,20 +202,21 @@ export default class Communicator {
 		});
 	}
 
-	// TODO: This would probably make it easier, but libp2p js has no docs on this.
-	async fetch(protocol: string, received: any[]): Promise<void> {
-		await attempt(this, null, async (node: Libp2p) => {
-			for (const peer of this._peers) {
-				let result = node.fetch(new Multiaddr(peer), protocol);
-			}
-		});
-	}
+	// // TODO: This would probably make it easier, but libp2p js has no docs on this.
+	// async fetch(protocol: string, received: any[]): Promise<void> {
+	// 	await attempt(this, null, async (node: Libp2p) => {
+	// 		for (const peer of this._peers) {
+	// 			let result = node.fetch(new Multiaddr(peer), protocol);
+	// 		}
+	// 	});
+	// }
 
 	async send(protocol: string, data: Uint8Array[]): Promise<void> {
 		attempt(this, null, async (node: Libp2p) => {
 			for (const connection of this._connections) {
 				const ma_string = connection[0];
 				const conn = connection[1];
+				console.log(`@@@@send: concection ma ${ma_string} local ${conn.localAddr}, remote ${conn.remoteAddr}`)
 				try {
 					const { stream } = await conn.newStream(protocol);
 					await stream.sink(createAsyncIterable(data));
@@ -220,6 +224,7 @@ export default class Communicator {
 				} catch (err) {
 					this._connections.delete(ma_string);
 					this._retry.add(ma_string);
+					this._peers.delete(ma_string)
 				}
 			}
 		});
