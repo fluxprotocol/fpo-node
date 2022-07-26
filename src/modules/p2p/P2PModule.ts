@@ -109,7 +109,7 @@ export class P2PModule extends Module {
             }
 
             if (rejectVersion(P2PModule.report_version, this.p2p.latest_report_version)) {
-                throw new Error(`Report version '${P2PModule.report_version}' is out of date and needs to be updated to '${versionToString(this.p2p.latest_report_version)}'`);
+                throw new Error(`Report version '${versionToString(P2PModule.report_version)}' is out of date and needs to be updated to '${versionToString(this.p2p.latest_report_version)}'`);
             }
 
             logger.info(`[${this.id}] Processing job`);
