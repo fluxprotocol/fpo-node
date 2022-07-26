@@ -16,3 +16,7 @@ export interface TxCallParams {
         [key: string]: any,
     }
 }
+
+export interface TxViewParams extends Omit<TxCallParams, 'amount'> {
+    amount?: string;
+}

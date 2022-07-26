@@ -23,3 +23,4 @@ export const TELEGRAM_STATS_CHAT_ID = process.env.TELEGRAM_STATS_CHAT_ID;
 
 export const HEALTHCHECK_ENABLED = process.env.HEALTHCHECK_ENABLED === 'true';
 export const HEALTHCHECK_PORT = process.env.HEALTHCHECK_PORT ?? '80';
+

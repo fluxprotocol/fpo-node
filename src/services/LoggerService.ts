@@ -23,7 +23,7 @@ const logger = winston.createLogger({
             filename: `${PROJECT_NAME}-%DATE%.log`,
             datePattern: 'YYYY-MMM-DD',
             zippedArchive: true,
-            dirname: `logs/`,
+            dirname: process.env.FUZZ_LOGS ?? `logs/`,
             format: logFormat,
             maxFiles: MAX_LOG_LIFETIME,
         }),

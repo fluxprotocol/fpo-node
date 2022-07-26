@@ -1,10 +1,11 @@
 import Big from "big.js";
 import EventEmitter from "events";
 import { Block } from "./Block";
+import { DataRequestResolved } from "./DataRequest";
 import { DataRequestBatch, DataRequestBatchResolved } from "./DataRequestBatch";
 import { INetwork, NetworkConfig } from "./INetwork";
 import { Queue } from "./Queue";
-import { TxCallParams } from "./TxCallParams";
+import { TxCallParams, TxViewParams } from "./TxCallParams";
 
 
 export function parseUnparsedNetworkConfig(config: Partial<NetworkConfig>): NetworkConfig {
@@ -45,7 +46,7 @@ export class Network extends EventEmitter implements INetwork {
         this.type = type;
     }
 
-    async view(txParams: TxCallParams): Promise<any> {
+    async view(txParams: TxViewParams): Promise<any> {
         throw new Error(`${this.id} Not implemented view`);
     }
 
@@ -69,8 +70,20 @@ export class Network extends EventEmitter implements INetwork {
         throw new Error(`${this.id} Not implemented init`);
     }
 
+    async sign(message: Uint8Array): Promise<Uint8Array> {
+        throw new Error(`${this.id} sign is not implemented yet`);
+    }
+
+    async verifySignature(message: Uint8Array, signature: Uint8Array): Promise<string> {
+        throw new Error(`${this.id} VerifySignature is not implemented yet`);
+    }
+
     async getBalance(accountId: string): Promise<Big | undefined> {
         throw new Error(`${this.id} Not implemented getBalance`);
+    }
+
+    getWalletPublicAddress(): string {
+        throw new Error('Not implemented getWalletPublicAddress');
     }
 
     addRequestsToQueue(batch: DataRequestBatchResolved): void {
