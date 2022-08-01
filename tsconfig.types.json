@@ -4,10 +4,6 @@
         "skipLibCheck": true,
         "target": "esnext",
         "module": "commonjs",
-        "lib": [
-            "dom",
-            "ESNext",
-        ],
         "outDir": "dist",
         "rootDir": ".",
         "strict": true,
@@ -21,7 +17,8 @@
         "esModuleInterop": true
     },
     "include": [
-        "src/**/*"
+        "src/**/*",
+        "package.json",
     ],
     "exclude": [
         "node_modules",
