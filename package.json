@@ -3,6 +3,7 @@
     "version": "1.2.1",
     "description": "First Party Oracle",
     "main": "index.js",
+    "types": "dist/FluxSdk.d.ts",
     "repository": "git@github.com:fluxprotocol/fpo-node.git",
     "author": "Franklin Waller <fr.l.waller@gmail.com>",
     "license": "GPL-3.0-only",
@@ -12,6 +13,7 @@
         "dev": "yarn build && node 'dist/src/main.js'",
         "start": "node 'dist/src/main.js'",
         "build": "tsc -p .",
+        "postinstall":"tsc --outDir ./build",
         "fuzz:p2p": "cross-env NODE_ENV=fuzz node dist/test/fuzz/fuzz.js p2p_fuzz_config.yaml"
     },
     "dependencies": {
