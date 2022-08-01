@@ -1,6 +1,5 @@
 {
     "compilerOptions": {
-        "allowJs": true,
         "resolveJsonModule": true,
         "skipLibCheck": true,
         "target": "esnext",
@@ -22,7 +21,9 @@
         "esModuleInterop": true
     },
     "include": [
-        "src/**/*"
+        "src/**/*",
+        "src/**/*.json",
+        "package.json"
     ],
     "exclude": [
         "node_modules",
