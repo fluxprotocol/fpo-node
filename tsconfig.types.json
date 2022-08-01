@@ -12,7 +12,7 @@
         "rootDir": ".",
         "strict": true,
         // Ensure that .d.ts files are created by tsc, but not .js files
-        "declaration": false,
+        "declaration": true,
         // "noEmit": true,
         "emitDeclarationOnly": false,
         // Ensure that Babel can safely transpile files in the TypeScript project
