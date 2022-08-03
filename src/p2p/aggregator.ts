@@ -221,20 +221,28 @@ export default class P2PAggregator extends EventEmitter {
         const requiredAmountOfSignatures = Math.floor((this.p2p._peers.size + 1) / 2) + 1;
         let trials = 3;
         // wait for up to 60 seconds for enough sigs, if we didn't receive enough sigs we'll retry in the next iteration
-        await this.receivedEnoughSigs(async () => {
-            console.log(`waitng for enough sigs ${request.internalId}`)
+        // await this.receivedEnoughSigs(async () => {
+        //     console.log(`waitng for enough sigs ${request.internalId}`)
+        //     await sleep(20_000)
+        //     let temp = this.requestReports.get(request.internalId);
+        //     trials -= 1
+        //     // console.log("@@@@@temp", temp)
+        //     if (((temp != undefined) && (temp.size >= requiredAmountOfSignatures)) || (trials == 0)) {
+        //         return true;
+        //     } else {
+        //         return false
+        //     }
+
+        // })
+        while(trials > 0){
+            console.log("**waiting for enough sigs")
             await sleep(20_000)
             let temp = this.requestReports.get(request.internalId);
-            trials -= 1
-            // console.log("@@@@@temp", temp)
-            if (((temp != undefined) && (temp.size >= requiredAmountOfSignatures)) || (trials == 0)) {
-                return true;
-            } else {
-                return false
+            trials -= 1;
+            if (((temp != undefined) && (temp.size >= requiredAmountOfSignatures)) || (trials <= 0)) {
+                break;
             }
-
-        })
-
+        }
         // console.log("-----aggregated reports: ", this.requestReports.get(request.internalId))
         try {
             return await this.handleReports(request.internalId)
@@ -246,18 +254,18 @@ export default class P2PAggregator extends EventEmitter {
 
     }
 
-    async receivedEnoughSigs(cond: () => any) {
-        return new Promise<void>((resolve) => {
-            let interval = setInterval(() => {
-                if (!cond()) {
-                    return
-                }
+    // async receivedEnoughSigs(cond: () => any) {
+    //     return new Promise<void>((resolve) => {
+    //         let interval = setInterval(() => {
+    //             if (!cond()) {
+    //                 return
+    //             }
 
-                clearInterval(interval)
-                resolve()
-            }, 2000)
-        })
-    }
+    //             clearInterval(interval)
+    //             resolve()
+    //         }, 2000)
+    //     })
+    // }
 
 
 }

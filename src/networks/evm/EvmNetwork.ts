@@ -40,7 +40,8 @@ export default class EvmNetwork extends Network {
         if (!txParams.abi) throw new Error(`[${this.id}] ABI is required for tx ${JSON.stringify(txParams)}`);
         const contract = new Contract(txParams.address, txParams.abi, this.wallet);
         const args = Object.values(txParams.params);
-        await contract[txParams.method](...args, {gasPrice: 100_000_000, gasLimit: 8_721_975});
+        // await contract[txParams.method](...args, {gasPrice: 100_000_000, gasLimit: 8_721_975});
+        await contract[txParams.method](...args)
         return
     }
 
@@ -67,7 +68,9 @@ export default class EvmNetwork extends Network {
             let result = null;
 
             try {
-                result = await contract[request.txCallParams.method](...args, {gasPrice: 100_000_000, gasLimit: 8_721_975});
+                // result = await contract[request.txCallParams.method](...args, {gasPrice: 100_000_000, gasLimit: 8_721_975});
+                result = await contract[request.txCallParams.method](...args, {gasPrice: 615_033_930, gasLimit: 1_000_000});
+
             } catch (err) {
                 logger.error(`-------err submitting request ${request.internalId}, hashId = ${request.txCallParams.params._id} -- ${err}`)
                 continue
