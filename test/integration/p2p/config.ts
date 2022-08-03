@@ -10,16 +10,19 @@ export interface NodeInfo {
 export function createNodeConfig(ownNode: NodeInfo, otherNodes: NodeInfo[], logFile: string) {
 
     const config: UnparsedAppConfig = {
-        "p2p": {
-            "peer_id": ownNode.peerId.toJSON(),
-            // @ts-ignore
-            "addresses": {
-                "listen": [`/ip4/127.0.0.1/tcp/${ownNode.port}/p2p/${ownNode.peerId.toB58String()}`],
-            },
-            "peers": otherNodes.map(peer => {
-                return `/ip4/127.0.0.1/tcp/${peer.port}/p2p/${peer.peerId.toB58String()}`;
-            }),
-        },
+        "p2p": [
+            {
+                "networkId": 1313161555,
+                "peer_id": ownNode.peerId.toJSON(),
+                // @ts-ignore
+                "addresses": {
+                    "listen": [`/ip4/127.0.0.1/tcp/${ownNode.port}/p2p/${ownNode.peerId.toB58String()}`],
+                },
+                "peers": otherNodes.map(peer => {
+                    return `/ip4/127.0.0.1/tcp/${peer.port}/p2p/${peer.peerId.toB58String()}`;
+                }),
+            }
+        ],
         "networks": [
             {
                 "type": "evm",

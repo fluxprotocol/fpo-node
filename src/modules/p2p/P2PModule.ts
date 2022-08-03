@@ -48,20 +48,26 @@ export class P2PModule extends Module {
         if (!appConfig.p2p) throw new Error(`"p2p" is required in the appConfig for ${this.type} to work`);
 
         this.internalConfig = parseP2PConfig(moduleConfig);
+
+        // find the correct network for this p2p submodule
+        // TODO: this would be cleaner if p2p settings were combined with the network settings
+        const p2p = appConfig.p2p.find(config => config.networkId === this.internalConfig.networkId);
+        if (!p2p) throw new Error(`"networkId" is required in the p2p config`);
+
         this.id = this.internalConfig.id;
         this.p2p = new Communicator(
             P2PModule.node_version,
             P2PModule.report_version,
             {
-                peerId: appConfig.p2p.peer_id,
-                addresses: appConfig.p2p.addresses,
-                ...appConfig.p2p.p2p_node,
+                peerId: p2p.peer_id,
+                addresses: p2p.addresses,
+                ...p2p.p2p_node,
                 modules: {
                     transport: [TCP],
                     streamMuxer: [Mplex],
                     connEncryption: [NOISE],
                 },
-            }, appConfig.p2p.peers);
+            }, p2p.peers);
         this.aggregator = new P2PAggregator(this.p2p, this.internalConfig, this.network);
 
         this.db = new DBLogger(this.internalConfig.logFile);
