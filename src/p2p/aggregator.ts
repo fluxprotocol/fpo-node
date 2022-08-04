@@ -138,13 +138,12 @@ export default class P2PAggregator extends EventEmitter {
         if(!isResolved) {
             throw new Error("isResolved not found")
         }
-        if(await isResolved()){
-            throw new Error(`@@@@@handleReports: already resolved -- round: ${roundId} , id: ${request.internalId}`)
-            
-        }
         // console.log("@@@handleReports:  HANDLED REPORTS: ", reports)
 
         if (this.thisNode.equals(leader)) {
+            if(await isResolved()){
+                throw new Error(`@@@@@handleReports: already resolved -- round: ${roundId} , id: ${request.internalId}`)
+            }
             logger.debug(`[${LOG_NAME}-${request.internalId}] This node is the leader. Sending transaction across network and blockchain`);
             return {
                 leader: true,
@@ -183,19 +182,22 @@ export default class P2PAggregator extends EventEmitter {
             this.timesWeGotThisRound.set(request.internalId, 1)
 
         } else {
-            console.log(`@@@@@@@@aggregate --- got the same round id = ${request.internalId}, hash = ${hashFeedId}`)
     
             // if we get the same round, we wait for two more iterations before processing it again
             let timesWeGotThisRound = this.timesWeGotThisRound.get(request.internalId)
             if(timesWeGotThisRound){
                 this.timesWeGotThisRound.set(request.internalId, (timesWeGotThisRound + 1))
+                timesWeGotThisRound += 1
+                console.log(`@@@@@@@@aggregate --- got the same round id = ${request.internalId}, hash = ${hashFeedId}`)
+
 
             }else{
                 throw new Error("Didn't get this round before")
             }
-            // process at timesWeGotThisRound = 3, 7, 11
-            if((timesWeGotThisRound % 4) < 3){ // skip two iterations before processing the same round again
-                throw new Error(`@@aggregate: ${request.internalId} Got the same roundId - Wait for another ${3 - timesWeGotThisRound} iterations to process this round again`)
+            // timesWeGotThisRound = 2, 3, 4, 5
+            const skippedIterations = 1;
+            if((((timesWeGotThisRound - 2) % (skippedIterations + 1))) < skippedIterations){ // skip 1 iteration before processing the same round again
+                throw new Error(`@@aggregate: ${request.internalId} Got roundId #${roundId} ${timesWeGotThisRound} times - Wait for ${skippedIterations - ((timesWeGotThisRound - 2) % (skippedIterations + 1))} iterations before processing this round again`)
             }
                    
         }
@@ -207,7 +209,7 @@ export default class P2PAggregator extends EventEmitter {
         let reports = this.requestReports.get(request.internalId) ?? new Set()
 
 
-        console.log("@@@aggregate: previously received reports", reports)
+        // console.log("@@@aggregate: previously received reports", reports)
         for (let r of reports) {
             if (((r.round == p2pMessage.round) && (r.signer == p2pMessage.signer)) || (r.round < Number(roundId))) {
                 // console.log("@@@aggregate:  deleting old unsuccessful signatures or already transmitted round", r)
@@ -219,24 +221,11 @@ export default class P2PAggregator extends EventEmitter {
 
 
         const requiredAmountOfSignatures = Math.floor((this.p2p._peers.size + 1) / 2) + 1;
-        let trials = 3;
-        // wait for up to 60 seconds for enough sigs, if we didn't receive enough sigs we'll retry in the next iteration
-        // await this.receivedEnoughSigs(async () => {
-        //     console.log(`waitng for enough sigs ${request.internalId}`)
-        //     await sleep(20_000)
-        //     let temp = this.requestReports.get(request.internalId);
-        //     trials -= 1
-        //     // console.log("@@@@@temp", temp)
-        //     if (((temp != undefined) && (temp.size >= requiredAmountOfSignatures)) || (trials == 0)) {
-        //         return true;
-        //     } else {
-        //         return false
-        //     }
-
-        // })
+        // wait for up to 2 mins for enough sigs, if we didn't receive enough sigs we'll retry in the next iteration
+        let trials = 4;
         while(trials > 0){
             console.log("**waiting for enough sigs")
-            await sleep(20_000)
+            await sleep(30_000)
             let temp = this.requestReports.get(request.internalId);
             trials -= 1;
             if (((temp != undefined) && (temp.size >= requiredAmountOfSignatures)) || (trials <= 0)) {
@@ -253,19 +242,6 @@ export default class P2PAggregator extends EventEmitter {
 
 
     }
-
-    // async receivedEnoughSigs(cond: () => any) {
-    //     return new Promise<void>((resolve) => {
-    //         let interval = setInterval(() => {
-    //             if (!cond()) {
-    //                 return
-    //             }
-
-    //             clearInterval(interval)
-    //             resolve()
-    //         }, 2000)
-    //     })
-    // }
 
 
 }
