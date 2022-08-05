@@ -13,6 +13,7 @@ import { P2PVersion } from "./models/P2PVersion";
 import { P2PInternalConfig } from "../modules/p2p/models/P2PConfig";
 import { Network } from "../models/Network";
 import { sleep } from "../services/TimerUtils";
+import { getMinSignersForPair } from "../modules/p2p/services/P2PRequestService";
 
 const LOG_NAME = 'p2p-aggregator';
 
@@ -47,14 +48,14 @@ export default class P2PAggregator extends EventEmitter {
     private checkStatusCallback: Map<string, () => Promise<boolean>> = new Map();
     private toBeTransmittedRound: Map<string, number> = new Map();
     private timesWeGotThisRound: Map<string, number> = new Map();
-    private config: P2PInternalConfig;
+    private internalConfig: P2PInternalConfig;
     private network: Network;
-    constructor(p2p: Communicator, config: P2PInternalConfig, net: Network) {
+    constructor(p2p: Communicator, internalConfig: P2PInternalConfig, network: Network) {
         super();
         this.p2p = p2p;
         this.thisNode = new Multiaddr(this.p2p._node_addr);
-        this.config = config;
-        this.network = net;
+        this.network = network;
+        this.internalConfig = internalConfig;
     }
 
     async init(): Promise<void> {
@@ -88,11 +89,7 @@ export default class P2PAggregator extends EventEmitter {
     }
 
 
-    private async handleReports(id: string): Promise<AggregateResult> {
-        const reports = this.requestReports.get(id);
-        if (!reports) {
-            throw new Error("Reports not found")
-        };
+    private async handleReports(id: string, hashFeedId: string): Promise<AggregateResult> {
         let roundId = this.toBeTransmittedRound.get(id)
         if (!roundId) {
             throw new Error("Round not found")
@@ -101,23 +98,26 @@ export default class P2PAggregator extends EventEmitter {
         if (!request) {
             throw new Error("Request not found")
         };
+        const isResolved = this.checkStatusCallback.get(id)
+        if(!isResolved) {
+            throw new Error("isResolved not found")
+        }
 
-        // console.log("@@@handleReports: received reports", reports)
-
+        const requiredAmountOfSignatures = await getMinSignersForPair(this.internalConfig, this.network, hashFeedId)
+        let reports = this.requestReports.get(request.internalId)
+        if (!reports) {
+            throw new Error("Reports not found")
+        };
+        
+        // filter old rounds
         for (let r of reports) {
             if (r.round != Number(roundId)) {
                 reports.delete(r)
             }
         }
-
-        const requiredAmountOfSignatures = Math.floor((this.p2p._peers.size + 1) / 2) + 1;
-        if (reports.size < requiredAmountOfSignatures) {
-            // console.log("@@@handleReports:  filtered reports", reports)
-            throw new Error(`@@@handleReports: ${request.internalId}, round: ${roundId} --- Not enough signatures`);
-
+        if (reports.size < Number(requiredAmountOfSignatures)) {
+            throw new Error(`@@@handleReports:----- Not enough signatures ${request.internalId}, round: ${roundId} , this.p2p._peers.size = ${this.p2p._peers.size}, this.p2p._retry.size = ${this.p2p._retry.size}, requiredAmountOfSignatures = ${requiredAmountOfSignatures}`);
         }
-
-        logger.debug(`[${LOG_NAME}-${id}] Received enough signatures`);
         
         for(let peer of this.p2p._peers){
             if(!await this.p2p.connect(new Multiaddr(peer))){
@@ -127,19 +127,12 @@ export default class P2PAggregator extends EventEmitter {
         }
         console.log(`@@@handleReports: peers ${request.internalId}: `, this.p2p._peers)
         console.log(`@@@handleReports: retry ${request.internalId}: `, this.p2p._retry)
-        const leader = electLeader(this.p2p, Big(roundId));
-
 
         // Round id can randomly be modified so we should only use it for reelecting a leader
-
+        const leader = electLeader(this.p2p, Big(roundId));
         logger.info(`**Chosen leader for round ${roundId} : ${leader} : ${id}`)
         console.log("**thisNode", this.thisNode)
-        const isResolved = this.checkStatusCallback.get(id)
-        if(!isResolved) {
-            throw new Error("isResolved not found")
-        }
         // console.log("@@@handleReports:  HANDLED REPORTS: ", reports)
-
         if (this.thisNode.equals(leader)) {
             if(await isResolved()){
                 throw new Error(`@@@@@handleReports: already resolved -- round: ${roundId} , id: ${request.internalId}`)
@@ -183,7 +176,7 @@ export default class P2PAggregator extends EventEmitter {
 
         } else {
     
-            // if we get the same round, we wait for two more iterations before processing it again
+            // if we get the same round, we skip 1 iteration before processing it again
             let timesWeGotThisRound = this.timesWeGotThisRound.get(request.internalId)
             if(timesWeGotThisRound){
                 this.timesWeGotThisRound.set(request.internalId, (timesWeGotThisRound + 1))
@@ -219,22 +212,12 @@ export default class P2PAggregator extends EventEmitter {
         reports.add(p2pMessage);
         this.requestReports.set(request.internalId, reports);
 
+        // wait for nodes to send sigs
+        await sleep(40_000)
 
-        const requiredAmountOfSignatures = Math.floor((this.p2p._peers.size + 1) / 2) + 1;
-        // wait for up to 2 mins for enough sigs, if we didn't receive enough sigs we'll retry in the next iteration
-        let trials = 4;
-        while(trials > 0){
-            console.log("**waiting for enough sigs")
-            await sleep(30_000)
-            let temp = this.requestReports.get(request.internalId);
-            trials -= 1;
-            if (((temp != undefined) && (temp.size >= requiredAmountOfSignatures)) || (trials <= 0)) {
-                break;
-            }
-        }
         // console.log("-----aggregated reports: ", this.requestReports.get(request.internalId))
         try {
-            return await this.handleReports(request.internalId)
+            return await this.handleReports(request.internalId, hashFeedId)
 
         } catch (err) {
             throw err
