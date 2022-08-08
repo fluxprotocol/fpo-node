@@ -148,13 +148,11 @@ export default class Communicator {
 					// I.e. each node would get the version more than once.
 					// So instead we just only send to the node we just connected to.
 					// Could also consider node.fetchService.fetch, and node.fetchService.registerLookUpFunction
-					const { stream } = await conn.newStream('/report/version');
 					const version_message: P2PVersionMessage = {
 						node_version: this.node_version,
 						report_version: this.report_version,
 					};
-					await stream.sink(createAsyncIterable([fromString(JSON.stringify(version_message))]));
-					stream.close();
+					this.send('/report/version', [fromString(JSON.stringify(version_message))]);
 
 					this._connections.set(ma_string, conn);
 					return true;
