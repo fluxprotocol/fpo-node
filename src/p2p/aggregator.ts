@@ -99,7 +99,7 @@ export default class P2PAggregator extends EventEmitter {
             throw new Error("Request not found")
         };
         const isResolved = this.checkStatusCallback.get(id)
-        if(!isResolved) {
+        if (!isResolved) {
             throw new Error("isResolved not found")
         }
 
@@ -108,7 +108,7 @@ export default class P2PAggregator extends EventEmitter {
         if (!reports) {
             throw new Error("Reports not found")
         };
-        
+
         // filter old rounds
         for (let r of reports) {
             if (r.round != Number(roundId)) {
@@ -118,9 +118,9 @@ export default class P2PAggregator extends EventEmitter {
         if (reports.size < Number(requiredAmountOfSignatures)) {
             throw new Error(`@@@handleReports:----- Not enough signatures ${request.internalId}, round: ${roundId} , this.p2p._peers.size = ${this.p2p._peers.size}, this.p2p._retry.size = ${this.p2p._retry.size}, requiredAmountOfSignatures = ${requiredAmountOfSignatures}`);
         }
-        
-        for(let peer of this.p2p._peers){
-            if(!await this.p2p.connect(new Multiaddr(peer))){
+
+        for (let peer of this.p2p._peers) {
+            if (!await this.p2p.connect(new Multiaddr(peer))) {
                 this.p2p._retry.add(peer);
                 this.p2p._peers.delete(peer)
             }
@@ -134,7 +134,7 @@ export default class P2PAggregator extends EventEmitter {
         console.log("**thisNode", this.thisNode)
         // console.log("@@@handleReports:  HANDLED REPORTS: ", reports)
         if (this.thisNode.equals(leader)) {
-            if(await isResolved()){
+            if (await isResolved()) {
                 throw new Error(`@@@@@handleReports: already resolved -- round: ${roundId} , id: ${request.internalId}`)
             }
             logger.debug(`[${LOG_NAME}-${request.internalId}] This node is the leader. Sending transaction across network and blockchain`);
@@ -175,24 +175,24 @@ export default class P2PAggregator extends EventEmitter {
             this.timesWeGotThisRound.set(request.internalId, 1)
 
         } else {
-    
+
             // if we get the same round, we skip 1 iteration before processing it again
             let timesWeGotThisRound = this.timesWeGotThisRound.get(request.internalId)
-            if(timesWeGotThisRound){
+            if (timesWeGotThisRound) {
                 this.timesWeGotThisRound.set(request.internalId, (timesWeGotThisRound + 1))
                 timesWeGotThisRound += 1
                 console.log(`@@@@@@@@aggregate --- got the same round id = ${request.internalId}, hash = ${hashFeedId}`)
 
 
-            }else{
+            } else {
                 throw new Error("Didn't get this round before")
             }
             // timesWeGotThisRound = 2, 3, 4, 5
             const skippedIterations = 1;
-            if((((timesWeGotThisRound - 2) % (skippedIterations + 1))) < skippedIterations){ // skip 1 iteration before processing the same round again
+            if ((((timesWeGotThisRound - 2) % (skippedIterations + 1))) < skippedIterations) { // skip 1 iteration before processing the same round again
                 throw new Error(`@@aggregate: ${request.internalId} Got roundId #${roundId} ${timesWeGotThisRound} times - Wait for ${skippedIterations - ((timesWeGotThisRound - 2) % (skippedIterations + 1))} iterations before processing this round again`)
             }
-                   
+
         }
         await this.p2p.send(`/send/data`, [
             fromString(JSON.stringify(p2pMessage)),

@@ -69,7 +69,9 @@ export default class Communicator {
 		this.handle_incoming('/report/version', async (peer: Multiaddr, conn: Multiaddr, source: AsyncIterable<Uint8Array | BufferList>) => {
 			const versions = await extractP2PVersionMessage(source);
 			if (!versions) return;
-			logger.info(`[VERSION-AGGREGATOR] Received versions from ${peer}`);
+			logger.info(`[P2P-VERSION-AGGREGATOR] Received versions from ${peer}`);
+			logger.info(`[P2P-VERSION-AGGREGATOR] Received Node Version from ${versions.node_version}`);
+			logger.info(`[P2P-VERSION-AGGREGATOR] Received Report Version from ${versions.report_version}`);
 
 			this.latest_node_version = latestVersion(this.node_version, versions.node_version);
 			this.latest_report_version = latestVersion(this.report_version, versions.report_version);
@@ -144,17 +146,19 @@ export default class Communicator {
 				const conn = await node.dial(ma);
 				console.log(`@@@@@@@@@@@@@@@@@@@@@connect dialed ma: ${ma_string} , conn.local ${conn.localAddr}, conn.remote ${conn.remoteAddr}`)
 				if (conn !== undefined) {
-					// We could use send here, but that would send to all currently connected nodes.
-					// I.e. each node would get the version more than once.
-					// So instead we just only send to the node we just connected to.
-					// Could also consider node.fetchService.fetch, and node.fetchService.registerLookUpFunction
-					const { stream } = await conn.newStream('/report/version');
-					const version_message: P2PVersionMessage = {
-						node_version: this.node_version,
-						report_version: this.report_version,
-					};
-					await stream.sink(createAsyncIterable([fromString(JSON.stringify(version_message))]));
-					stream.close();
+					setTimeout(async () => {
+						// We could use send here, but that would send to all currently connected nodes.
+						// I.e. each node would get the version more than once.
+						// So instead we just only send to the node we just connected to.
+						// Could also consider node.fetchService.fetch, and node.fetchService.registerLookUpFunction
+						const { stream } = await conn.newStream('/report/version');
+						const version_message: P2PVersionMessage = {
+							node_version: this.node_version,
+							report_version: this.report_version,
+						};
+						await stream.sink(createAsyncIterable([fromString(JSON.stringify(version_message))]));
+						stream.close();
+					}, 3000);
 
 					this._connections.set(ma_string, conn);
 					return true;

@@ -111,11 +111,15 @@ export class P2PModule extends Module {
             }
 
             if (rejectVersion(P2PModule.node_version, this.p2p.latest_node_version)) {
-                throw new Error(`Node version '${versionToString(P2PModule.node_version)}' is out of date and needs to be updated to '${versionToString(this.p2p.latest_node_version)}'`);
+                logger.error(`Node version '${versionToString(P2PModule.node_version)}' is out of date and needs to be updated to '${versionToString(this.p2p.latest_node_version)}'`);
+                return;
+                // throw new Error(`Node version '${versionToString(P2PModule.node_version)}' is out of date and needs to be updated to '${versionToString(this.p2p.latest_node_version)}'`);
             }
 
             if (rejectVersion(P2PModule.report_version, this.p2p.latest_report_version)) {
-                throw new Error(`Report version '${versionToString(P2PModule.report_version)}' is out of date and needs to be updated to '${versionToString(this.p2p.latest_report_version)}'`);
+                logger.error(`Report version '${versionToString(P2PModule.report_version)}' is out of date and needs to be updated to '${versionToString(this.p2p.latest_report_version)}'`);
+                return;
+                // throw new Error(`Report version '${versionToString(P2PModule.report_version)}' is out of date and needs to be updated to '${versionToString(this.p2p.latest_report_version)}'`);
             }
 
             logger.info(`[${this.id}] Processing job`);
