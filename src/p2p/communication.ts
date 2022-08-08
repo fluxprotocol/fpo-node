@@ -8,7 +8,7 @@ import BufferList from "bl/BufferList";
 
 import logger from "../services/LoggerService";
 import { debouncedInterval } from "../services/TimerUtils";
-import { extractP2PVersionMessage, latestVersion, P2PVersion, P2PVersionMessage } from "./models/P2PVersion";
+import { extractP2PVersionMessage, latestVersion, P2PVersion, P2PVersionMessage, toString as versionToString } from "./models/P2PVersion";
 import { fromString } from "uint8arrays/from-string";
 
 async function* createAsyncIterable(syncIterable: Uint8Array[]) {
@@ -70,8 +70,8 @@ export default class Communicator {
 			const versions = await extractP2PVersionMessage(source);
 			if (!versions) return;
 			logger.info(`[P2P-VERSION-AGGREGATOR] Received versions from ${peer}`);
-			logger.info(`[P2P-VERSION-AGGREGATOR] Received Node Version from ${versions.node_version}`);
-			logger.info(`[P2P-VERSION-AGGREGATOR] Received Report Version from ${versions.report_version}`);
+			logger.info(`[P2P-VERSION-AGGREGATOR] Received Node Version from ${versionToString(versions.node_version)}`);
+			logger.info(`[P2P-VERSION-AGGREGATOR] Received Report Version from ${versionToString(versions.report_version)}`);
 
 			this.latest_node_version = latestVersion(this.node_version, versions.node_version);
 			this.latest_report_version = latestVersion(this.report_version, versions.report_version);
