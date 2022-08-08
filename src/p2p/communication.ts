@@ -95,7 +95,7 @@ export default class Communicator {
 			await node.start();
 			this._node_addr = `${node.multiaddrs[0]}/p2p/${node.peerId.toJSON().id}`;
 			logger.info(`node ${this._node_addr} started`);
-			const annouce_addrs = node.addressManager.getAnnounceAddrs();
+			// const annouce_addrs = node.addressManager.getAnnounceAddrs();
 			console.log(`Node addrs [${node.multiaddrs.length}] ->`, node.multiaddrs.map((addr) => addr.toString()).join(', '));
 
 			for (const peer of this._peers) {
@@ -115,8 +115,6 @@ export default class Communicator {
 				node.multiaddrs[0],
 				node.peerId,
 			];
-
-
 		})
 	}
 
@@ -146,19 +144,17 @@ export default class Communicator {
 				const conn = await node.dial(ma);
 				console.log(`@@@@@@@@@@@@@@@@@@@@@connect dialed ma: ${ma_string} , conn.local ${conn.localAddr}, conn.remote ${conn.remoteAddr}`)
 				if (conn !== undefined) {
-					setTimeout(async () => {
-						// We could use send here, but that would send to all currently connected nodes.
-						// I.e. each node would get the version more than once.
-						// So instead we just only send to the node we just connected to.
-						// Could also consider node.fetchService.fetch, and node.fetchService.registerLookUpFunction
-						const { stream } = await conn.newStream('/report/version');
-						const version_message: P2PVersionMessage = {
-							node_version: this.node_version,
-							report_version: this.report_version,
-						};
-						await stream.sink(createAsyncIterable([fromString(JSON.stringify(version_message))]));
-						stream.close();
-					}, 3000);
+					// We could use send here, but that would send to all currently connected nodes.
+					// I.e. each node would get the version more than once.
+					// So instead we just only send to the node we just connected to.
+					// Could also consider node.fetchService.fetch, and node.fetchService.registerLookUpFunction
+					const { stream } = await conn.newStream('/report/version');
+					const version_message: P2PVersionMessage = {
+						node_version: this.node_version,
+						report_version: this.report_version,
+					};
+					await stream.sink(createAsyncIterable([fromString(JSON.stringify(version_message))]));
+					stream.close();
 
 					this._connections.set(ma_string, conn);
 					return true;
