@@ -67,7 +67,6 @@ export default class Communicator {
 
 		// When initializing we set a way to handle versions of other nodes.
 		this.handle_incoming('/report/version', async (peer: Multiaddr, conn: Multiaddr, source: AsyncIterable<Uint8Array | BufferList>) => {
-			console.trace("^^^~~~Debugging how is this called this many times");
 			const versions = await extractP2PVersionMessage(source);
 			if (!versions) return;
 			logger.info(`[P2P-VERSION-AGGREGATOR] Received versions from ${peer}`);
@@ -140,6 +139,8 @@ export default class Communicator {
 		return attempt(this, false, async (node: Libp2p) => {
 			try {
 				const ma_string = ma.toString();
+				this._peers.add(ma_string);
+				this._retry.delete(ma_string);
 				const conn = await node.dial(ma);
 				console.log(`@@@@@@@@@@@@@@@@@@@@@connect dialed ma: ${ma_string} , conn.local ${conn.localAddr}, conn.remote ${conn.remoteAddr}`)
 				if (conn !== undefined) {
@@ -154,8 +155,6 @@ export default class Communicator {
 					this.send('/report/version', [fromString(JSON.stringify(version_message))]);
 
 					this._connections.set(ma_string, conn);
-					this._peers.add(ma_string);
-					this._retry.delete(ma_string);
 					return true;
 				}
 
@@ -183,6 +182,7 @@ export default class Communicator {
 	}
 
 	async send(protocol: string, data: Uint8Array[]): Promise<void> {
+		logger.debug(`Sending message with protocol: ${protocol}`);
 		attempt(this, null, async (node: Libp2p) => {
 			for (const connection of this._connections) {
 				const ma_string = connection[0];
@@ -192,6 +192,7 @@ export default class Communicator {
 					const { stream } = await conn.newStream(protocol);
 					await stream.sink(createAsyncIterable(data));
 					stream.close();
+					stream.abort();
 				} catch (err) {
 					this._connections.delete(ma_string);
 					this._retry.add(ma_string);
