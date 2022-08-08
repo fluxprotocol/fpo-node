@@ -10,7 +10,6 @@ import logger from "../../../services/LoggerService";
 import { BigNumber, ethers } from "ethers";
 import { AggregateResult } from "../../../p2p/aggregator";
 import { fromString, toString } from "uint8arrays";
-import { report } from "process";
 import { sleep } from "../../../services/TimerUtils";
 
 export async function getRoundIdForPair(config: P2PInternalConfig, network: Network,  computedId: string): Promise<Big> {

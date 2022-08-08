@@ -4,7 +4,6 @@ import { P2PInternalConfig } from "../models/P2PConfig";
 import { BigNumber } from 'ethers';
 import { computeFactoryPairId } from '../../pushPair/services/utils';
 import FluxP2PFactory from '../FluxP2PFactory.json';
-import Big from 'big.js';
 import { sleep } from '../../../services/TimerUtils';
 
 interface TimestampUpdateReport {

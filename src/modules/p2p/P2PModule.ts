@@ -21,7 +21,7 @@ import P2PAggregator, { AggregateResult } from "../../p2p/aggregator";
 import { prettySeconds, sleep } from "../../services/TimerUtils";
 import { getHashFeedIdForPair } from "../pushPair/services/utils";
 import DBLogger from "../../models/DBLoggerModule";
-import { latestVersion, new_version, P2PVersion, rejectVersion, toString as versionToString } from "../../p2p/models/P2PVersion";
+import { new_version, rejectVersion, toString as versionToString } from "../../p2p/models/P2PVersion";
 
 export class P2PModule extends Module {
     static type = "P2PModule";
