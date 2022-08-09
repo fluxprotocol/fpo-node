@@ -1,15 +1,13 @@
-import { readFile } from 'fs/promises';
+import PeerId, { JSONPeerId } from "peer-id";
 
-import { APP_CONFIG_LOCATION, HEALTHCHECK_ENABLED, HEALTHCHECK_PORT } from "../config";
+import { HEALTHCHECK_ENABLED, HEALTHCHECK_PORT } from "../config";
 import { Healthcheck } from '../healthCheck/Healthcheck';
-import { AppConfig, UnparsedAppConfig } from '../models/AppConfig';
+import { AppConfig, UnparsedAppConfig, P2PConfig } from '../models/AppConfig';
 import { parseUnparsedModuleConfig } from '../models/Module';
 import { parseUnparsedNetworkConfig } from '../models/Network';
 import { AVAILABLE_JOBS, AVAILABLE_MODULES, AVAILABLE_NETWORKS } from '../modules';
 
-export async function parseAppConfig(): Promise<AppConfig> {
-    const config: UnparsedAppConfig = JSON.parse((await readFile(APP_CONFIG_LOCATION)).toString('utf-8'));
-
+export async function parseAppConfig(config: UnparsedAppConfig): Promise<AppConfig> {
     let port = Number(HEALTHCHECK_PORT)
     if (isNaN(port)) throw new Error(`"HEALTHCHECK_PORT" environment variable must be a number`);
     let healthcheck = new Healthcheck({
@@ -23,6 +21,28 @@ export async function parseAppConfig(): Promise<AppConfig> {
         modules: [],
         jobs: [],
     };
+
+    if (config.p2p) {
+        let p2p: P2PConfig[] = [];
+        for (const p2pConfig of config.p2p) {
+            if (typeof p2pConfig.peer_id === 'undefined') throw new Error(`"peer_id" should be an object containing: "id", "pubKey?", "privKey?"`);
+            if (!Array.isArray(p2pConfig.peers) || p2pConfig.peers.length === 0) throw new Error(`"p2p.peers" is required and should be an array of strings`);
+            if (typeof p2pConfig.addresses === 'undefined') throw new Error(`"p2p.addresses" should be an object containing: "listen:string[]"`);
+            if (typeof p2pConfig.addresses.listen === 'undefined' || !Array.isArray(p2pConfig.addresses.listen)) throw new Error(`"p2p.addresses.listen" should be an array of strings`);
+            if (typeof p2pConfig.networkId === 'undefined') throw new Error(`"p2p.networkId" is required`);
+
+            p2p.push(<P2PConfig>{
+                networkId: p2pConfig.networkId,
+                peer_id: await PeerId.createFromJSON(p2pConfig.peer_id),
+                p2p_node: p2pConfig.p2p_node,
+                peers: new Set(p2pConfig.peers),
+                addresses: {
+                    listen: p2pConfig.addresses.listen,
+                }
+            });
+        }
+        appConfig.p2p = p2p;
+    }
 
     if (!config.networks || !Array.isArray(config.networks)) throw new Error(`"networks" is required and must be an array`);
 

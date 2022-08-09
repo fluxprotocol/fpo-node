@@ -35,4 +35,8 @@ export interface INetwork extends EventEmitter {
 
     getBalance(accountId: string): Promise<Big | undefined>;
 
+    sign(message: Uint8Array): Promise<Uint8Array>;
+    verifySignature(message: Uint8Array, signature: Uint8Array): Promise<string>;
+
+    getWalletPublicAddress(): string;
 }

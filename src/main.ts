@@ -1,12 +1,15 @@
 import logger from './services/LoggerService';
 import { parseAppConfig } from './services/AppConfigService';
-import { PROJECT_NAME, PROJECT_VERSION } from './config';
+import { PROJECT_NAME, PROJECT_VERSION, APP_CONFIG_LOCATION } from './config';
+import { UnparsedAppConfig } from './models/AppConfig';
+import { readFile } from 'fs/promises';
 
-async function main() {
+export default async function main(config: UnparsedAppConfig) {
     logger.info(`🧙 Starting ${PROJECT_NAME} v${PROJECT_VERSION}`);
 
+    // TODO: Use yargs to give nodes a way to generate a private key for p2p..
     try {
-        const appConfig = await parseAppConfig();
+        const appConfig = await parseAppConfig(config);
 
         await Promise.all(appConfig.networks.map(network => network.init()));
 
@@ -22,9 +25,16 @@ async function main() {
 
         logger.info(`🚀 Booted`);
     } catch (error) {
-        logger.error(`${error}`);
+        logger.error(`[main] ${error}`);
         process.exit(1);
     }
 }
 
-main();
+if (process.env.NODE_ENV !== 'test' && process.env.NODE_ENV !== 'fuzz') {
+    async function boot() {
+        const config: UnparsedAppConfig = JSON.parse((await readFile(APP_CONFIG_LOCATION)).toString('utf-8'));
+        main(config);
+    }
+
+    boot();
+}

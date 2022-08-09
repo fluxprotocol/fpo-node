@@ -1,0 +1,33 @@
+{
+    "compilerOptions": {
+        "resolveJsonModule": true,
+        "skipLibCheck": true,
+        "target": "esnext",
+        "module": "commonjs",
+        "lib": [
+            "dom",
+            "ESNext",
+        ],
+        "outDir": "dist",
+        "rootDir": ".",
+        "strict": true,
+        // Ensure that .d.ts files are created by tsc, but not .js files
+        "declaration": true,
+        // "noEmit": true,
+        "emitDeclarationOnly": false,
+        // Ensure that Babel can safely transpile files in the TypeScript project
+        "isolatedModules": true,
+        "allowSyntheticDefaultImports": true, /* Allow default imports from modules with no default export. This does not affect code emit, just typechecking. */
+        "esModuleInterop": true
+    },
+    "include": [
+        "src/**/*",
+        "src/**/*.json",
+        "package.json"
+    ],
+    "exclude": [
+        "node_modules",
+        "dist/**/*",
+        "test",
+    ]
+}
