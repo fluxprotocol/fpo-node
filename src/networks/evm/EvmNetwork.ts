@@ -46,10 +46,7 @@ export default class EvmNetwork extends Network {
     }
 
     async onQueueBatch(batch: DataRequestBatchResolved): Promise<void> {
-        console.log("@@@@@onQueueBatch")
         for await (const request of batch.requests) {
-            console.log(`@@@@@onQueueBatch submitting request ${request.internalId}, hashId = ${request.txCallParams.params._id}`)
-
             if (!request.txCallParams.abi) {
                 logger.warn(`[${this.id}] Tx ${request.internalId} was not processed due to missing ABI`);
                 continue;

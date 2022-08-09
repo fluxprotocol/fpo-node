@@ -87,7 +87,6 @@ export class P2PModule extends Module {
 
     private async processPairs() {
         try {
-            console.log("-------processPairs")
             const timestampUpdateReport = await this.fetchLastUpdate();
             // Fetch elapsed time (in milliseconds) since last pair(s) update
             const timeSinceUpdate = Date.now() - timestampUpdateReport.oldestTimestamp;
@@ -137,8 +136,6 @@ export class P2PModule extends Module {
                 }
 
                 const outcome = await job.executeRequest(unresolvedRequest);
-                console.log(`~~~outcome: ${JSON.stringify(outcome)}`);
-
                 if (outcome.type === OutcomeType.Invalid || outcome.answer === '0') {
                     logger.error(`[${this.id}] Could not resolve ${unresolvedRequest.internalId}`, {
                         config: createSafeAppConfigString(this.appConfig),
@@ -155,18 +152,14 @@ export class P2PModule extends Module {
                 }
                 this.processing.add(unresolvedRequest.internalId);
 
-
                 // The hash feed id for the pair.
                 const hashFeedId: string = await getHashFeedIdForPair(this.internalConfig, unresolvedRequest.extraInfo.pair, unresolvedRequest.extraInfo.decimals);
 
                 // Round id is used to determine the leader in the network.
                 // All nodes are expected to run the same peer list
-
-                // Round id is used to determine the leader in the network.
-                // All nodes are expected to run the same peer list
                 const roundId: Big = await getRoundIdForPair(this.internalConfig, this.network, hashFeedId);
 
-                logger.info(`[${this.id}] @@processpairs ${unresolvedRequest.extraInfo.pair} on round id ${roundId.toString()}`);
+                logger.info(`[${this.id}] @@processpairs: ${unresolvedRequest.extraInfo.pair} on round id ${roundId.toString()}`);
                 let aggregateResult: AggregateResult;
                 try {
                     aggregateResult = await this.aggregator.aggregate(P2PModule.node_version, P2PModule.report_version, unresolvedRequest, hashFeedId, outcome.answer, roundId, async () => {
@@ -182,14 +175,8 @@ export class P2PModule extends Module {
                     this.medians.set(unresolvedRequest.internalId, new Big(outcome.answer));
                     return null;
                 }
-                // const aggregateResult: AggregateResult = await this.aggregator.aggregate(P2PModule.node_version, P2PModule.report_version, unresolvedRequest, hashFeedId, outcome.answer, roundId, async () => {
-                //     // Check whether or not the transaction has been in the blockchain
-                //     const newRoundId = await getRoundIdForPair(this.internalConfig, this.network,  hashFeedId);
-                //     // When the round id incremented we've updated the prices on chain
-                //     return !newRoundId.eq(roundId);
-                // });
                 this.processing.delete(unresolvedRequest.internalId);
-                console.log(`@@processPairs:  deleted unresolvedRequest.internalId ${unresolvedRequest.internalId}, hashId = ${hashFeedId}`)
+                logger.info(`@@processPairs:  deleted unresolvedRequest.internalId ${unresolvedRequest.internalId}, hashId = ${hashFeedId}`)
                 this.medians.set(unresolvedRequest.internalId, new Big(outcome.answer));
                 // At this stage everything should already be fully handled by the leader
                 // and if not at least submitted by this node. We can safely move on
@@ -199,10 +186,8 @@ export class P2PModule extends Module {
                 // We are the leader and we should send the transaction
                 return createResolveP2PRequest(aggregateResult, hashFeedId, roundId, unresolvedRequest, this.internalConfig);
             }));
-            console.log("@@processPairs:  resolved requests len", resolvedRequests.length)
 
             let requests: P2PResolvedDataRequest[] = resolvedRequests.filter(r => r !== null) as P2PResolvedDataRequest[];
-            console.log("@@processPairs: filtered resolved requests len", requests.length)
 
             if (requests.length === 0) {
                 logger.log(`[${this.id}] Node did not have to send anything`, {

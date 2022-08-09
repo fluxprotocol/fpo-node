@@ -34,12 +34,11 @@ export async function getRoundIdForPair(config: P2PInternalConfig, network: Netw
                             return new Big(0);
                         }
                     }
-                    console.log("------err fetching latestRoundOfPricePair -- will retry", error);
+                    console.log("@@getRoundIdForPair: error fetching latestRoundOfPricePair -- will retry", error);
                     await sleep(2_000)
 
                 }
             }
-            console.log(`@@getRoundIdForPair: latestround =  ${Number(latestRound)}, id = ${computedId}`)
             return new Big(latestRound.toString()).add(1);
         }
 
@@ -64,7 +63,7 @@ export async function getMinSignersForPair(config: P2PInternalConfig, network: N
                     });
 
                 }catch(error){
-                    console.log("------err fetching minSigners -- will retry", error);
+                    console.log("@@getMinSignersForPair: error fetching minSigners -- will retry", error);
                     await sleep(2_000)
 
                 }
@@ -114,7 +113,6 @@ export function createBatchFromPairs(config: P2PInternalConfig, targetNetwork: N
 }
 
 export function createResolveP2PRequest(aggregateResult: AggregateResult, hashFeedId: string, roundId: Big, request: P2PDataRequest, config: P2PInternalConfig): P2PResolvedDataRequest {
-    console.log(`---------createResolveP2PRequest ${request.internalId} round: ${roundId}`)
     let txCallParams: P2PResolvedDataRequest['txCallParams'] = {
         address: config.contractAddress,
         amount: '0',
@@ -126,13 +124,10 @@ export function createResolveP2PRequest(aggregateResult: AggregateResult, hashFe
 
     console.log(`[${reports.length}] reports -> `, reports);
     reports.sort((a, b) => Number(a.data) - Number(b.data))
-    // console.log("**sorted reports: ", reports)
     
     if (request.targetNetwork.type === 'evm') {
-        // const signatures = reports.map((report) => toString(fromString(report.signature, 'base64')));
         const signatures = reports.map((report) => toString(fromString(report.signature)));
 
-        // const answers = reports.map(report => BigNumber.from(report.data));
         const answers = reports.map(report => report.data);
 
         const timestamps = reports.map(report => report.timestamp);

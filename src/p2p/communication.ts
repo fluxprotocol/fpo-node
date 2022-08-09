@@ -142,7 +142,6 @@ export default class Communicator {
 				this._peers.add(ma_string);
 				this._retry.delete(ma_string);
 				const conn = await node.dial(ma);
-				console.log(`@@@@@@@@@@@@@@@@@@@@@connect dialed ma: ${ma_string} , conn.local ${conn.localAddr}, conn.remote ${conn.remoteAddr}`)
 				if (conn !== undefined) {
 					// We could use send here, but that would send to all currently connected nodes.
 					// I.e. each node would get the version more than once.
@@ -187,7 +186,6 @@ export default class Communicator {
 			for (const connection of this._connections) {
 				const ma_string = connection[0];
 				const conn = connection[1];
-				console.log(`@@@@send: concection ma ${ma_string} local ${conn.localAddr}, remote ${conn.remoteAddr}`)
 				try {
 					const { stream } = await conn.newStream(protocol);
 					await stream.sink(createAsyncIterable(data));

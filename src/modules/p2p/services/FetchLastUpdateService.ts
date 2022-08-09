@@ -32,7 +32,7 @@ export async function fetchEvmLastUpdate(config: P2PInternalConfig, network: Evm
                     abi: FluxP2PFactory.abi,
                 }))[1]
             }catch(err){
-                console.log("**Err calling valueFor -- should retry ", err)
+                console.log("@@fetchEvmLastUpdate: Error calling valueFor -- will retry ", err)
                 await sleep(5_000)
             }
 
