@@ -1,3 +1,4 @@
+import { AnchorConfig } from "../../../models/AnchorConfig";
 import { ModuleConfig } from "../../../models/IModule";
 import { convertOldSourcePath } from "../services/utils";
 
@@ -12,7 +13,7 @@ export interface Source {
     };
 }
 
-export interface Pair {
+export interface Pair extends AnchorConfig {
     pair: string;
     sources: Source[];
     decimals: number;
@@ -81,7 +82,15 @@ export function parsePushPairConfig(config: PushPairConfig): PushPairInternalCon
             sources: pair.sources.map((source) => ({
                 ...source,
                 source_path: convertOldSourcePath(source.source_path),
-            }))
+            })),
+            anchorSources: (pair.anchorSources ?? []).map(source => ({
+                ...source,
+                source_path: convertOldSourcePath(source.source_path),
+            })),
+            anchorPushOnCheckFail: pair.anchorPushOnCheckFail ?? false,
+            anchorDeviationPercentage: pair.anchorDeviationPercentage ?? 0.1,
+            anchorRetriesBeforeFail: pair.anchorRetriesBeforeFail ?? 2,
+            anchorWaitBetweenTriesInMs: pair.anchorWaitBetweenTriesInMs ?? 2000,
         })),
     };
 }

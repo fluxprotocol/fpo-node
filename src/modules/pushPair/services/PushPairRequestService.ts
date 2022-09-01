@@ -23,6 +23,7 @@ export function createBatchFromPairs(config: PushPairInternalConfig, targetNetwo
             ],
             confirmationsRequired: new Big(0),
             extraInfo: {
+                ...pairInfo,
                 pair: pairInfo.pair,
                 decimals: pairInfo.decimals,
                 deviationPercentage: pairInfo.deviationPercentage ?? config.deviationPercentage,

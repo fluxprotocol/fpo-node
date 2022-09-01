@@ -12,6 +12,7 @@ import { createSafeAppConfigString } from "../../services/AppConfigUtils";
 import { fetchEvmLastUpdate, fetchLatestPrice, fetchNearLastUpdate } from './services/FetchLastUpdateService';
 import { parsePushPairConfig, PushPairConfig, PushPairInternalConfig } from "./models/PushPairConfig";
 import { prettySeconds } from "../pairChecker/utils";
+import { fetchAnchorPrice } from "../../services/AnchorPointService";
 
 export class PushPairModule extends Module {
     static type = "PushPairModule";
@@ -87,6 +88,24 @@ export class PushPairModule extends Module {
                     remainingInterval = this.internalConfig.interval;
                     return null;
                 }
+
+                if (unresolvedRequest.extraInfo.anchorSources.length > 0) {
+                    logger.debug(`[${this.id}] ${unresolvedRequest.internalId} Checking against anchor points`);
+                    const anchorPriceInformation = await fetchAnchorPrice(
+                        this.appConfig, 
+                        unresolvedRequest.internalId, 
+                        new Big(outcome.answer), 
+                        unresolvedRequest.extraInfo.decimals, 
+                        unresolvedRequest.extraInfo, 
+                        unresolvedRequest.extraInfo.anchorRetriesBeforeFail
+                    );
+
+                    logger.debug(`[${this.id}] ${unresolvedRequest.internalId} should push: ${anchorPriceInformation.shouldUpdate}. Anchor price: ${anchorPriceInformation.anchorPrice.toString()} original: ${outcome.answer}`);
+                    
+                    if (!anchorPriceInformation.shouldUpdate) {
+                        return null;
+                    }
+                }             
 
                 // NOTICE: Limitation here is that we assume that the price update transaction may fail
                 // we do not know whether or not the transaction failed

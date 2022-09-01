@@ -1,13 +1,16 @@
+import { AnchorConfig } from "../../../models/AnchorConfig";
 import { DataRequest, DataRequestResolved } from "../../../models/DataRequest";
 import { DataRequestBatch, DataRequestBatchResolved } from "../../../models/DataRequestBatch";
 
+interface PushPairExtraInfo extends AnchorConfig {
+    pair: string;
+    decimals: number;
+    deviationPercentage: number;
+    minimumUpdateInterval: number;
+}
+
 export interface PushPairDataRequest extends DataRequest {
-    extraInfo: {
-        pair: string;
-        decimals: number;
-        deviationPercentage: number;
-        minimumUpdateInterval: number;
-    }
+    extraInfo: PushPairExtraInfo;
 }
 
 export interface PushPairResolvedDataRequest extends DataRequestResolved {
